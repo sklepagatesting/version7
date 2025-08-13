@@ -12,7 +12,7 @@
     display: flex;
     background: #f5f5f5;
     font-family: Arial, sans-serif;
-    overflow: hidden;
+    overflow: hidden; /* Prevent overscroll */
   }
 
   .chat-app {
@@ -121,7 +121,7 @@
     resize: none;
     min-height: 40px;
     max-height: 150px;
-    overflow-y: auto;
+    overflow-y: hidden; /* Hide scrollbar */
     font-size: 1rem;
   }
   .chat-input button {
@@ -137,6 +137,10 @@
 
   /* Mobile View Fixes */
   @media (max-width: 768px) {
+    html, body {
+      overflow: hidden; /* Prevent overscroll */
+      height: 100%;
+    }
     .sidebar {
       width: 100%;
       height: 100%;
@@ -190,7 +194,7 @@
     </div>
     <div class="messages" id="messagesContainer"></div>
     <form id="replyForm" class="chat-input">
-      <textarea id="replyInput" placeholder="Type your reply..." autocomplete="off"></textarea>
+      <textarea id="replyInput" autocomplete="off"></textarea>
       <button type="submit">Send</button>
     </form>
   </div>
