@@ -433,8 +433,17 @@ replyForm.addEventListener("submit", async (e) => {
 });
 
 replyInput.addEventListener("input", () => {
-  replyInput.style.height = "auto";
-  replyInput.style.height = replyInput.scrollHeight + "px";
+    // Reset the height to 'auto' to get the correct scrollHeight
+    replyInput.style.height = 'auto';
+    // Set the height to the scrollHeight, but ensure it doesn't drop below the min-height
+    replyInput.style.height = `${Math.min(replyInput.scrollHeight, parseFloat(window.getComputedStyle(replyInput).maxHeight))}px`;
+});
+
+replyInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        replyForm.dispatchEvent(new Event('submit', { bubbles: true }));
+    }
 });
 
 backBtn.addEventListener("click", () => {
