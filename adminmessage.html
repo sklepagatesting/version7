@@ -29,10 +29,8 @@ const db = getFirestore(app);
 // --- Admin account ---
 const admin = {
   name: "Dzey Autajay",
-  email: "autajaydzey@gmail.com",
   avatarColor: "#3498DB",
   avatarLetter: "D",
-  uid: "yX0rfptwb2SKESPuPBzvfkv8gti2"
 };
 
 // --- Escape HTML ---
@@ -51,7 +49,6 @@ const messagesContainer = document.getElementById("messagesContainer");
 const replyForm = document.getElementById("replyForm");
 const replyInput = document.getElementById("replyInput");
 const modalTitle = document.getElementById("modalTitle");
-const modalEmail = document.getElementById("modalEmail");
 
 let currentConversationId = null;
 let unsubscribeModalListener = null;
@@ -67,15 +64,15 @@ function closeModal() {
 }
 closeModalBtn.addEventListener("click", closeModal);
 
-// --- Render message in modal ---
-function addMessage(author, text, time, isAdmin=false) {
+// --- Add message to conversation ---
+function addMessage(author, text, time) {
+  const isSender = author === admin.name;
   const msgDiv = document.createElement("div");
-  msgDiv.className = `flex ${isAdmin ? "justify-start" : "justify-end"}`;
+  msgDiv.className = `flex ${isSender ? "justify-end" : "justify-start"}`;
   msgDiv.innerHTML = `
-    <div class="max-w-xs md:max-w-md p-3 rounded-lg mb-2 ${isAdmin?"bg-indigo-50 text-left":"bg-indigo-600 text-white text-right"}">
-      <strong>${escapeHtml(author)}</strong><br/>
-      ${escapeHtml(text)}<br/>
-      <span class="text-xs text-gray-500">${escapeHtml(time)}</span>
+    <div class="max-w-xs md:max-w-md p-3 rounded-xl mb-2 ${isSender ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-900 rounded-bl-none'}">
+      <div class="text-sm">${escapeHtml(text)}</div>
+      <div class="text-xs text-gray-400 text-right mt-1">${escapeHtml(time)}</div>
     </div>
   `;
   messagesContainer.appendChild(msgDiv);
@@ -83,27 +80,24 @@ function addMessage(author, text, time, isAdmin=false) {
 }
 
 // --- Open conversation modal ---
-function openConversation(conversationId, userName, userEmail) {
+function openConversation(conversationId, otherName) {
   currentConversationId = conversationId;
-  modalTitle.textContent = userName;
-  modalEmail.textContent = userEmail;
+  modalTitle.textContent = otherName;
 
-  // Real-time listener
   if (unsubscribeModalListener) unsubscribeModalListener();
-  unsubscribeModalListener = onSnapshot(doc(db, "message", conversationId), docSnap=>{
+  unsubscribeModalListener = onSnapshot(doc(db, "message", conversationId), docSnap => {
     if(!docSnap.exists()) return;
     messagesContainer.innerHTML = "";
     const data = docSnap.data();
 
-    addMessage(data.name, data.message, data.time, data.name===admin.name);
+    addMessage(data.name, data.message);
 
-    (data.replies || []).sort((a,b)=>new Date(a.time)-new Date(b.time))
-      .forEach(r=>{
-        addMessage(r.author, r.text, r.time, r.author===admin.name);
-      });
+    (data.replies || []).sort((a,b)=> new Date(a.time)-new Date(b.time))
+      .forEach(r => addMessage(r.author, r.text));
 
     modalOverlay.classList.remove("hidden");
     modalOverlay.classList.add("flex");
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
     replyInput.focus();
   });
 }
@@ -111,7 +105,7 @@ function openConversation(conversationId, userName, userEmail) {
 // --- Load all user conversations ---
 function loadUsers() {
   const q = query(collection(db, "message"), orderBy("time","desc"));
-  onSnapshot(q, snapshot=>{
+  onSnapshot(q, snapshot => {
     userList.innerHTML = "";
     if(snapshot.empty){
       userList.innerHTML = `<p class="text-gray-500 p-2">No conversations yet.</p>`;
@@ -120,53 +114,38 @@ function loadUsers() {
 
     const userConversations = {};
 
-    snapshot.forEach(docSnap=>{
+    snapshot.forEach(docSnap => {
       const data = docSnap.data();
-      let otherName, otherEmail;
-
-      if(data.name === admin.name) {
-        // Admin sent the first message
-        if(data.replies && data.replies.length > 0){
-          otherName = data.replies[0].author;
-          otherEmail = data.replies[0].email || "unknown@example.com";
-        } else {
-          // No replies yet
-          otherName = data.userName || "Unknown User";
-          otherEmail = data.userEmail || "unknown@example.com";
-        }
+      // Determine the "other side" name
+      let otherName;
+      if(data.name === admin.name && data.replies && data.replies.length>0){
+        otherName = data.replies[0].author;
+      } else if(data.name === admin.name) {
+        otherName = data.userName || "Unknown User";
       } else {
-        // Someone else sent the first message
         otherName = data.name;
-        otherEmail = data.email || "unknown@example.com";
       }
 
-      if(!userConversations[otherEmail]) userConversations[otherEmail] = [];
-      userConversations[otherEmail].push({id: docSnap.id, data});
+      if(!userConversations[otherName]) userConversations[otherName] = [];
+      userConversations[otherName].push({id: docSnap.id, data});
     });
 
-    // Render latest conversation per user
-    Object.values(userConversations).forEach(convArr=>{
-      convArr.sort((a,b)=>{
+    Object.values(userConversations).forEach(convArr => {
+      convArr.sort((a,b) => {
         const lastA = a.data.replies?.length?a.data.replies[a.data.replies.length-1].time:a.data.time;
         const lastB = b.data.replies?.length?b.data.replies[b.data.replies.length-1].time:b.data.time;
         return new Date(lastB) - new Date(lastA);
       });
 
       const latestConv = convArr[0];
-
-      let otherName, otherEmail;
       const data = latestConv.data;
-      if(data.name === admin.name) {
-        if(data.replies && data.replies.length>0){
-          otherName = data.replies[0].author;
-          otherEmail = data.replies[0].email || "unknown@example.com";
-        } else {
-          otherName = data.userName || "Unknown User";
-          otherEmail = data.userEmail || "unknown@example.com";
-        }
+      let otherName;
+      if(data.name === admin.name && data.replies && data.replies.length>0){
+        otherName = data.replies[0].author;
+      } else if(data.name === admin.name){
+        otherName = data.userName || "Unknown User";
       } else {
         otherName = data.name;
-        otherEmail = data.email || "unknown@example.com";
       }
 
       const lastMessage = data.replies?.length
@@ -179,11 +158,11 @@ function loadUsers() {
       const li = document.createElement("div");
       li.className = "p-3 border-b cursor-pointer hover:bg-gray-50";
       li.innerHTML = `
-        <strong>${escapeHtml(otherName)}</strong><br/>
+        <strong class="text-lg">${escapeHtml(otherName)}</strong><br/>
         <span class="text-gray-500 text-sm">${escapeHtml(lastMessage)}</span><br/>
         <span class="text-gray-400 text-xs">${escapeHtml(lastTime)}</span>
       `;
-      li.addEventListener("click", ()=>openConversation(latestConv.id, otherName, otherEmail));
+      li.addEventListener("click", ()=>openConversation(latestConv.id, otherName));
       userList.appendChild(li);
     });
   });
@@ -202,12 +181,12 @@ replyForm.addEventListener("submit", async e=>{
   try {
     await updateDoc(doc(db,"message",currentConversationId), { replies: arrayUnion(reply) });
     replyInput.value = "";
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
   } catch(err){
     alert("Failed to send reply: "+err.message);
   }
 });
 </script>
-
 </head>
 <body class="bg-gray-50 p-4 min-h-screen">
 
@@ -218,13 +197,13 @@ replyForm.addEventListener("submit", async e=>{
 
   <!-- Modal -->
   <div id="modalOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white max-w-3xl w-full max-h-[90vh] overflow-y-auto rounded-lg shadow-lg p-6 relative flex flex-col">
+    <div class="bg-white max-w-3xl w-full max-h-[90vh] overflow-y-hidden rounded-lg shadow-lg p-6 relative flex flex-col">
       <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-900 text-xl font-bold">&times;</button>
-      <h2 class="text-2xl font-bold" id="modalTitle"></h2>
-      <p class="text-gray-500 mb-4" id="modalEmail"></p>
-      <div id="messagesContainer" class="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-50 border rounded mb-4"></div>
-      <form id="replyForm" class="flex space-x-2">
-        <input id="replyInput" type="text" placeholder="Type your reply..." class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+      <h2 class="text-2xl font-bold mb-1" id="modalTitle"></h2>
+      <div id="messagesContainer" class="flex-1 p-2 space-y-2 overflow-y-hidden"></div>
+      <form id="replyForm" class="flex space-x-2 mt-2">
+        <input id="replyInput" type="text" placeholder="Type your reply..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+               class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Send</button>
       </form>
     </div>
