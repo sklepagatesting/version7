@@ -213,14 +213,6 @@
     .chat-app.show-chat .sidebar { transform: translateX(-100%); }
     .chat-app.show-chat .chat-panel { transform: translateX(0); }
     .back-btn { display: inline-block; }
-
-    .chat-input-wrapper {
-        /* On mobile, use a fixed position if needed for better UX */
-        /* position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; */
-    }
-    .messages {
-        /* Adjust padding if input is fixed */
-    }
   }
 </style>
 </head>
@@ -255,9 +247,6 @@
 </div>
 
 <script type="module">
-// IMPORTANT: In a production application, you should use environment variables
-// or a backend service to handle Firebase configuration and server-side logic
-// to avoid exposing sensitive keys directly in the client-side code.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
@@ -271,12 +260,10 @@ const firebaseConfig = {
   measurementId: "G-9GH707G2WZ"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const admin = { name: "Dzey Autajay" };
 
-// DOM Elements
 const chatApp = document.getElementById("chatApp");
 const userList = document.getElementById("userList");
 const messagesContainer = document.getElementById("messagesContainer");
@@ -298,27 +285,70 @@ function escapeHtml(text) {
 function formatTimestamp(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
-    if (isNaN(date)) return dateString; // Fallback for invalid formats
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    if (isNaN(date.getTime())) return dateString;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+    if (messageDate.getTime() === today.getTime()) {
+        return timeString; // Today: "8:15 PM"
+    }
+    if (messageDate.getTime() === yesterday.getTime()) {
+        return `Yesterday ${timeString}`; // Yesterday: "Yesterday 10:30 AM"
+    }
+    const oneWeekAgo = new Date(today);
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
+    if (messageDate.getTime() > oneWeekAgo.getTime()) {
+        const dayString = date.toLocaleDateString('en-US', { weekday: 'long' });
+        return `${dayString} ${timeString}`; // Within week: "Sunday 9:00 AM"
+    }
+    return `${date.toLocaleDateString('en-US')} ${timeString}`; // Older: "8/5/2025 11:20 AM"
+}
+
+function formatTimestampForList(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    if (messageDate.getTime() === today.getTime()) {
+        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+    if (messageDate.getTime() === yesterday.getTime()) {
+        return 'Yesterday';
+    }
+    const oneWeekAgo = new Date(today);
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
+    if (messageDate.getTime() > oneWeekAgo.getTime()) {
+        return date.toLocaleDateString('en-US', { weekday: 'short' });
+    }
+    return date.toLocaleDateString('en-US'); // e.g., "8/5/2025"
 }
 
 function addMessage(author, text, time) {
   const isSender = author === admin.name;
-
   const row = document.createElement("div");
   row.className = "message-row " + (isSender ? "sender" : "receiver");
-
   const content = document.createElement("div");
   content.className = "message-content";
-
   const bubble = document.createElement("div");
   bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
   bubble.textContent = text;
-
   const timeEl = document.createElement("div");
   timeEl.className = "message-time";
   timeEl.textContent = formatTimestamp(time);
-
   content.appendChild(bubble);
   content.appendChild(timeEl);
   row.appendChild(content);
@@ -329,23 +359,13 @@ function openConversation(conversationId, otherName) {
   currentConversationId = conversationId;
   chatTitle.textContent = escapeHtml(otherName);
   chatApp.classList.remove('no-chat-selected');
-
-  // Highlight active conversation in the list
   document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
   document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
-
-
   if (unsubscribeConversationListener) unsubscribeConversationListener();
-
   unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
-    if (!docSnap.exists()) {
-      console.error("Conversation document not found!");
-      return;
-    }
-    messagesContainer.innerHTML = ""; // Clear previous messages
+    if (!docSnap.exists()) return;
+    messagesContainer.innerHTML = "";
     const data = docSnap.data();
-
-    // Combine the initial message and all replies into a single array
     const allMessages = [];
     if (data.message && data.time) {
         allMessages.push({ author: data.name, text: data.message, time: data.time });
@@ -353,118 +373,100 @@ function openConversation(conversationId, otherName) {
     if (data.replies && Array.isArray(data.replies)) {
         allMessages.push(...data.replies);
     }
-
-    // Sort all messages chronologically
     allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-
-    // Render each message
     allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
-
-    // Automatically scroll to the latest message
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   });
-
   if (window.innerWidth <= 768) {
     chatApp.classList.add("show-chat");
   }
 }
 
 function loadUsers() {
-  const q = query(collection(db, "message"), orderBy("time", "desc"));
-  onSnapshot(q, (snapshot) => {
+  const q = query(collection(db, "message"), orderBy("time","desc"));
+  onSnapshot(q, snapshot => {
     userList.innerHTML = "";
     if (snapshot.empty) {
       userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
       return;
     }
-    const conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // This logic assumes a "message" document represents a thread.
-    // We group by the user who is not the admin.
-    const userThreads = {};
-    conversations.forEach(conv => {
-      // Determine the "other person" in the chat
-      const otherName = conv.name === admin.name ? (conv.userName || 'Unknown User') : conv.name;
-      if (!userThreads[otherName]) {
-        userThreads[otherName] = [];
+    const userConversations = {};
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      const id = docSnap.id;
+      // This logic is restored from your original code to correctly identify the user.
+      const otherName = data.name === admin.name && data.replies?.length > 0
+        ? data.replies[0].author
+        : (data.name === admin.name ? data.userName || "Unknown User" : data.name);
+      
+      if (!userConversations[otherName]) {
+        userConversations[otherName] = [];
       }
-      userThreads[otherName].push(conv);
+      userConversations[otherName].push({ id, ...data });
     });
 
-    // For each user, find their most recent message activity to display in the list
-    const latestConversations = Object.entries(userThreads).map(([userName, threads]) => {
-      threads.sort((a, b) => {
-        const lastTimeA = a.replies?.slice(-1)[0]?.time || a.time;
-        const lastTimeB = b.replies?.slice(-1)[0]?.time || b.time;
-        return new Date(lastTimeB) - new Date(lastTimeA);
-      });
-      return { userName, thread: threads[0] };
+    const latestConversations = Object.entries(userConversations).map(([userName, threads]) => {
+        threads.sort((a, b) => {
+            const lastTimeA = a.replies?.slice(-1)[0]?.time || a.time;
+            const lastTimeB = b.replies?.slice(-1)[0]?.time || b.time;
+            return new Date(lastTimeB) - new Date(lastTimeA);
+        });
+        return { userName, thread: threads[0] };
     });
 
-    // Sort the conversation list by the most recent message across all users
     latestConversations.sort((a, b) => {
         const lastTimeA = a.thread.replies?.slice(-1)[0]?.time || a.thread.time;
         const lastTimeB = b.thread.replies?.slice(-1)[0]?.time || b.thread.time;
         return new Date(lastTimeB) - new Date(lastTimeA);
     });
-
-
+    
     latestConversations.forEach(({ userName, thread }) => {
-        const lastMessage = thread.replies?.slice(-1)[0] || { text: thread.message, time: thread.time };
-        const li = document.createElement("div");
-        li.className = "conversation";
-        li.dataset.id = thread.id;
-        li.innerHTML = `
-          <div class="flex justify-between items-center">
-              <strong class="font-semibold text-gray-800">${escapeHtml(userName)}</strong>
-              <span class="text-xs text-gray-500">${escapeHtml(formatTimestamp(lastMessage.time))}</span>
-          </div>
-          <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
-        `;
-        li.addEventListener("click", () => openConversation(thread.id, userName));
-        userList.appendChild(li);
+      const lastMessage = thread.replies?.slice(-1)[0] || { text: thread.message, time: thread.time };
+      const li = document.createElement("div");
+      li.className = "conversation";
+      li.dataset.id = thread.id;
+      li.innerHTML = `
+        <div class="flex justify-between items-center">
+            <strong class="font-semibold text-gray-800">${escapeHtml(userName)}</strong>
+            <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
+        </div>
+        <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
+      `;
+      li.addEventListener("click", () => openConversation(thread.id, userName));
+      userList.appendChild(li);
     });
   });
 }
 
 replyForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!currentConversationId) {
-      alert("Please select a conversation first.");
-      return;
-  }
+  if (!currentConversationId) return;
   const text = replyInput.value.trim();
   if (!text) return;
-
+  // Use a reliable date format. Note that your DB already uses en-PH.
+  // Using toISOString() is often safer, but we stick to your format for consistency.
   const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
   const reply = { author: admin.name, text: text, status: "unread", time: now };
-
   try {
-    await updateDoc(doc(db, "message", currentConversationId), {
-      replies: arrayUnion(reply)
-    });
+    await updateDoc(doc(db, "message", currentConversationId), { replies: arrayUnion(reply) });
     replyInput.value = "";
-    replyInput.style.height = "42px"; // Reset height
-    messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll after sending
+    replyInput.style.height = "42px";
   } catch (err) {
-    console.error("Failed to send reply:", err);
     alert("Failed to send reply: " + err.message);
   }
 });
 
-// Auto-resize textarea
 replyInput.addEventListener("input", () => {
   replyInput.style.height = "auto";
   const newHeight = Math.min(replyInput.scrollHeight, 150);
   replyInput.style.height = newHeight + "px";
 });
 
-// Mobile back button
 backBtn.addEventListener("click", () => {
   chatApp.classList.remove("show-chat");
 });
 
-// Load conversations on startup
 loadUsers();
 </script>
 </body>
