@@ -150,7 +150,7 @@
     align-items: flex-end;
   }
   .chat-input-wrapper textarea {
-    box-sizing: border-box; /* FIX: Makes height calculation predictable */
+    box-sizing: border-box; /* Makes height calculation predictable */
     flex: 1;
     padding: 0.6rem 1rem;
     border: 1px solid #ccc;
@@ -158,7 +158,7 @@
     background: white;
     outline: none;
     resize: none;
-    min-height: 42px;
+    min-height: 42px; /* Set a fixed initial height */
     max-height: 30vh;
     overflow-y: auto;
     font-size: 1rem;
@@ -269,6 +269,17 @@ const backBtn = document.getElementById("backBtn");
 
 let currentConversationId = null;
 let unsubscribeConversationListener = null;
+let singleLineHeight = null;
+
+function getSingleLineHeight() {
+  if (singleLineHeight) return singleLineHeight;
+  const computedStyle = window.getComputedStyle(replyInput);
+  const lineHeight = parseFloat(computedStyle.lineHeight);
+  const paddingTop = parseFloat(computedStyle.paddingTop);
+  const paddingBottom = parseFloat(computedStyle.paddingBottom);
+  singleLineHeight = lineHeight + paddingTop + paddingBottom;
+  return singleLineHeight;
+}
 
 function escapeHtml(text) {
   if (typeof text !== 'string') return "";
@@ -347,7 +358,8 @@ function openConversation(conversationId, otherName) {
   document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
   
   replyInput.value = "";
-  replyInput.style.height = "42px";
+  // Reset the height to its single line value
+  replyInput.style.height = `${getSingleLineHeight()}px`;
 
   if (unsubscribeConversationListener) unsubscribeConversationListener();
   unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
@@ -425,7 +437,8 @@ replyForm.addEventListener("submit", async (e) => {
   try {
     await updateDoc(doc(db, "message", currentConversationId), { replies: arrayUnion(reply) });
     replyInput.value = "";
-    replyInput.style.height = "42px";
+    // Reset the height to its single line value after sending
+    replyInput.style.height = `${getSingleLineHeight()}px`;
     scrollToBottom();
   } catch (err) {
     alert("Failed to send reply: " + err.message);
@@ -433,13 +446,20 @@ replyForm.addEventListener("submit", async (e) => {
 });
 
 replyInput.addEventListener("input", () => {
-    // Reset the height to 'auto' to get the correct scrollHeight
-    replyInput.style.height = 'auto';
-    // Set the height to the scrollHeight, but ensure it doesn't drop below the min-height
-    replyInput.style.height = `${Math.min(replyInput.scrollHeight, parseFloat(window.getComputedStyle(replyInput).maxHeight))}px`;
+    replyInput.style.height = 'auto'; // Reset height
+    const initialHeight = getSingleLineHeight();
+    const scrollHeight = replyInput.scrollHeight;
+    
+    // Only expand if scrollHeight is more than the single line height
+    if (scrollHeight > initialHeight) {
+        replyInput.style.height = `${Math.min(scrollHeight, parseFloat(window.getComputedStyle(replyInput).maxHeight))}px`;
+    } else {
+        replyInput.style.height = `${initialHeight}px`;
+    }
 });
 
 replyInput.addEventListener('keydown', (e) => {
+    // Only send on Enter if Shift is NOT pressed
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         replyForm.dispatchEvent(new Event('submit', { bubbles: true }));
@@ -449,6 +469,15 @@ replyInput.addEventListener('keydown', (e) => {
 backBtn.addEventListener("click", () => {
   chatApp.classList.remove("show-chat");
 });
+
+window.addEventListener('resize', () => {
+  // Recalculate single line height on resize
+  singleLineHeight = null;
+  replyInput.style.height = `${getSingleLineHeight()}px`;
+});
+
+// Initialize height on first load
+replyInput.style.height = `${getSingleLineHeight()}px`;
 
 loadUsers();
 </script>
