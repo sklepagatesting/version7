@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Messages</title>
+  <title>My Messages</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, doc, getDoc, updateDoc, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, onSnapshot, updateDoc, arrayUnion, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // --- Firebase Config ---
     const firebaseConfig = {
       apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
       authDomain: "sklepaga-8790e.firebaseapp.com",
@@ -23,107 +22,128 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // --- Load current account ---
+    // Get current user from localStorage
     const account = JSON.parse(localStorage.getItem("account"));
     if (!account) window.location.href = "authentication.html";
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const mainMessageEl = document.getElementById("mainMessage");
-      const repliesContainer = document.getElementById("repliesContainer");
-      const replyForm = document.getElementById("replyForm");
-      const replyInput = document.getElementById("replyInput");
+    const userName = account.name;
+    const userEmail = account.email;
+    const userUid = account.uid;
 
-      const conversationDoc = doc(db, "message", "PPKtYIXtsVaXO87HKz2F");
+    // DOM Elements
+    const leftPanel = document.getElementById("conversationList");
+    const rightPanel = document.getElementById("conversationThread");
+    const replyForm = document.getElementById("replyForm");
+    const replyInput = document.getElementById("replyInput");
+    const selectedTitle = document.getElementById("selectedTitle");
 
-      function escapeHtml(text) {
-        if (!text) return "";
-        return text
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#39;");
-      }
+    let currentConversationId = null;
+    let unsubscribeThread = null;
 
-      function render(data) {
-        // Render main message
-        mainMessageEl.innerHTML = `
-          <div class="p-3 rounded-lg bg-gray-200 mb-4 shadow">
-            <strong>${escapeHtml(data.name)}</strong> <span class="text-xs text-gray-500 ml-2">${escapeHtml(data.time)}</span>
-            <p class="mt-1">${escapeHtml(data.message)}</p>
+    // Escape HTML
+    function escapeHtml(text) {
+      if (!text) return "";
+      return text.replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#39;");
+    }
+
+    // Render left panel conversations
+    const convRef = collection(db, "message");
+    onSnapshot(convRef, snapshot => {
+      leftPanel.innerHTML = "";
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const convDiv = document.createElement("div");
+        convDiv.className = "p-4 border-b hover:bg-gray-50 cursor-pointer";
+        const latestReply = data.replies?.length ? data.replies[data.replies.length-1].text : data.message;
+        convDiv.innerHTML = `
+          <div class="flex justify-between">
+            <span class="font-semibold">${escapeHtml(data.name)}</span>
+            <span class="text-xs text-gray-500">${escapeHtml(data.time)}</span>
           </div>
+          <div class="text-gray-600 text-sm truncate">${escapeHtml(latestReply)}</div>
         `;
+        convDiv.addEventListener("click", () => openConversation(docSnap.id, data));
+        leftPanel.appendChild(convDiv);
+      });
+    });
 
-        // Render replies
-        repliesContainer.innerHTML = "";
-        const replies = data.replies || [];
+    function openConversation(id, data) {
+      currentConversationId = id;
+      selectedTitle.textContent = data.name;
+
+      if (unsubscribeThread) unsubscribeThread();
+
+      const threadRef = doc(db, "message", id);
+      unsubscribeThread = onSnapshot(threadRef, docSnap => {
+        const convData = docSnap.data();
+        rightPanel.innerHTML = "";
+
+        // Main message
+        const mainDiv = document.createElement("div");
+        mainDiv.className = "mb-4 p-3 rounded bg-gray-100 shadow-sm";
+        mainDiv.innerHTML = `<strong>${escapeHtml(convData.name)}</strong><br>${escapeHtml(convData.message)}<br><span class="text-xs text-gray-500">${escapeHtml(convData.time)}</span>`;
+        rightPanel.appendChild(mainDiv);
+
+        // Replies
+        const replies = convData.replies || [];
         replies.sort((a,b) => new Date(a.time) - new Date(b.time));
-
         replies.forEach(reply => {
-          const div = document.createElement("div");
-          div.className = `p-2 rounded-lg mb-2 max-w-xs ${reply.author === account.name ? 'bg-blue-500 text-white self-end ml-auto' : 'bg-gray-200 self-start mr-auto'} shadow`;
-          div.innerHTML = `<strong>${escapeHtml(reply.author)}</strong> <span class="text-xs text-gray-500 ml-2">${escapeHtml(reply.time)}</span><p>${escapeHtml(reply.text)}</p>`;
-          repliesContainer.appendChild(div);
+          const rDiv = document.createElement("div");
+          rDiv.className = `mb-2 p-2 rounded shadow-sm max-w-xs ${reply.author===userName ? "bg-green-100 ml-auto text-right" : "bg-white"}`;
+          rDiv.innerHTML = `<strong>${escapeHtml(reply.author)}</strong><br>${escapeHtml(reply.text)}<br><span class="text-xs text-gray-500">${escapeHtml(reply.time)}</span>`;
+          rightPanel.appendChild(rDiv);
         });
 
-        repliesContainer.scrollTop = repliesContainer.scrollHeight;
-      }
-
-      // --- Real-time listener ---
-      onSnapshot(conversationDoc, (docSnap) => {
-        if (!docSnap.exists()) return;
-        const data = docSnap.data();
-        render(data);
+        rightPanel.scrollTop = rightPanel.scrollHeight;
       });
+    }
 
-      // --- Send Reply ---
-      replyForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const text = replyInput.value.trim();
-        if (!text) return;
+    replyForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!currentConversationId) return;
+      const text = replyInput.value.trim();
+      if (!text) return;
 
-        const now = new Date().toISOString().replace("T"," ").split(".")[0];
-        const newReply = {
-          author: account.name,
-          status: "sent",
-          text: text,
-          time: now
-        };
-
-        await updateDoc(conversationDoc, {
+      const newReply = {
+        author: userName,
+        text,
+        time: new Date().toISOString(),
+        status: "sent"
+      };
+      try {
+        await updateDoc(doc(db, "message", currentConversationId), {
           replies: arrayUnion(newReply)
         });
-
         replyInput.value = "";
-      });
-
-      // Show current user name
-      document.getElementById("userNameDisplay").textContent = account.name;
-      document.getElementById("userEmailDisplay").textContent = account.email;
+      } catch(err) {
+        alert("Failed to send reply: " + err.message);
+      }
     });
   </script>
 </head>
-<body class="flex flex-col h-screen bg-gray-100 p-4 font-sans">
+<body class="flex flex-col md:flex-row min-h-screen">
 
-  <header class="mb-4">
-    <h1 class="text-3xl font-bold text-center">Chat</h1>
-    <div class="max-w-3xl mx-auto flex justify-between mt-2 bg-gray-50 p-3 rounded shadow">
-      <div><strong>Name:</strong> <span id="userNameDisplay"></span></div>
-      <div><strong>Email:</strong> <span id="userEmailDisplay"></span></div>
+  <!-- Left panel -->
+  <div class="w-full md:w-1/3 border-r border-gray-300 p-4 overflow-y-auto" id="conversationList">
+    <h2 class="text-xl font-bold mb-4">Conversations</h2>
+    <!-- Conversations dynamically inserted here -->
+  </div>
+
+  <!-- Right panel -->
+  <div class="w-full md:w-2/3 p-4 flex flex-col">
+    <h2 id="selectedTitle" class="text-xl font-bold mb-4">Select a conversation</h2>
+    <div id="conversationThread" class="flex-grow overflow-y-auto border rounded p-4 bg-gray-50 mb-4">
+      <!-- Conversation thread dynamically inserted here -->
     </div>
-  </header>
-
-  <main class="flex-1 max-w-3xl mx-auto flex flex-col overflow-y-auto">
-    <div id="mainMessage"></div>
-    <div id="repliesContainer" class="flex flex-col"></div>
-  </main>
-
-  <footer class="mt-4 max-w-3xl mx-auto">
-    <form id="replyForm" class="flex gap-2">
-      <input id="replyInput" type="text" placeholder="Type your reply..." class="flex-1 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded font-semibold">Send</button>
+    <form id="replyForm" class="flex space-x-2">
+      <input id="replyInput" class="flex-grow border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Type a reply..." required>
+      <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Send</button>
     </form>
-  </footer>
+  </div>
 
 </body>
 </html>
