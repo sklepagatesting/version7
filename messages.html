@@ -5,203 +5,200 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Messages</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-</head>
-<body class="bg-white p-6 min-h-screen font-sans relative">
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, doc, setDoc, onSnapshot, updateDoc, arrayUnion, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-  <h1 class="text-3xl font-bold mb-2 text-center">My Messages</h1>
+    // --- Firebase Config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+      authDomain: "sklepaga-8790e.firebaseapp.com",
+      projectId: "sklepaga-8790e",
+      storageBucket: "sklepaga-8790e.firebasestorage.app",
+      messagingSenderId: "815409129057",
+      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+      measurementId: "G-9GH707G2WZ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+      if (!text) return "";
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#39;");
+    }
+
+    // Get account from localStorage
+    const account = JSON.parse(localStorage.getItem("account") || "{}");
+    const userId = account.uid;
+    const userName = account.name;
+    const userEmail = account.email;
+
+    if (!userId || !userName || !userEmail) {
+      window.location.href = "authentication.html";
+    }
+
+    // Display user info
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("userNameDisplay").textContent = userName;
+      document.getElementById("userEmailDisplay").textContent = userEmail;
+    });
+
+    const conversationsCol = collection(db, "message");
+    const leftPanel = document.getElementById("conversationList");
+    const rightPanel = document.getElementById("conversationThread");
+    const replyInput = document.getElementById("replyInput");
+    const replyForm = document.getElementById("replyForm");
+    const backBtn = document.getElementById("backBtn");
+
+    let currentConversationId = null;
+
+    // --- Initialize default conversation with Admin ---
+    async function initDefaultConversation() {
+      const q = query(conversationsCol, where("userEmail", "==", userEmail), limit(1));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        // Create default conversation with Admin
+        const adminEmail = "mlanggoodsamaritanhospitalco@gmail.com";
+        const now = new Date().toISOString();
+        const newDocRef = doc(conversationsCol);
+        await setDoc(newDocRef, {
+          name: "Admin",
+          email: adminEmail,
+          time: now,
+          message: "Hello, how can I help you?",
+          status: "sent",
+          replies: [],
+          messageid: newDocRef.id,
+          userId
+        });
+      }
+    }
+
+    // --- Render conversation list ---
+    function renderConversations(snapshots) {
+      leftPanel.innerHTML = "";
+      snapshots.forEach(docSnap => {
+        const data = docSnap.data();
+        const card = document.createElement("div");
+        card.className = `p-4 cursor-pointer border-b ${data.messageid===currentConversationId?'bg-indigo-50':''}`;
+        card.innerHTML = `
+          <strong>${escapeHtml(data.name)}</strong><br/>
+          <span class="text-gray-500 text-sm">${escapeHtml(data.message)}</span><br/>
+          <span class="text-gray-400 text-xs">${escapeHtml(data.time)}</span>
+        `;
+        card.addEventListener("click", () => openConversation(docSnap.id));
+        leftPanel.appendChild(card);
+      });
+    }
+
+    // --- Open conversation ---
+    function openConversation(id) {
+      currentConversationId = id;
+      rightPanel.classList.remove("hidden");
+      backBtn.classList.remove("hidden");
+      loadConversation(id);
+      highlightConversation(id);
+    }
+
+    function highlightConversation(id) {
+      Array.from(leftPanel.children).forEach(card => {
+        card.classList.remove("bg-indigo-50");
+      });
+      const card = Array.from(leftPanel.children).find(c => c.onclick && c.onclick.toString().includes(id));
+      if (card) card.classList.add("bg-indigo-50");
+    }
+
+    backBtn.addEventListener("click", () => {
+      rightPanel.classList.add("hidden");
+      backBtn.classList.add("hidden");
+    });
+
+    // --- Load conversation thread ---
+    function loadConversation(id) {
+      const docRef = doc(conversationsCol, id);
+      onSnapshot(docRef, docSnap => {
+        if (!docSnap.exists()) return;
+        const data = docSnap.data();
+        const container = document.getElementById("messagesContainer");
+        container.innerHTML = "";
+
+        // Main message
+        container.innerHTML += `
+          <div class="p-2 rounded shadow-sm mb-2 ${data.userId===userId?'self bg-indigo-100 text-right':'other bg-gray-100 text-left'}">
+            <strong>${escapeHtml(data.name)}</strong><br/>
+            ${escapeHtml(data.message)}<br/>
+            <span class="text-xs text-gray-500">${escapeHtml(data.time)}</span>
+          </div>
+        `;
+
+        // Replies
+        (data.replies || []).sort((a,b)=> new Date(a.time)-new Date(b.time)).forEach(r=>{
+          container.innerHTML += `
+            <div class="p-2 rounded shadow-sm mb-2 ${r.author===userName?'self bg-indigo-100 text-right':'other bg-gray-100 text-left'}">
+              <strong>${escapeHtml(r.author)}</strong><br/>
+              ${escapeHtml(r.text)}<br/>
+              <span class="text-xs text-gray-500">${escapeHtml(r.time)}</span>
+            </div>
+          `;
+        });
+
+        container.scrollTop = container.scrollHeight;
+      });
+    }
+
+    // --- Send reply ---
+    replyForm.addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const text = replyInput.value.trim();
+      if(!text || !currentConversationId) return;
+      const now = new Date().toISOString();
+      const newReply = {author:userName,text,status:"sent",time:now};
+      try {
+        const docRef = doc(conversationsCol,currentConversationId);
+        await updateDoc(docRef,{replies: arrayUnion(newReply)});
+        replyInput.value="";
+      } catch(err){
+        alert("Failed to send reply: "+err.message);
+      }
+    });
+
+    // --- Load conversations realtime ---
+    async function loadConversations() {
+      await initDefaultConversation();
+      const q = query(conversationsCol, where("userId","==",userId), orderBy("time","desc"));
+      onSnapshot(q, snapshot=>{
+        renderConversations(snapshot.docs);
+      });
+    }
+
+    loadConversations();
+
+  </script>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 flex flex-col md:flex-row">
+
+  <!-- Left panel -->
+  <div class="md:w-1/3 border-r border-gray-300 p-2 overflow-y-auto max-h-screen" id="conversationList"></div>
+
+  <!-- Right panel -->
+  <div class="md:w-2/3 p-2 flex flex-col hidden" id="conversationThread">
+    <button id="backBtn" class="mb-2 px-3 py-1 bg-gray-300 rounded hidden">Back</button>
+    <div id="messagesContainer" class="flex-grow overflow-y-auto p-2 space-y-2 bg-white border rounded mb-2 max-h-[80vh]"></div>
+    <form id="replyForm" class="flex space-x-2">
+      <input id="replyInput" type="text" placeholder="Type your reply..." class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+      <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Send</button>
+    </form>
+  </div>
 
   <!-- User info display -->
-  <div class="max-w-5xl mx-auto mb-6 p-4 border rounded bg-gray-50 flex justify-center space-x-8 text-gray-700">
-    <div><strong>Name:</strong> <span id="userNameDisplay" class="text-gray-900"></span></div>
-    <div><strong>Email:</strong> <span id="userEmailDisplay" class="text-gray-900"></span></div>
+  <div class="absolute top-2 right-2 p-2 bg-white shadow rounded">
+    <div><strong>Name:</strong> <span id="userNameDisplay"></span></div>
+    <div><strong>Email:</strong> <span id="userEmailDisplay"></span></div>
   </div>
-
-  <div class="max-w-5xl mx-auto flex flex-col md:flex-row gap-4">
-    <!-- Left panel: conversation list -->
-    <div class="w-full md:w-1/3 border rounded overflow-y-auto max-h-[70vh]" id="conversationList"></div>
-
-    <!-- Right panel: selected conversation -->
-    <div class="w-full md:w-2/3 border rounded flex flex-col max-h-[70vh]">
-      <div id="conversationHeader" class="p-4 border-b bg-gray-100 font-semibold"></div>
-      <div id="conversationMessages" class="flex-1 p-4 overflow-y-auto bg-gray-50"></div>
-      <form id="replyForm" class="flex p-4 border-t">
-        <input id="replyInput" type="text" placeholder="Type your reply..." required
-          class="flex-grow border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-        <button type="submit"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded ml-2 font-semibold">
-          Send
-        </button>
-      </form>
-    </div>
-  </div>
-
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-    authDomain: "sklepaga-8790e.firebaseapp.com",
-    projectId: "sklepaga-8790e",
-    storageBucket: "sklepaga-8790e.firebasestorage.app",
-    messagingSenderId: "815409129057",
-    appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-    measurementId: "G-9GH707G2WZ"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-
-  // Get user info from localStorage
-  const userId = localStorage.getItem("uid");
-  const userName = localStorage.getItem("name");
-  const userEmail = localStorage.getItem("email");
-
-  if (!userId || !userName || !userEmail) {
-    window.location.href = "authentication.html";
-  }
-
-  document.getElementById("userNameDisplay").textContent = userName;
-  document.getElementById("userEmailDisplay").textContent = userEmail;
-
-  const conversationListEl = document.getElementById("conversationList");
-  const conversationHeader = document.getElementById("conversationHeader");
-  const conversationMessages = document.getElementById("conversationMessages");
-  const replyForm = document.getElementById("replyForm");
-  const replyInput = document.getElementById("replyInput");
-
-  let conversations = [];
-  let selectedConversationId = null;
-  let unsubscribeSelected = null;
-
-  // Escape HTML to prevent XSS
-  function escapeHtml(text) {
-    if (!text) return "";
-    return text.replace(/&/g, "&amp;")
-               .replace(/</g, "&lt;")
-               .replace(/>/g, "&gt;")
-               .replace(/"/g, "&quot;")
-               .replace(/'/g, "&#39;");
-  }
-
-  // Load all conversations
-  async function loadConversations() {
-    const snapshot = await db.collection("message")
-                             .where("userId", "==", userId)
-                             .orderBy("time", "asc")
-                             .get();
-    conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if (conversations.length === 0) {
-      await ensureAdminConversation();
-    } else {
-      renderConversationList();
-      selectConversation(conversations[0].id);
-    }
-  }
-
-  // Create default Admin conversation if none exists
-  async function ensureAdminConversation() {
-    const snapshot = await db.collection("message")
-                             .where("userId", "==", userId)
-                             .where("email", "==", "mlanggoodsamaritanhospitalco@gmail.com")
-                             .get();
-    if (!snapshot.empty) {
-      conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      renderConversationList();
-      selectConversation(conversations[0].id);
-      return;
-    }
-
-    const now = new Date().toISOString();
-    const newDocRef = db.collection("message").doc();
-    const adminMessage = {
-      name: "Admin",
-      email: "mlanggoodsamaritanhospitalco@gmail.com",
-      time: now,
-      message: "Hello, how can I help you?",
-      status: "sent",
-      replies: [],
-      messageid: newDocRef.id,
-      userId: userId
-    };
-    await newDocRef.set(adminMessage);
-    conversations.push({ id: newDocRef.id, ...adminMessage });
-    renderConversationList();
-    selectConversation(newDocRef.id);
-  }
-
-  function renderConversationList() {
-    conversationListEl.innerHTML = "";
-    conversations.forEach(conv => {
-      const div = document.createElement("div");
-      div.className = `p-4 border-b cursor-pointer ${conv.id === selectedConversationId ? "bg-indigo-100" : "hover:bg-gray-100"}`;
-      div.innerHTML = `<strong>${escapeHtml(conv.name)}</strong><br>
-                       <span class="text-gray-600 text-sm truncate">${escapeHtml(conv.message)}</span>
-                       <div class="text-xs text-gray-400 mt-1">${escapeHtml(conv.time)}</div>`;
-      div.addEventListener("click", () => selectConversation(conv.id));
-      conversationListEl.appendChild(div);
-    });
-  }
-
-  function selectConversation(id) {
-    selectedConversationId = id;
-    renderConversationList();
-    if (unsubscribeSelected) unsubscribeSelected();
-    unsubscribeSelected = db.collection("message").doc(id)
-      .onSnapshot(docSnap => {
-        if (!docSnap.exists) return;
-        const data = docSnap.data();
-        renderConversation(data);
-      });
-  }
-
-  function renderConversation(data) {
-    conversationHeader.textContent = data.name;
-    conversationMessages.innerHTML = "";
-    // Main message bubble
-    const mainMsgDiv = document.createElement("div");
-    mainMsgDiv.className = "p-2 mb-2 rounded shadow-sm max-w-xs";
-    mainMsgDiv.classList.add(data.email === userEmail ? "bg-indigo-100 self-end" : "bg-gray-200 self-start");
-    mainMsgDiv.innerHTML = `<strong>${escapeHtml(data.name)}</strong><br>${escapeHtml(data.message)}
-                            <div class="text-xs text-gray-500 mt-1">${escapeHtml(data.time)}</div>`;
-    conversationMessages.appendChild(mainMsgDiv);
-
-    // Replies
-    const replies = data.replies || [];
-    replies.forEach(reply => {
-      const div = document.createElement("div");
-      div.className = "p-2 mb-2 rounded shadow-sm max-w-xs";
-      div.classList.add(reply.author === userName ? "bg-indigo-100 self-end" : "bg-gray-200 self-start");
-      div.innerHTML = `<strong>${escapeHtml(reply.author)}</strong><br>${escapeHtml(reply.text)}
-                       <div class="text-xs text-gray-500 mt-1">${escapeHtml(reply.time)}</div>`;
-      conversationMessages.appendChild(div);
-    });
-
-    conversationMessages.scrollTop = conversationMessages.scrollHeight;
-  }
-
-  replyForm.addEventListener("submit", async e => {
-    e.preventDefault();
-    if (!selectedConversationId) return;
-    const text = replyInput.value.trim();
-    if (!text) return;
-    const now = new Date().toISOString();
-    const newReply = {
-      author: userName,
-      text,
-      time: now,
-      status: "sent"
-    };
-    try {
-      await db.collection("message").doc(selectedConversationId)
-        .update({ replies: firebase.firestore.FieldValue.arrayUnion(newReply) });
-      replyInput.value = "";
-    } catch (err) {
-      alert("Failed to send reply: " + err.message);
-    }
-  });
-
-  // Initialize
-  loadConversations();
-</script>
 
 </body>
 </html>
