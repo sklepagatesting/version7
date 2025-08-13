@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contact | SK Lepaga</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+      authDomain: "sklepaga-8790e.firebaseapp.com",
+      projectId: "sklepaga-8790e",
+      storageBucket: "sklepaga-8790e.firebasestorage.app",
+      messagingSenderId: "815409129057",
+      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+      measurementId: "G-9GH707G2WZ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const USER_DOC_ID_KEY = "userId"; // localStorage key for logged in user
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      const userId = localStorage.getItem(USER_DOC_ID_KEY);
+      if (!userId) {
+        window.location.href = "register.html";
+        return;
+      }
+
+      const nameEl = document.getElementById("user-name");
+      const emailEl = document.getElementById("user-email");
+      const statusMsg = document.getElementById("status-msg");
+      const submitBtn = document.getElementById("submit-btn");
+      let userData = null;
+
+      try {
+        const userRef = doc(db, "user", userId);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) {
+          localStorage.removeItem(USER_DOC_ID_KEY);
+          window.location.href = "register.html";
+          return;
+        }
+        userData = userSnap.data();
+        nameEl.textContent = userData.name || "";
+        emailEl.textContent = userData["e-mail"] || "";
+      } catch (err) {
+        console.error("Failed to load user:", err);
+        statusMsg.textContent = "Failed to load user. See console.";
+        return;
+      }
+
+      const form = document.getElementById("contact-form");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        statusMsg.textContent = "";
+        submitBtn.disabled = true;
+
+        const messageText = form.message.value.trim();
+        if (!messageText) {
+          statusMsg.textContent = "Please enter a message.";
+          submitBtn.disabled = false;
+          return;
+        }
+
+        const nowString = new Date().toISOString().replace("T", " ").split(".")[0];
+        const generatedMessageId = Math.random().toString(36).slice(2, 10);
+
+        try {
+          await addDoc(collection(db, "message"), {
+            userId: userId, // link message to logged-in user
+            name: String(userData.name || ""),
+            "e-mail": String(userData["e-mail"] || ""),
+            time: String(nowString),
+            message: String(messageText),
+            status: "unread",
+            replies: "",
+            messageid: String(generatedMessageId)
+          });
+
+          alert("Message sent successfully!");
+          form.reset();
+        } catch (err) {
+          console.error("Error sending message:", err);
+          statusMsg.textContent = "Failed to send message. See console.";
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    });
+  </script>
+</head>
+<body class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 font-sans">
+  <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
+    <h1 class="text-2xl font-semibold mb-6 text-gray-800">Contact Us</h1>
+
+    <div class="mb-4">
+      <p class="text-gray-700"><strong>Name:</strong> <span id="user-name" class="text-gray-900"></span></p>
+      <p class="text-gray-700"><strong>E-mail:</strong> <span id="user-email" class="text-gray-900"></span></p>
+    </div>
+
+    <form id="contact-form" class="space-y-5">
+      <div>
+        <label for="message" class="block text-gray-700 font-medium mb-1">Message</label>
+        <textarea id="message" name="message" rows="4" required
+          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          placeholder="Type your message here..."></textarea>
+      </div>
+      <p id="status-msg" class="text-red-600 text-sm min-h-[1.25rem]"></p>
+      <div class="flex items-center justify-between space-x-4">
+        <button id="submit-btn" type="submit"
+          class="flex-grow bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 focus:ring-2 text-white font-semibold py-2 rounded-md transition duration-150">
+          Send
+        </button>
+        <button type="button"
+          class="bg-gray-300 hover:bg-gray-400 focus:ring-gray-400 focus:ring-2 font-semibold py-2 px-5 rounded-md transition duration-150"
+          onclick="window.location.href='register.html'">
+          Back
+        </button>
+      </div>
+    </form>
+  </div>
+</body>
+</html>

@@ -1,0 +1,142 @@
+/* GLOBAL ANIMATION */
+.fly-in, .left-in, .right-in,
+.fly-in-slow, .left-in-slow, .right-in-slow {
+  opacity: 0;
+  transition: opacity 1s cubic-bezier(0.25, 1, 0.5, 1),
+              transform 1s cubic-bezier(0.25, 1, 0.5, 1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+/* SLOW variants override transition duration */
+.fly-in-slow, .left-in-slow, .right-in-slow {
+  transition-duration: 2s;
+}
+
+/* Entry transforms (initial state) */
+.fly-in, .fly-in-slow {
+  transform: translate3d(0, 40px, 0);
+}
+.left-in, .left-in-slow {
+  transform: translate3d(-40px, 0, 0);
+}
+.right-in, .right-in-slow {
+  transform: translate3d(40px, 0, 0);
+}
+
+/* Final state when animated in */
+.animate-in {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+
+
+/* Global rise animation */
+@keyframes rise-from-baseline {
+    0% {
+        transform: scaleY(0);
+        transform-origin: bottom;
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        transform: scaleY(1);
+        transform-origin: bottom;
+        opacity: 1;
+    }
+}
+
+.rise span {
+    display: inline-block;
+    opacity: 0;
+    transform: scaleY(0);
+    transform-origin: bottom;
+    overflow: hidden;
+    animation: rise-from-baseline 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards paused;
+}
+
+.rise.visible span {
+    animation-play-state: running;
+}
+
+
+
+
+
+
+/* Global slide-up animation */
+@keyframes slide-up {
+    0% {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+.sliding-up {
+    display: inline-block;
+}
+.sliding-up span {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(100%);
+    overflow: hidden; 
+    animation: slide-up 0.5s ease-out forwards paused;
+}
+
+.sliding-up.visible span {
+    animation-play-state: running;
+}
+
+
+
+
+.text-container {
+  overflow: hidden;
+}
+
+.text-line {
+  display: block;
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+/* Only animate when class is added */
+.text-line.animate {
+  animation: slideUpWithFade 1.2s ease forwards;
+}
+
+@keyframes slideUpWithFade {
+  from {
+    transform: translateY(400%) rotateZ(12deg);
+    opacity: .5;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+
+
+  
+  .clipp-section {
+    height: 100vh;
+    background: white;
+    color: rgb(255, 255, 255);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    clip-path: inset(100% 0% 0% 0%);
+  }
+
+

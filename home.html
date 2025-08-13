@@ -1,0 +1,232 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Update</title>
+
+  <!-- Preconnect to Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Preload the font -->
+  <link rel="preload" href="https://fonts.gstatic.com/s/inter/v12/1Pn0EnyXJmdSgbTxHLk.woff2" as="font" type="font/woff2" crossorigin="anonymous">
+  <!-- Load the font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+  <!-- FontFaceObserver Script -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fontfaceobserver/2.1.0/fontfaceobserver.standalone.js"></script>
+
+  <style>
+body.preload {
+        visibility: hidden;
+        opacity: 0; }
+
+    body { transition: opacity 0.2s ease-in; }
+  </style>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="navbar\navbar.css">
+  <link rel="stylesheet" href="font\font.css">
+  <link rel="stylesheet" href="animations/global.css">
+  <link rel="stylesheet" href="pages\index.css">
+  <link rel="stylesheet" href="controlers\scroll.css">
+  <link rel="stylesheet" href="sections/hero.css">
+  <link rel="stylesheet" href="sections\carousel.css">
+</head>
+
+<body class="preload">
+    <main id="swup">
+
+  <div class="main-content text-container">
+
+    <!-- 🌐 NAVIGATION BAR (Smaller) -->
+    <nav id="navbar" class="duration-300 fixed inset-x-0 top-0 z-50 h-20">
+      <div class="flex items-center justify-between h-full max-w-screen-xl mx-auto px-8">
+        <a href="index.html" class="flex items-center space-x-4" data-transition>
+          <img src="https://cdn.prod.website-files.com/67ebf279c44c5fad2f90f315/67ebf279c44c5fad2f90f3ee_ctzeuvcjvyq518kr6iga-p-1080.webp" alt="Logo" class="h-5 w-auto" />
+          <span class="font-theme font-medium">SK Lepaga</span>
+        </a>
+        <button id="menu-toggle-btn" type="button" class="font-theme rounded-md hover:bg-[#e8e8e8] dark:hover:bg-[#696969] focus:outline-none" aria-controls="sidebar-multi-level-sidebar" aria-expanded="false">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path id="menu-icon-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- 🧭 SIDEBAR -->
+    <aside id="sidebar-multi-level-sidebar" class="fixed top-20 left-0 z-30 w-[100vw] hidden transition-[height: 100%] duration-500 bg-white dark:bg-[#242424]" style="height: calc(100vh - 3rem); overflow-y: auto;" aria-label="Sidebar">
+      <div class="h-full flex items-center justify-center px-4 py-4 max-w-4xl mx-auto">
+        <div id="sidebar-menu" class="font-theme space-y-5 flex flex-col items-center justify-center">
+          <!-- Menu Items -->
+          <div class="sidebar-menu-item flex flex-col items-center m-6">
+            <a href="home2.html" data-transition rel="nofollow noopener">
+              <button class="sidebar-menu-header flex items-center space-x-2 focus:outline-none">
+                <h2 class="subtext-title">CALENDAR</h2>
+              </button>
+            </a>
+          </div>
+          <!-- Repeat for other menu items... -->
+        </div>
+      </div>
+    </aside>
+
+<section class="h-[calc(var(--vh)_*_100)] w-full flex flex-col justify-between bg-white overflow-hidden">
+  <div class="w-full pt-24 sm:pt-32 md:pt-36 lg:pt-40 pb-6 px-0 z-10">
+    <div class="overflow-hidden relative w-full">
+      <div class="w-full px-8 pb-12 gap-8 flex flex-col-reverse md:flex-row">
+        
+<!-- Left: Image and Play Reel -->
+<div class="text-line w-full md:w-3/8 mb-8 md:mb-0 hidden md:flex items-end" data-transition>
+  <div class="flex flex-col justify-end">
+
+    <!-- Fixed 16:9 Responsive Sizes -->
+    <div class="image-container relative overflow-hidden aspect-[16/9] 
+                w-[200px] sm:w-[400px] lg:w-[701px] border-1 border-black" data-transition>
+      <img id="image-current"
+           class="absolute inset-0 w-full h-full object-cover shadow-lg will-change-transform z-10 border-none"
+           data-transition />
+      <img id="image-next"
+           class="absolute inset-0 w-full h-full object-cover shadow-lg opacity-0 pointer-events-none will-change-transform z-0 border-none"
+           data-transition />
+    </div>
+
+  </div>
+</div>
+
+
+
+        <!-- Right: Article Titles -->
+        <div class="w-full md:w-5/8 flex flex-col justify-end sm:text-left md:text-left">
+          <div>
+            <div class="text-container">
+              <h1 class="text-line subtext-title text-black">NEWS AND</h1>
+            </div>
+            <div class="text-container mb-6">
+              <h1 class="text-line subtext-title text-black">ARTICLES</h1>
+            </div>
+
+                    
+<a href="article.html" data-transition>
+  <div class="text-container mb-2 article-title cursor-pointer hover:bg-gray-200 transition"
+    data-img="https://scontent.fcgy2-3.fna.fbcdn.net/v/t39.30808-6/528775182_822597366757506_9099515475172561218_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_eui2=AeH-HiAxZEk7mZbsV37kjHsZQCBZBGRx-8FAIFkEZHH7wUYL_bX8WM_04mf1NmXs2RpmotR4mKu1umUOki37saBv&_nc_ohc=jt7zA9JTRBkQ7kNvwHbi43e&_nc_oc=Adnp5uEnteF6cb0dCMES9g8P_WifV_jUHLMvwR2xwaLDg6f4IhDPNm1XhPMCh6km6S0&_nc_zt=23&_nc_ht=scontent.fcgy2-3.fna&_nc_gid=qHGceaM5tRj0LftkZgCwIQ&oh=00_AfX2CKOQqho__lbEeN1R8srl2OKO37BYSMNC4E0iAxs6xw&oe=689F54B7"
+    data-img-tablet="https://cdn.prod.website-files.com/67ebf279c44c5fad2f90f315/6808cd6c0588a9e2f7aee4d6_MSTF_LISBON_RODHAD_1070pxl.jpg"
+    data-img-mobile="https://cdn.prod.website-files.com/67ebf279c44c5fad2f90f315/67ebf279c44c5fad2f90f3e7_ytdv4dzjkhcfgd3bpcj4.webp">
+    <p class="text-line subtext text-black">Gala Night 2025</p>
+  </div>
+</a>
+
+
+
+<a href="article2.html" data-transition>
+  <div class="text-container mb-2 article-title cursor-pointer hover:bg-gray-200 transition"
+    data-img="https://scontent.fcgy2-4.fna.fbcdn.net/v/t39.30808-6/528139107_1334747201989864_7702131030271337964_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeHS1cm6vy_oGB5OhEn67tH6ijTrq55X6zaKNOurnlfrNnoIa7nl6ApoBz-4hup99WdSvV8K9WARzx74CSNWzfwp&_nc_ohc=00FgKMJR0_0Q7kNvwGGunnW&_nc_oc=AdmtuLZ9sOot-n6j4PAglkYME6GFR1fd8BVetgsw_w3dtf_DJMvlVwY7GGJWDFcMkjM&_nc_zt=23&_nc_ht=scontent.fcgy2-4.fna&_nc_gid=SwF6JofLxx_SAbsdn9OjUw&oh=00_AfWjmx_IMA1ZzM0BPWaJ0_gr3nPtryVa1f-sAQx9PCeOHA&oe=689F8E5E">
+    <p class="text-line subtext text-black">Comelec Registration</p>
+  </div>
+</a>
+
+<a href="article3.html" data-transition>
+  <div class="text-container mb-2 article-title cursor-pointer hover:bg-gray-200 transition"
+    data-img="https://scontent.fcgy2-4.fna.fbcdn.net/v/t39.30808-6/527811461_122183379224370071_7311737310410364795_n.jpg?_nc_cat=105&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeE5LKcw1c46Uu1OmvLLEBtIYPbPbFEiM2Bg9s9sUSIzYLusaGQJGuYY5EcCnuUyXqc_5hN3BGl4rZiSXT86H8oR&_nc_ohc=2fUWZ8aVrEoQ7kNvwFgOHph&_nc_oc=AdnbDQJ4wR_-O0fgzDTusyFJzTSUVpTV7ZzQefGBCr1XPH29a-wobYC_T6ST-PHfVvo&_nc_zt=23&_nc_ht=scontent.fcgy2-4.fna&_nc_gid=JF5VDG66HHsFtw9C3_svVg&oh=00_AfXy2ZM5_LJLSnY4JlwVCB2PtZsEZxK962B4phdWRl8IRw&oe=689F6BD4">
+    <p class="text-line subtext text-black">Linggo ng Kabataan Volleyball Boys Tournament Individual Awards</p>
+  </div>
+</a>
+
+<a href="index.html" data-transition>
+  <div class="text-container mb-2 article-title cursor-pointer hover:bg-gray-200 transition"
+    data-img="https://scontent.fcgy2-2.fna.fbcdn.net/v/t39.30808-6/488885328_1118851910257617_2621432574784784267_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeFbSr7N-F9ms-tS5X4Swn9fzEwF-RRYrg3MTAX5FFiuDen8saSS6n8KCyMmjNDgIL4PmliRg9Ieg-94L-fezYTB&_nc_ohc=5H0uHkIze7sQ7kNvwEdN9RX&_nc_oc=AdlzldIj0B3dnHGJg8vGeJfzU3wuesJNQK-tW_HsD4VPidvUne37rNx72ZPqo0ilUQ0&_nc_zt=23&_nc_ht=scontent.fcgy2-2.fna&_nc_gid=okkjGEsvB0a9rtJkawo-bQ&oh=00_AfWu04dOUND51WqYcmPU2BUQ3rPXcW9xCA_hn1jQ5XbgAg&oe=68A053DE">
+    <p class="text-line subtext text-black">Tree Planting Event</p>
+  </div>
+</a>
+
+<a href="index.html" data-transition>
+  <div class="text-container mb-2 article-title cursor-pointer hover:bg-gray-200 transition"
+    data-img="https://cdn.prod.website-files.com/67ebf279c44c5fad2f90f315/67ebf279c44c5fad2f90f3de_Rectangle%2026.png">
+    <p class="text-line subtext text-black">Linggo ng Kabataan</p>
+  </div>
+</a>
+
+<a href="index.html" data-transition>
+  <div class="text-container mb-2 article-title cursor-pointer hover:bg-gray-200 transition"
+    data-img="https://cdn.prod.website-files.com/67ebf279c44c5fad2f90f315/67fcf93081888d36b443f54b_APAV_OUTDOOR_LUCIANA_APAV_25NOV_THUMB-p-1600.jpg">
+    <p class="text-line subtext text-black">Anniversary Celebration</p>
+  </div>
+</a>
+
+<a href="index.html" data-transition>
+  <div class="text-container mb-2 article-title cursor-pointer hover:bg-gray-200 transition"
+    data-img="https://cdn.prod.website-files.com/67ebf279c44c5fad2f90f315/67ebf279c44c5fad2f90f3ee_ctzeuvcjvyq518kr6iga.webp">
+    <p class="text-line subtext text-black">50th Anniversary</p>
+  </div>
+</a>
+
+<a href="index.html" data-transition>
+  <div class="text-container mb-2 article-title cursor-pointer hover:bg-gray-200 transition"
+    data-img="https://cdn.prod.website-files.com/67ebf279c44c5fad2f90f315/67ebf279c44c5fad2f90f3e7_ytdv4dzjkhcfgd3bpcj4.webp">
+    <p class="text-line subtext text-black">Basketball Tournament</p>
+  </div>
+</a>
+
+<a href="index.html" data-transition>
+  <div class="text-container mb-2 article-title cursor-pointer hover:bg-gray-200 transition"
+    data-img="https://cdn.prod.website-files.com/67ebf279c44c5fad2f90f315/6808cd6c0588a9e2f7aee4d6_MSTF_LISBON_RODHAD_1070pxl.jpg">
+    <p class="text-line subtext text-black">Tree Planting Event</p>
+  </div>
+</a>
+
+<a href="index.html" data-transition>
+  <div class="text-container mb-8 article-title cursor-pointer hover:bg-gray-200 transition"
+    data-img="https://cdn.prod.website-files.com/67ebf279c44c5fad2f90f315/67ebf279c44c5fad2f90f3de_Rectangle%2026.png">
+    <p class="text-line subtext text-black">Linggo ng Kabataan</p>
+  </div>
+</a>
+
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+  </div>
+</main>
+  <!-- Script to wait for the font to load before showing the page -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flowbite/dist/flowbite.min.js"></script>
+
+
+  <script src="navbar\navbar.js"></script>
+
+      <script src="pages/index.js"></script>
+  <script src="animations\global.js"></script>
+    <script src="font\font.js"></script>
+    <script src="loader\loader.js"></script>
+
+
+
+    <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+<script src="https://unpkg.com/gsap@3/dist/ScrollTrigger.min.js"></script>
+<script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+<script src="https://unpkg.com/gsap@3/dist/gsap-core.min.js"></script>
+<script src="https://unpkg.com/gsap@3/dist/ScrollTrigger.min.js"></script>
+<script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+<script src="https://unpkg.com/gsap@3/dist/MotionPathPlugin.min.js"></script>
+<script src="https://unpkg.com/gsap@3/dist/ScrollToPlugin.min.js"></script>
+<script src="https://unpkg.com/gsap@3/dist/Draggable.min.js"></script>
+<script src="https://unpkg.com/gsap@3/dist/EasePack.min.js"></script>
+<script src="https://unpkg.com/gsap@3/dist/ModifiersPlugin.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+<script src="https://unpkg.com/swup@latest/dist/swup.min.js"></script>
+
+
+</body>
+
+</html>
+
