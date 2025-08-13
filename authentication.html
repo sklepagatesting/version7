@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Authentication</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Google Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
-    // --- Firebase SDKs ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
@@ -22,62 +21,55 @@
       measurementId: "G-9GH707G2WZ"
     };
 
-    // Init
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
+    const db = getFirestore(app);
 
-    // Random avatar color generator
-    function getRandomColor() {
-      const colors = ["#3498DB", "#E67E22", "#2ECC71", "#9B59B6", "#F39C12", "#1ABC9C", "#E74C3C"];
-      return colors[Math.floor(Math.random() * colors.length)];
-    }
-
-    // Save account to Firestore
-    async function saveAccount(user) {
-      const avatarLetter = user.displayName ? user.displayName.charAt(0).toUpperCase() : "U";
-      const accountData = {
+    // Save user data to Firestore and localStorage
+    async function saveUser(user) {
+      const token = await user.getIdToken();
+      const userData = {
         uid: user.uid,
-        name: user.displayName || "Unnamed User",
-        email: user.email,
-        avatarLetter: avatarLetter,
-        avatarColor: getRandomColor(),
-        idToken: await user.getIdToken(),
+        name: user.displayName || "",
+        email: user.email || "",
+        avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
+        avatarColor: "#3498DB",
+        idToken: token,
         tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString()
       };
-      await setDoc(doc(db, "accounts", user.uid), accountData);
+
+      await setDoc(doc(db, "accounts", user.uid), userData);
+      localStorage.setItem("account", JSON.stringify(userData));
     }
 
-    // Auto sign in with Google
-    async function signInAndSave() {
+    // Trigger Google Login
+    async function login() {
       try {
         const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        await saveAccount(user);
+        await saveUser(result.user);
         window.location.href = "messages.html";
       } catch (error) {
-        console.error("Auth error:", error);
-        document.getElementById("status").innerText = "Authentication failed. Check console.";
+        console.error("Login failed:", error);
+        alert("Login failed: " + error.message);
       }
     }
 
-    // If already signed in, skip popup
+    // If already signed in, skip login popup
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        await saveAccount(user);
+        await saveUser(user);
         window.location.href = "messages.html";
       } else {
-        signInAndSave();
+        // Trigger login popup immediately
+        login();
       }
     });
   </script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center h-screen">
-  <div class="bg-white p-6 rounded-lg shadow-lg text-center w-80">
-    <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 mx-auto mb-4"></div>
-    <h1 class="text-lg font-bold mb-2">Signing you in...</h1>
-    <p class="text-gray-500 text-sm" id="status">Please wait while we authenticate.</p>
+<body class="flex items-center justify-center min-h-screen bg-gray-100">
+  <div class="bg-white shadow-lg rounded-lg p-6 text-center">
+    <h1 class="text-xl font-semibold text-gray-700">Signing you in with Google...</h1>
   </div>
 </body>
 </html>
