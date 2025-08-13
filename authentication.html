@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Google Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, getIdToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // Firebase Config
+    // --- Firebase Config ---
     const firebaseConfig = {
       apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
       authDomain: "sklepaga-8790e.firebaseapp.com",
@@ -21,68 +21,55 @@
       measurementId: "G-9GH707G2WZ"
     };
 
-    // Init Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
+    const db = getFirestore(app);
 
-    // Sign-in function
-    async function signInWithGoogle() {
+    async function login() {
       try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
-
-        // Get ID token
-        const idToken = await getIdToken(user, true);
-
-        // Format expiration time (+1 hour for testing)
-        const tokenExpiration = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-
-        // Prepare account data
-        const accountData = {
-          uid: user.uid,
-          name: user.displayName || "User",
-          email: user.email,
-          avatarLetter: (user.displayName || "U").charAt(0).toUpperCase(),
-          avatarColor: "#3498DB",
-          idToken,
-          tokenExpiration
-        };
+        const token = await user.getIdToken();
 
         // Save to Firestore
-        await setDoc(doc(db, "accounts", user.uid), accountData);
+        await setDoc(doc(db, "accounts", user.uid), {
+          uid: user.uid,
+          name: user.displayName || "",
+          email: user.email || "",
+          avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
+          avatarColor: "#3498DB",
+          idToken: token,
+          tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString()
+        });
 
-        // Save locally for quick login later
-        let accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-        accounts = accounts.filter(acc => acc.uid !== user.uid); // Remove old entry
-        accounts.push(accountData);
-        localStorage.setItem("accounts", JSON.stringify(accounts));
-        localStorage.setItem("currentAccountUid", user.uid);
+        // Save locally
+        localStorage.setItem("account", JSON.stringify({
+          uid: user.uid,
+          name: user.displayName || "",
+          email: user.email || "",
+          avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
+          avatarColor: "#3498DB",
+          idToken: token,
+          tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString()
+        }));
 
-        // Redirect
-        document.getElementById("status").textContent = "✅ Login successful! Redirecting...";
-        setTimeout(() => {
-          window.location.href = "index.html";
-        }, 1000);
-
+        window.location.href = "index.html";
       } catch (error) {
-        console.error("Login error:", error);
-        document.getElementById("status").textContent = "❌ " + error.message;
+        console.error("Login failed:", error);
+        alert("Login failed: " + error.message);
       }
     }
 
-    window.signInWithGoogle = signInWithGoogle;
+    window.login = login;
   </script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center h-screen">
-  <div class="bg-white p-6 rounded-lg shadow-md w-96 text-center">
-    <h1 class="text-2xl font-bold mb-4">Sign In</h1>
-    <button onclick="signInWithGoogle()" class="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded flex items-center justify-center gap-2">
-      <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
-      Continue with Google
+<body class="flex items-center justify-center min-h-screen bg-gray-100">
+  <div class="bg-white shadow-lg rounded-lg p-6 text-center">
+    <h1 class="text-2xl font-bold mb-4">Welcome</h1>
+    <button onclick="login()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+      Login with Google
     </button>
-    <p id="status" class="mt-4 text-gray-600 text-sm"></p>
   </div>
 </body>
 </html>
