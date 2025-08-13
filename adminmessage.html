@@ -120,12 +120,13 @@
       const data = docSnap.data();
       messagesContainer.innerHTML = "";
 
-      // Sort all messages by time (original + replies)
+      // Original message + replies sorted by time
       let allMessages = [{author:data.name,text:data.message,time:data.time}].concat(data.replies||[]);
       allMessages.sort((a,b)=>new Date(a.time)-new Date(b.time));
 
       allMessages.forEach(msg=>{
-        addMessage(msg.author,msg.text,msg.time,msg.author===admin.name);
+        const isAdmin = msg.author === admin.name;
+        addMessage(msg.author,msg.text,msg.time,isAdmin);
       });
 
       modalOverlay.classList.remove("hidden");
@@ -153,8 +154,8 @@
     }
   });
 
-  // Load conversations grouped by user
-  db.collection("message").onSnapshot(snapshot => {
+  // Load conversations grouped by user (other person)
+  db.collection("message").orderBy("time","desc").onSnapshot(snapshot => {
     conversationList.innerHTML="";
     if(snapshot.empty){
       noConversations.classList.remove("hidden");
@@ -162,17 +163,17 @@
     }
     noConversations.classList.add("hidden");
 
-    // Group by user email
     const usersMap = {};
+
     snapshot.forEach(doc=>{
       const data = doc.data();
-      const userKey = data.email; // use email as unique folder
+      const userKey = data.email; // always the user’s email (other person)
       if(!usersMap[userKey]) usersMap[userKey] = [];
       usersMap[userKey].push({id:doc.id,...data});
     });
 
-    // Render each user as a folder with latest message
     Object.values(usersMap).forEach(convArr=>{
+      // sort to get latest message first
       convArr.sort((a,b)=>{
         const lastA = a.replies?.length?a.replies[a.replies.length-1].time:a.time;
         const lastB = b.replies?.length?b.replies[b.replies.length-1].time:b.time;
@@ -181,11 +182,11 @@
       const latestConv = convArr[0];
       const user = {name: latestConv.name, email: latestConv.email};
 
-      const convDiv = document.createElement("div");
-      convDiv.className="p-3 cursor-pointer hover:bg-gray-100 flex justify-between items-center";
       const lastMessage = latestConv.replies?.length ? latestConv.replies[latestConv.replies.length-1].text : latestConv.message;
       const lastTime = latestConv.replies?.length ? latestConv.replies[latestConv.replies.length-1].time : latestConv.time;
 
+      const convDiv = document.createElement("div");
+      convDiv.className="p-3 cursor-pointer hover:bg-gray-100 flex justify-between items-center";
       convDiv.innerHTML = `
         <div>
           <strong>${escapeHtml(user.name)}</strong><br/>
