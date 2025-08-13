@@ -195,19 +195,20 @@ replyForm.addEventListener("submit", async e=>{
   <!-- Users List -->
   <div id="userList" class="max-w-4xl mx-auto border rounded bg-white overflow-y-auto max-h-[70vh]"></div>
 
-  <!-- Modal -->
-  <div id="modalOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white max-w-3xl w-full max-h-[90vh] overflow-y-hidden rounded-lg shadow-lg p-6 relative flex flex-col">
-      <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-900 text-xl font-bold">&times;</button>
-      <h2 class="text-2xl font-bold mb-1" id="modalTitle"></h2>
-      <div id="messagesContainer" class="flex-1 p-2 space-y-2 overflow-y-hidden"></div>
-      <form id="replyForm" class="flex space-x-2 mt-2">
-        <input id="replyInput" type="text" placeholder="Type your reply..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-               class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Send</button>
-      </form>
-    </div>
+<!-- Modal -->
+<div id="modalOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+  <div class="bg-white max-w-3xl w-full max-h-[90vh] overflow-y-auto rounded-lg shadow-lg p-6 relative flex flex-col">
+    <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-900 text-xl font-bold">&times;</button>
+    <h2 class="text-2xl font-bold mb-1" id="modalTitle"></h2>
+    <div id="messagesContainer" class="flex-1 p-2 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"></div>
+    <form id="replyForm" class="flex space-x-2 mt-2">
+      <input id="replyInput" type="text" placeholder="Type your reply..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+             class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+      <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Send</button>
+    </form>
   </div>
+</div>
+
 
 </body>
 </html>
