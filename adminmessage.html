@@ -6,12 +6,17 @@
 <title>Admin Messages</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
+  :root {
+    --sender-bg: #0084ff;
+    --receiver-bg: #e5e5ea;
+    --body-bg: #f5f5f5;
+  }
   body {
     margin: 0;
     height: 100vh;
     display: flex;
-    background: #f5f5f5;
-    font-family: Arial, sans-serif;
+    background: var(--body-bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     overflow: hidden;
   }
 
@@ -24,24 +29,26 @@
 
   /* Sidebar */
   .sidebar {
-    width: 300px;
+    width: 320px;
     background: #fff;
     border-right: 1px solid #ddd;
     display: flex;
     flex-direction: column;
     transition: transform 0.3s ease;
     z-index: 2;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
   }
   .sidebar-header {
     padding: 1rem;
     border-bottom: 1px solid #ddd;
+    font-size: 1.25rem;
     font-weight: bold;
-    background: #f0f0f0;
     flex-shrink: 0;
   }
-  .conversation-list { flex: 1; }
+  .conversation-list {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
   .conversation {
     padding: 1rem;
@@ -50,13 +57,14 @@
     transition: background 0.2s;
   }
   .conversation:hover { background: #f9f9f9; }
+  .conversation.active { background-color: #eef5ff; }
 
   /* Chat panel */
   .chat-panel {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: white;
+    background: #f9f9f9;
     transition: transform 0.3s ease;
     z-index: 1;
     min-width: 0;
@@ -69,6 +77,7 @@
     display: flex;
     align-items: center;
     flex-shrink: 0;
+    font-weight: 600;
   }
 
   .back-btn {
@@ -84,65 +93,106 @@
     flex: 1;
     min-height: 0; /* critical for flex scrolling */
     padding: 1rem;
-    padding-bottom: 160px; /* max height of input + margin */
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     -webkit-overflow-scrolling: touch;
     word-break: break-word;
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARMAAAETCAYAAAB92iilAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABWSURBVHja7cEBDQAAAMKg909tDwcUAAAAAIBvBQUAAAAA4FpQAQAAAIA7QUUAAAAA4FpQAQAAAIA7QUUAAAAA4FpQAQAAAIA7QUUAAAAA4FpQAQAAAIA7QUUAAABgWjALoECaO5boAAAAAElFTkSuQmCC');
+    background-color: #EFEAE2;
   }
 
   .message-row {
     display: flex;
-    margin-bottom: 8px;
+    margin-bottom: 0.25rem;
   }
   .message-row.sender { justify-content: flex-end; }
   .message-row.receiver { justify-content: flex-start; }
 
+  .message-content {
+      display: flex;
+      flex-direction: column;
+      max-width: 80%;
+  }
+
   .chat-bubble {
-    display: inline-block;
     padding: 10px 14px;
-    border-radius: 16px;
+    border-radius: 18px;
     word-wrap: break-word;
     white-space: pre-wrap;
-    max-width: 75%;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.05);
   }
-  .chat-bubble.sender { background-color: #0084ff; color: white; }
-  .chat-bubble.receiver { background-color: #e5e5ea; color: black; }
+  .chat-bubble.sender {
+    background-color: var(--sender-bg);
+    color: white;
+  }
+  .chat-bubble.receiver {
+    background-color: var(--receiver-bg);
+    color: black;
+  }
 
-  .chat-input {
-    display: flex;
+  .message-time {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-top: 4px;
+      padding: 0 6px;
+  }
+  .message-row.sender .message-time { align-self: flex-end; }
+  .message-row.receiver .message-time { align-self: flex-start; }
+
+
+  .chat-input-wrapper {
     border-top: 1px solid #ddd;
-    background: #fff;
-    padding: 0.5rem;
+    background: var(--body-bg);
+    padding: 0.75rem 1rem;
+    display: flex;
     align-items: flex-end;
   }
-  .chat-input textarea {
+  .chat-input-wrapper textarea {
     flex: 1;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #ddd;
+    padding: 0.6rem 1rem;
+    border: 1px solid #ccc;
     border-radius: 20px;
+    background: white;
     outline: none;
     resize: none;
-    min-height: 40px;
+    min-height: 42px;
     max-height: 150px;
     overflow-y: auto;
     font-size: 1rem;
+    line-height: 1.4;
     scrollbar-width: none;
   }
-  .chat-input textarea::-webkit-scrollbar { display: none; }
-  .chat-input button {
-    margin-left: 0.5rem;
-    padding: 0.5rem 1rem;
+  .chat-input-wrapper textarea::-webkit-scrollbar { display: none; }
+  .chat-input-wrapper button {
+    margin-left: 0.75rem;
+    height: 42px;
+    width: 42px;
     border: none;
-    background: #0084ff;
+    background: var(--sender-bg);
     color: white;
-    border-radius: 20px;
+    border-radius: 50%;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
-  /* Mobile view */
+  /* Initial State & Mobile */
+  .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
+  .chat-app.no-chat-selected .placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #6b7280;
+      text-align: center;
+      font-size: 1.1rem;
+  }
+  .placeholder { display: none; }
+
   @media (max-width: 768px) {
     .sidebar {
       width: 100%;
@@ -159,18 +209,23 @@
       top: 0;
       left: 0;
       transform: translateX(100%);
-      background: white;
     }
     .chat-app.show-chat .sidebar { transform: translateX(-100%); }
     .chat-app.show-chat .chat-panel { transform: translateX(0); }
     .back-btn { display: inline-block; }
-    .chat-input { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; }
-    .messages { padding-bottom: 160px; } /* ensures last message visible */
+
+    .chat-input-wrapper {
+        /* On mobile, use a fixed position if needed for better UX */
+        /* position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; */
+    }
+    .messages {
+        /* Adjust padding if input is fixed */
+    }
   }
 </style>
 </head>
 <body>
-<div class="chat-app" id="chatApp">
+<div class="chat-app no-chat-selected" id="chatApp">
   <div class="sidebar">
     <div class="sidebar-header">Admin Messages</div>
     <div class="conversation-list" id="userList"></div>
@@ -178,18 +233,31 @@
 
   <div class="chat-panel">
     <div class="chat-header">
-      <button class="back-btn" id="backBtn">&#8592;</button>
-      <span id="modalTitle">Select a conversation</span>
+      <button class="back-btn" id="backBtn">&larr;</button>
+      <span id="chatTitle">Select a conversation</span>
     </div>
-    <div class="messages" id="messagesContainer"></div>
-    <form id="replyForm" class="chat-input">
-      <textarea id="replyInput" autocomplete="off"></textarea>
-      <button type="submit">Send</button>
+    <div class="messages" id="messagesContainer">
+        <div class="placeholder">
+            <div>
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No conversation selected</h3>
+                <p class="mt-1 text-sm text-gray-500">Select a conversation from the list to start chatting.</p>
+            </div>
+        </div>
+    </div>
+    <form id="replyForm" class="chat-input-wrapper">
+      <textarea id="replyInput" placeholder="Type a message..." autocomplete="off"></textarea>
+      <button type="submit" aria-label="Send Message">&#10148;</button>
     </form>
   </div>
 </div>
 
 <script type="module">
+// IMPORTANT: In a production application, you should use environment variables
+// or a backend service to handle Firebase configuration and server-side logic
+// to avoid exposing sensitive keys directly in the client-side code.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
@@ -203,116 +271,201 @@ const firebaseConfig = {
   measurementId: "G-9GH707G2WZ"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const admin = { name: "Dzey Autajay" };
 
+// DOM Elements
 const chatApp = document.getElementById("chatApp");
 const userList = document.getElementById("userList");
 const messagesContainer = document.getElementById("messagesContainer");
 const replyForm = document.getElementById("replyForm");
 const replyInput = document.getElementById("replyInput");
-const modalTitle = document.getElementById("modalTitle");
+const chatTitle = document.getElementById("chatTitle");
 const backBtn = document.getElementById("backBtn");
 
 let currentConversationId = null;
-let unsubscribeModalListener = null;
+let unsubscribeConversationListener = null;
 
 function escapeHtml(text) {
-  if (!text) return "";
+  if (typeof text !== 'string') return "";
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
              .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
              .replace(/'/g, "&#39;");
 }
 
+function formatTimestamp(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date)) return dateString; // Fallback for invalid formats
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
 function addMessage(author, text, time) {
   const isSender = author === admin.name;
+
   const row = document.createElement("div");
   row.className = "message-row " + (isSender ? "sender" : "receiver");
+
+  const content = document.createElement("div");
+  content.className = "message-content";
+
   const bubble = document.createElement("div");
   bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
   bubble.textContent = text;
-  row.appendChild(bubble);
+
+  const timeEl = document.createElement("div");
+  timeEl.className = "message-time";
+  timeEl.textContent = formatTimestamp(time);
+
+  content.appendChild(bubble);
+  content.appendChild(timeEl);
+  row.appendChild(content);
   messagesContainer.appendChild(row);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
 function openConversation(conversationId, otherName) {
   currentConversationId = conversationId;
-  modalTitle.textContent = otherName;
-  if (unsubscribeModalListener) unsubscribeModalListener();
-  unsubscribeModalListener = onSnapshot(doc(db, "message", conversationId), docSnap => {
-    if (!docSnap.exists()) return;
-    messagesContainer.innerHTML = "";
+  chatTitle.textContent = escapeHtml(otherName);
+  chatApp.classList.remove('no-chat-selected');
+
+  // Highlight active conversation in the list
+  document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
+  document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
+
+
+  if (unsubscribeConversationListener) unsubscribeConversationListener();
+
+  unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
+    if (!docSnap.exists()) {
+      console.error("Conversation document not found!");
+      return;
+    }
+    messagesContainer.innerHTML = ""; // Clear previous messages
     const data = docSnap.data();
-    addMessage(data.name, data.message, data.time);
-    (data.replies || []).sort((a,b)=> new Date(a.time)-new Date(b.time))
-      .forEach(r => addMessage(r.author, r.text, r.time));
+
+    // Combine the initial message and all replies into a single array
+    const allMessages = [];
+    if (data.message && data.time) {
+        allMessages.push({ author: data.name, text: data.message, time: data.time });
+    }
+    if (data.replies && Array.isArray(data.replies)) {
+        allMessages.push(...data.replies);
+    }
+
+    // Sort all messages chronologically
+    allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+    // Render each message
+    allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
+
+    // Automatically scroll to the latest message
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
   });
-  if (window.innerWidth <= 768) chatApp.classList.add("show-chat");
+
+  if (window.innerWidth <= 768) {
+    chatApp.classList.add("show-chat");
+  }
 }
 
 function loadUsers() {
-  const q = query(collection(db, "message"), orderBy("time","desc"));
-  onSnapshot(q, snapshot => {
+  const q = query(collection(db, "message"), orderBy("time", "desc"));
+  onSnapshot(q, (snapshot) => {
     userList.innerHTML = "";
     if (snapshot.empty) {
-      userList.innerHTML = `<p class="text-gray-500 p-2">No conversations yet.</p>`;
+      userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
       return;
     }
-    const userConversations = {};
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      let otherName = data.name === admin.name && data.replies?.length>0 ? data.replies[0].author : (data.name === admin.name ? data.userName || "Unknown User" : data.name);
-      if (!userConversations[otherName]) userConversations[otherName] = [];
-      userConversations[otherName].push({id: docSnap.id, data});
+    const conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // This logic assumes a "message" document represents a thread.
+    // We group by the user who is not the admin.
+    const userThreads = {};
+    conversations.forEach(conv => {
+      // Determine the "other person" in the chat
+      const otherName = conv.name === admin.name ? (conv.userName || 'Unknown User') : conv.name;
+      if (!userThreads[otherName]) {
+        userThreads[otherName] = [];
+      }
+      userThreads[otherName].push(conv);
     });
-    Object.values(userConversations).forEach(convArr => {
-      convArr.sort((a,b) => {
-        const lastA = a.data.replies?.length ? a.data.replies[a.data.replies.length-1].time : a.data.time;
-        const lastB = b.data.replies?.length ? b.data.replies[b.data.replies.length-1].time : b.data.time;
-        return new Date(lastB) - new Date(lastA);
+
+    // For each user, find their most recent message activity to display in the list
+    const latestConversations = Object.entries(userThreads).map(([userName, threads]) => {
+      threads.sort((a, b) => {
+        const lastTimeA = a.replies?.slice(-1)[0]?.time || a.time;
+        const lastTimeB = b.replies?.slice(-1)[0]?.time || b.time;
+        return new Date(lastTimeB) - new Date(lastTimeA);
       });
-      const latestConv = convArr[0];
-      const data = latestConv.data;
-      let otherName = data.name === admin.name && data.replies?.length>0 ? data.replies[0].author : (data.name === admin.name ? data.userName || "Unknown User" : data.name);
-      const lastMessage = data.replies?.length ? data.replies[data.replies.length-1].text : data.message;
-      const lastTime = data.replies?.length ? data.replies[data.replies.length-1].time : data.time;
-      const li = document.createElement("div");
-      li.className = "conversation";
-      li.innerHTML = `<strong>${escapeHtml(otherName)}</strong><br>
-                      <span style="color:gray;font-size:0.9em">${escapeHtml(lastMessage)}</span><br>
-                      <span style="color:#999;font-size:0.8em">${escapeHtml(lastTime)}</span>`;
-      li.addEventListener("click", ()=>openConversation(latestConv.id, otherName));
-      userList.appendChild(li);
+      return { userName, thread: threads[0] };
+    });
+
+    // Sort the conversation list by the most recent message across all users
+    latestConversations.sort((a, b) => {
+        const lastTimeA = a.thread.replies?.slice(-1)[0]?.time || a.thread.time;
+        const lastTimeB = b.thread.replies?.slice(-1)[0]?.time || b.thread.time;
+        return new Date(lastTimeB) - new Date(lastTimeA);
+    });
+
+
+    latestConversations.forEach(({ userName, thread }) => {
+        const lastMessage = thread.replies?.slice(-1)[0] || { text: thread.message, time: thread.time };
+        const li = document.createElement("div");
+        li.className = "conversation";
+        li.dataset.id = thread.id;
+        li.innerHTML = `
+          <div class="flex justify-between items-center">
+              <strong class="font-semibold text-gray-800">${escapeHtml(userName)}</strong>
+              <span class="text-xs text-gray-500">${escapeHtml(formatTimestamp(lastMessage.time))}</span>
+          </div>
+          <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
+        `;
+        li.addEventListener("click", () => openConversation(thread.id, userName));
+        userList.appendChild(li);
     });
   });
 }
-loadUsers();
 
-replyForm.addEventListener("submit", async e=>{
+replyForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!currentConversationId) return;
+  if (!currentConversationId) {
+      alert("Please select a conversation first.");
+      return;
+  }
   const text = replyInput.value.trim();
   if (!text) return;
-  const now = new Date().toLocaleString("en-PH", { timeZone:"Asia/Manila" }).replace(",", "");
-  const reply = { author:admin.name, text, status:"unread", time: now };
+
+  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
+  const reply = { author: admin.name, text: text, status: "unread", time: now };
+
   try {
-    await updateDoc(doc(db,"message",currentConversationId), { replies: arrayUnion(reply) });
+    await updateDoc(doc(db, "message", currentConversationId), {
+      replies: arrayUnion(reply)
+    });
     replyInput.value = "";
-    replyInput.style.height = "40px";
-  } catch(err) {
-    alert("Failed to send reply: "+err.message);
+    replyInput.style.height = "42px"; // Reset height
+    messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll after sending
+  } catch (err) {
+    console.error("Failed to send reply:", err);
+    alert("Failed to send reply: " + err.message);
   }
 });
 
+// Auto-resize textarea
 replyInput.addEventListener("input", () => {
   replyInput.style.height = "auto";
-  replyInput.style.height = Math.min(replyInput.scrollHeight, 150) + "px";
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  const newHeight = Math.min(replyInput.scrollHeight, 150);
+  replyInput.style.height = newHeight + "px";
 });
 
-backBtn.addEventListener("click", () => { chatApp.classList.remove("show-chat"); });
+// Mobile back button
+backBtn.addEventListener("click", () => {
+  chatApp.classList.remove("show-chat");
+});
+
+// Load conversations on startup
+loadUsers();
 </script>
 </body>
 </html>
