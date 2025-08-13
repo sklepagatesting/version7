@@ -64,7 +64,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: #f9f9f9;
+    background: white; /* Changed */
     transition: transform 0.3s ease;
     z-index: 1;
     min-width: 0;
@@ -91,15 +91,14 @@
 
   .messages {
     flex: 1;
-    min-height: 0; /* critical for flex scrolling */
+    min-height: 0;
     padding: 1rem;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     -webkit-overflow-scrolling: touch;
     word-break: break-word;
-    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARMAAAETCAYAAAB92iilAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABWSURBVHja7cEBDQAAAMKg909tDwcUAAAAAIBvBQUAAAAA4FpQAQAAAIA7QUUAAAAA4FpQAQAAAIA7QUUAAAAA4FpQAQAAAIA7QUUAAAAA4FpQAQAAAIA7QUUAAABgWjALoECaO5boAAAAAElFTkSuQmCC');
-    background-color: #EFEAE2;
+    background-color: white; /* Changed */
   }
 
   .message-row {
@@ -286,55 +285,45 @@ function formatTimestamp(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
-
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    
     const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
     const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-
-    if (messageDate.getTime() === today.getTime()) {
-        return timeString; // Today: "8:15 PM"
-    }
-    if (messageDate.getTime() === yesterday.getTime()) {
-        return `Yesterday ${timeString}`; // Yesterday: "Yesterday 10:30 AM"
-    }
+    if (messageDate.getTime() === today.getTime()) return timeString;
+    if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;
     const oneWeekAgo = new Date(today);
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
     if (messageDate.getTime() > oneWeekAgo.getTime()) {
         const dayString = date.toLocaleDateString('en-US', { weekday: 'long' });
-        return `${dayString} ${timeString}`; // Within week: "Sunday 9:00 AM"
+        return `${dayString} ${timeString}`;
     }
-    return `${date.toLocaleDateString('en-US')} ${timeString}`; // Older: "8/5/2025 11:20 AM"
+    return `${date.toLocaleDateString('en-US')} ${timeString}`;
 }
 
 function formatTimestampForList(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
-
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    
     const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-    if (messageDate.getTime() === today.getTime()) {
-        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    }
-    if (messageDate.getTime() === yesterday.getTime()) {
-        return 'Yesterday';
-    }
+    if (messageDate.getTime() === today.getTime()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    if (messageDate.getTime() === yesterday.getTime()) return 'Yesterday';
     const oneWeekAgo = new Date(today);
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
-    if (messageDate.getTime() > oneWeekAgo.getTime()) {
-        return date.toLocaleDateString('en-US', { weekday: 'short' });
-    }
-    return date.toLocaleDateString('en-US'); // e.g., "8/5/2025"
+    if (messageDate.getTime() > oneWeekAgo.getTime()) return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return date.toLocaleDateString('en-US');
+}
+
+function scrollToBottom() {
+    // Use setTimeout to allow the DOM to update before scrolling
+    setTimeout(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 0);
 }
 
 function addMessage(author, text, time) {
@@ -375,7 +364,7 @@ function openConversation(conversationId, otherName) {
     }
     allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
     allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    scrollToBottom(); // <-- FIX: Scroll after messages are rendered
   });
   if (window.innerWidth <= 768) {
     chatApp.classList.add("show-chat");
@@ -390,22 +379,18 @@ function loadUsers() {
       userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
       return;
     }
-
     const userConversations = {};
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
       const id = docSnap.id;
-      // This logic is restored from your original code to correctly identify the user.
       const otherName = data.name === admin.name && data.replies?.length > 0
         ? data.replies[0].author
         : (data.name === admin.name ? data.userName || "Unknown User" : data.name);
-      
       if (!userConversations[otherName]) {
         userConversations[otherName] = [];
       }
       userConversations[otherName].push({ id, ...data });
     });
-
     const latestConversations = Object.entries(userConversations).map(([userName, threads]) => {
         threads.sort((a, b) => {
             const lastTimeA = a.replies?.slice(-1)[0]?.time || a.time;
@@ -414,13 +399,11 @@ function loadUsers() {
         });
         return { userName, thread: threads[0] };
     });
-
     latestConversations.sort((a, b) => {
         const lastTimeA = a.thread.replies?.slice(-1)[0]?.time || a.thread.time;
         const lastTimeB = b.thread.replies?.slice(-1)[0]?.time || b.thread.time;
         return new Date(lastTimeB) - new Date(lastTimeA);
     });
-    
     latestConversations.forEach(({ userName, thread }) => {
       const lastMessage = thread.replies?.slice(-1)[0] || { text: thread.message, time: thread.time };
       const li = document.createElement("div");
@@ -444,14 +427,13 @@ replyForm.addEventListener("submit", async (e) => {
   if (!currentConversationId) return;
   const text = replyInput.value.trim();
   if (!text) return;
-  // Use a reliable date format. Note that your DB already uses en-PH.
-  // Using toISOString() is often safer, but we stick to your format for consistency.
   const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
   const reply = { author: admin.name, text: text, status: "unread", time: now };
   try {
     await updateDoc(doc(db, "message", currentConversationId), { replies: arrayUnion(reply) });
     replyInput.value = "";
     replyInput.style.height = "42px";
+    scrollToBottom(); // <-- UX Improvement: Scroll after sending
   } catch (err) {
     alert("Failed to send reply: " + err.message);
   }
