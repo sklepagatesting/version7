@@ -438,9 +438,20 @@ replyForm.addEventListener("submit", async (e) => {
 });
 
 replyInput.addEventListener("input", () => {
-    replyInput.style.height = 'auto'; // Reset height
-    const scrollHeight = replyInput.scrollHeight;
-    replyInput.style.height = `${Math.min(scrollHeight, parseFloat(window.getComputedStyle(replyInput).maxHeight))}px`;
+    // Reset height so scrollHeight is accurate
+    replyInput.style.height = 'auto';
+    
+    const style = window.getComputedStyle(replyInput);
+    const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    const border = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+    const scrollHeight = replyInput.scrollHeight - padding;
+    
+    // Apply height clamped to min-height and max-height
+    const minHeight = parseFloat(style.minHeight);
+    const maxHeight = parseFloat(style.maxHeight);
+    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+    
+    replyInput.style.height = `${newHeight}px`;
 });
 
 replyInput.addEventListener('keydown', (e) => {
