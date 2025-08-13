@@ -420,17 +420,20 @@ function loadUsers() {
   });
 }
 
-// --- Smooth auto-resize textarea ---
+// --- Smooth auto-resize with dynamic allowance ---
 replyInput.addEventListener("input", () => {
-    // Reset height to measure true content height
-    replyInput.style.height = 'auto';
+    replyInput.style.height = 'auto'; // reset to measure content
 
     const style = window.getComputedStyle(replyInput);
     const minHeight = parseFloat(style.minHeight);
     const maxHeight = parseFloat(style.maxHeight);
 
-    // Use scrollHeight but never go below minHeight and not above maxHeight
-    const newHeight = Math.min(Math.max(replyInput.scrollHeight, minHeight), maxHeight);
+    // Dynamic allowance based on line-height
+    const lineHeight = parseFloat(style.lineHeight) || 20; // fallback if not set
+    const allowance = Math.max(2, lineHeight * 0.2); // 20% of line-height, at least 2px
+
+    // Calculate new height with allowance
+    const newHeight = Math.min(Math.max(replyInput.scrollHeight + allowance, minHeight), maxHeight);
 
     replyInput.style.height = `${newHeight}px`;
 });
