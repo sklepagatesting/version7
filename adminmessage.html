@@ -347,7 +347,7 @@ function openConversation(conversationId, otherName) {
   document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
   
   replyInput.value = "";
-  replyInput.style.height = "42px";
+  replyInput.style.height = "47px";
 
   if (unsubscribeConversationListener) unsubscribeConversationListener();
   unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
