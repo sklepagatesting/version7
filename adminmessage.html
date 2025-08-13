@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Admin Messages</title>
-  <link rel="stylesheet" href="font\font.css">
+<link rel="stylesheet" href="font/font.css">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root {
@@ -141,48 +141,50 @@
   .message-row.receiver .message-time { align-self: flex-start; }
 
   .chat-input-wrapper {
-  border-top: 1px solid #ddd;
-  background: var(--body-bg);
-  padding: 0.75rem 1rem; /* Keep top/bottom equal */
-  display: flex;
-  align-items: flex-end; /* ensures bottom alignment of button */
-  gap: 0.75rem; /* spacing between textarea and button */
-}
+    border-top: 1px solid #ddd;
+    background: var(--body-bg);
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
 
-.chat-input-wrapper textarea {
-  box-sizing: border-box;
-  flex: 1;
-  padding: 10px 14px; /* slightly more top to balance bottom */
-  border: 1px solid #ccc;
-  border-radius: 20px;
-  background: white;
-  outline: none;
-  resize: none;
-  min-height: 42px;
-  max-height: 30vh;
-  overflow-y: auto;
-  font-size: 1rem;
-  line-height: 1.4rem; /* ensure correct single-line height */
-  height: 42px; /* initial height */
-}
+  .chat-input-wrapper textarea {
+    box-sizing: border-box;
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    background: white;
+    outline: none;
+    resize: none;
+    min-height: 42px;
+    max-height: 30vh;
+    overflow-y: auto;
+    font-size: 1rem;
+    line-height: 1.4rem;
+    height: 42px;
+  }
 
-
-  .chat-input-wrapper textarea.context::-webkit-scrollbar { display: none; }
+  .chat-input-wrapper textarea.context::-webkit-scrollbar {
+    display: none;
+  }
 
   .chat-input-wrapper button {
-  height: auto; /* allow to grow with textarea */
-  min-height: 42px; /* same as textarea min-height */
-  padding: 0 12px; /* optional: horizontal padding */
-  border: none;
-  background: var(--sender-bg);
-  color: white;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 1.25rem;
-  display: flex;
-  align-items: flex-end; /* bottom aligned with growing textarea */
-  justify-content: center;
-}
+    height: auto;
+    min-height: 42px;
+    padding: 0 12px;
+    border: none;
+    background: var(--sender-bg);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
   .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
   .chat-app.no-chat-selected .placeholder {
       display: flex;
@@ -275,17 +277,6 @@ function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
              .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
              .replace(/'/g, "&#39;");
-
-
-// Prevent textarea scroll from bubbling to chat panel
-replyInput.addEventListener("wheel", (e) => {
-  const atTop = replyInput.scrollTop === 0;
-  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
-  if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) e.stopPropagation();
-});
-replyInput.addEventListener("touchstart", (e) => e.stopPropagation());
-
-
 }
 
 function formatTimestamp(dateString) {
@@ -297,7 +288,7 @@ function formatTimestamp(dateString) {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     if (messageDate.getTime() === today.getTime()) return timeString;
     if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;
     const oneWeekAgo = new Date(today);
@@ -327,9 +318,9 @@ function formatTimestampForList(dateString) {
 }
 
 function scrollToBottom() {
-    setTimeout(() => {
+    requestAnimationFrame(() => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }, 0);
+    });
 }
 
 function addMessage(author, text, time) {
@@ -350,6 +341,14 @@ function addMessage(author, text, time) {
   messagesContainer.appendChild(row);
 }
 
+// Prevent textarea scroll from bubbling to chat panel
+replyInput.addEventListener("wheel", (e) => {
+  const atTop = replyInput.scrollTop === 0;
+  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
+  if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) e.stopPropagation();
+});
+replyInput.addEventListener("touchstart", (e) => e.stopPropagation());
+
 function openConversation(conversationId, otherName) {
   currentConversationId = conversationId;
   chatTitle.textContent = escapeHtml(otherName);
@@ -358,7 +357,7 @@ function openConversation(conversationId, otherName) {
   document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
   
   replyInput.value = "";
-  replyInput.style.height = "36px"; // initial min-height
+  replyInput.style.height = "42px"; // initial min-height
 
   if (unsubscribeConversationListener) unsubscribeConversationListener();
   unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
@@ -372,9 +371,7 @@ function openConversation(conversationId, otherName) {
     allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
     scrollToBottom();
   });
-  if (window.innerWidth <= 768) {
-    chatApp.classList.add("show-chat");
-  }
+  if (window.innerWidth <= 768) chatApp.classList.add("show-chat");
 }
 
 function loadUsers() {
@@ -434,9 +431,9 @@ replyForm.addEventListener("submit", async (e) => {
   const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
   const reply = { author: admin.name, text: text, status: "unread", time: now };
   try {
-    await updateDoc(doc(db, "message", currentConversationId), { replies: arrayUnion(reply) });
+    await updateDoc(doc(db,"message", currentConversationId), { replies: arrayUnion(reply) });
     replyInput.value = "";
-    replyInput.style.height = "36px"; // reset to min-height
+    replyInput.style.height = "42px"; // reset to min-height
     scrollToBottom();
   } catch (err) {
     alert("Failed to send reply: " + err.message);
@@ -445,7 +442,7 @@ replyForm.addEventListener("submit", async (e) => {
 
 // AUTO RESIZE TEXTAREA
 replyInput.addEventListener("input", () => {
-  replyInput.style.height = "36px"; // reset to min-height
+  replyInput.style.height = "42px"; // reset to min-height
   replyInput.style.height = replyInput.scrollHeight + "px";
 });
 
