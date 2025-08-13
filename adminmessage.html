@@ -6,87 +6,86 @@
 <title>Admin Messages</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  body {
+  /* --- Page-level layout & mobile overscroll prevention --- */
+  html, body {
+    height: 100dvh;            /* dynamic viewport height for mobile */
     margin: 0;
-    height: 100vh;
-    display: flex;
+    overflow: hidden;          /* lock body scroll; only inner panes scroll */
+    overscroll-behavior: none; /* prevent bounce/pull-to-refresh gaps */
     background: #f5f5f5;
     font-family: Arial, sans-serif;
-    overflow: hidden; /* Prevent overscroll */
   }
 
   .chat-app {
+    height: 100%;
     display: flex;
-    flex: 1;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: transform 0.3s ease;
   }
 
+  /* --- Sidebar --- */
   .sidebar {
     width: 300px;
     background: #fff;
     border-right: 1px solid #ddd;
     display: flex;
     flex-direction: column;
-    transition: transform 0.3s ease;
     z-index: 2;
   }
-
   .sidebar-header {
     padding: 1rem;
     border-bottom: 1px solid #ddd;
     font-weight: bold;
     background: #f0f0f0;
+    flex-shrink: 0;
   }
-
   .conversation-list {
     flex: 1;
+    min-height: 0;                  /* critical for flex+overflow children */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
-
   .conversation {
     padding: 1rem;
     border-bottom: 1px solid #eee;
     cursor: pointer;
-    transition: background 0.2s;
   }
-  .conversation:hover {
-    background: #f9f9f9;
-  }
+  .conversation:hover { background: #f9f9f9; }
 
+  /* --- Chat panel --- */
   .chat-panel {
     flex: 1;
     display: flex;
     flex-direction: column;
     background: #e5ddd5;
-    transition: transform 0.3s ease;
     z-index: 1;
   }
-
   .chat-header {
     padding: 1rem;
     background: #fff;
     border-bottom: 1px solid #ddd;
     display: flex;
     align-items: center;
+    gap: .75rem;
     flex-shrink: 0;
   }
-
   .back-btn {
     display: none;
-    margin-right: 1rem;
     background: none;
     border: none;
     font-size: 1.5rem;
+    line-height: 1;
     cursor: pointer;
   }
 
+  /* Messages scroll region */
   .messages {
     flex: 1;
+    min-height: 0;                  /* critical so this area can scroll */
     padding: 1rem;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain; /* don't propagate bounce to body */
     word-break: break-word;
   }
 
@@ -104,28 +103,34 @@
     margin-left: auto;
   }
 
+  /* --- Chat input (standard flex-bottom, no fixed/sticky needed) --- */
   .chat-input {
     display: flex;
+    align-items: flex-end;
+    gap: .5rem;
+    padding: .5rem;
     border-top: 1px solid #ddd;
     background: #fff;
-    padding: 0.5rem;
-    align-items: flex-end;
-    bottom: 0;
+    flex-shrink: 0;
+    padding-bottom: calc(.5rem + env(safe-area-inset-bottom, 0px));
   }
+
+  /* Textarea: no placeholder, auto-grow, no scrollbar */
   .chat-input textarea {
     flex: 1;
     padding: 0.5rem 0.75rem;
     border: 1px solid #ddd;
     border-radius: 20px;
     outline: none;
-    resize: none;
-    min-height: 40px;
-    max-height: 150px;
-    overflow-y: hidden; /* Hide scrollbar */
+    resize: none;              /* user cannot drag-resize */
+    min-height: 40px;          /* base height */
+    height: 40px;              /* JS will control height */
+    overflow: hidden;          /* hide scrollbar entirely */
     font-size: 1rem;
+    line-height: 1.4;
   }
+
   .chat-input button {
-    margin-left: 0.5rem;
     padding: 0.5rem 1rem;
     border: none;
     background: #0084ff;
@@ -133,71 +138,49 @@
     border-radius: 20px;
     cursor: pointer;
     font-size: 1rem;
+    flex-shrink: 0;
   }
 
-  /* Mobile View Fixes */
+  /* --- Mobile behavior: slide views --- */
   @media (max-width: 768px) {
-    html, body {
-      overflow: hidden; /* Prevent overscroll */
-      height: 100%;
-    }
-    .sidebar {
+    .sidebar, .chat-panel {
+      position: absolute;
+      inset: 0;               /* top:0; right:0; bottom:0; left:0 */
       width: 100%;
       height: 100%;
       transform: translateX(0);
-      position: absolute;
-      top: 0;
-      left: 0;
+      transition: transform 0.3s ease;
     }
-    .chat-panel {
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-      transform: translateX(100%);
-      background: #e5ddd5;
-    }
-    .chat-app.show-chat .sidebar {
-      transform: translateX(-100%);
-    }
-    .chat-app.show-chat .chat-panel {
-      transform: translateX(0);
-    }
-    .back-btn {
-      display: inline-block;
-    }
-    .messages {
-      padding-bottom: 4rem;
-    }
-    .chat-input {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 3;
-    }
+    .chat-panel { transform: translateX(100%); }
+    .chat-app.show-chat .sidebar { transform: translateX(-100%); }
+    .chat-app.show-chat .chat-panel { transform: translateX(0); }
+    .back-btn { display: inline-block; }
   }
 </style>
 </head>
 <body>
 <div class="chat-app" id="chatApp">
-  <div class="sidebar">
+  <!-- Sidebar -->
+  <aside class="sidebar">
     <div class="sidebar-header">Admin Messages</div>
     <div class="conversation-list" id="userList"></div>
-  </div>
+  </aside>
 
-  <div class="chat-panel">
+  <!-- Chat Panel -->
+  <main class="chat-panel">
     <div class="chat-header">
-      <button class="back-btn" id="backBtn">&#8592;</button>
+      <button class="back-btn" id="backBtn" aria-label="Back">&#8592;</button>
       <span id="modalTitle">Select a conversation</span>
     </div>
+
     <div class="messages" id="messagesContainer"></div>
+
     <form id="replyForm" class="chat-input">
-      <textarea id="replyInput" autocomplete="off"></textarea>
+      <!-- No placeholder per requirement; accessible name via aria-label -->
+      <textarea id="replyInput" aria-label="Type a reply" autocomplete="off"></textarea>
       <button type="submit">Send</button>
     </form>
-  </div>
+  </main>
 </div>
 
 <script type="module">
@@ -207,6 +190,7 @@ import {
   updateDoc, arrayUnion
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
+/* --- Firebase --- */
 const firebaseConfig = {
   apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
   authDomain: "sklepaga-8790e.firebaseapp.com",
@@ -216,12 +200,11 @@ const firebaseConfig = {
   appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
   measurementId: "G-9GH707G2WZ"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+/* --- DOM refs --- */
 const admin = { name: "Dzey Autajay" };
-
 const chatApp = document.getElementById("chatApp");
 const userList = document.getElementById("userList");
 const messagesContainer = document.getElementById("messagesContainer");
@@ -233,6 +216,7 @@ const backBtn = document.getElementById("backBtn");
 let currentConversationId = null;
 let unsubscribeModalListener = null;
 
+/* --- Helpers --- */
 function escapeHtml(text) {
   if (!text) return "";
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -244,39 +228,29 @@ function addMessage(author, text, time) {
   const isSender = author === admin.name;
   const msgDiv = document.createElement("div");
   msgDiv.className = "message" + (isSender ? " sent" : "");
-  msgDiv.innerHTML = `<div>${escapeHtml(text)}</div><div style="font-size:10px;color:gray;text-align:right">${escapeHtml(time)}</div>`;
+  msgDiv.innerHTML = `
+    <div>${escapeHtml(text)}</div>
+    <div style="font-size:10px;color:gray;text-align:right">${escapeHtml(time)}</div>
+  `;
   messagesContainer.appendChild(msgDiv);
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-function openConversation(conversationId, otherName) {
-  currentConversationId = conversationId;
-  modalTitle.textContent = otherName;
-  if (unsubscribeModalListener) unsubscribeModalListener();
-  unsubscribeModalListener = onSnapshot(doc(db, "message", conversationId), docSnap => {
-    if (!docSnap.exists()) return;
-    messagesContainer.innerHTML = "";
-    const data = docSnap.data();
-    addMessage(data.name, data.message, data.time);
-    (data.replies || []).sort((a,b)=> new Date(a.time)-new Date(b.time))
-      .forEach(r => addMessage(r.author, r.text, r.time));
-  });
-  if (window.innerWidth <= 768) chatApp.classList.add("show-chat");
-}
-
+/* --- Load conversations list grouped by other participant --- */
 function loadUsers() {
-  const q = query(collection(db, "message"), orderBy("time","desc"));
+  const q = query(collection(db, "message"), orderBy("time", "desc"));
   onSnapshot(q, snapshot => {
     userList.innerHTML = "";
     if (snapshot.empty) {
       userList.innerHTML = `<p class="text-gray-500 p-2">No conversations yet.</p>`;
       return;
     }
+
     const userConversations = {};
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
       let otherName;
-      if (data.name === admin.name && data.replies && data.replies.length>0) {
+      if (data.name === admin.name && data.replies && data.replies.length > 0) {
         otherName = data.replies[0].author;
       } else if (data.name === admin.name) {
         otherName = data.userName || "Unknown User";
@@ -284,8 +258,9 @@ function loadUsers() {
         otherName = data.name;
       }
       if (!userConversations[otherName]) userConversations[otherName] = [];
-      userConversations[otherName].push({id: docSnap.id, data});
+      userConversations[otherName].push({ id: docSnap.id, data });
     });
+
     Object.values(userConversations).forEach(convArr => {
       convArr.sort((a,b) => {
         const lastA = a.data.replies?.length ? a.data.replies[a.data.replies.length-1].time : a.data.time;
@@ -294,53 +269,85 @@ function loadUsers() {
       });
       const latestConv = convArr[0];
       const data = latestConv.data;
+
       let otherName;
-      if (data.name === admin.name && data.replies && data.replies.length>0) {
+      if (data.name === admin.name && data.replies && data.replies.length > 0) {
         otherName = data.replies[0].author;
       } else if (data.name === admin.name) {
         otherName = data.userName || "Unknown User";
       } else {
         otherName = data.name;
       }
+
       const lastMessage = data.replies?.length
-                          ? data.replies[data.replies.length-1].text
-                          : data.message;
+        ? data.replies[data.replies.length - 1].text
+        : data.message;
       const lastTime = data.replies?.length
-                       ? data.replies[data.replies.length-1].time
-                       : data.time;
+        ? data.replies[data.replies.length - 1].time
+        : data.time;
+
       const li = document.createElement("div");
       li.className = "conversation";
-      li.innerHTML = `<strong>${escapeHtml(otherName)}</strong><br>
-                      <span style="color:gray;font-size:0.9em">${escapeHtml(lastMessage)}</span><br>
-                      <span style="color:#999;font-size:0.8em">${escapeHtml(lastTime)}</span>`;
-      li.addEventListener("click", ()=>openConversation(latestConv.id, otherName));
+      li.innerHTML = `
+        <strong>${escapeHtml(otherName)}</strong><br>
+        <span style="color:gray;font-size:0.9em">${escapeHtml(lastMessage)}</span><br>
+        <span style="color:#999;font-size:0.8em">${escapeHtml(lastTime)}</span>
+      `;
+      li.addEventListener("click", () => openConversation(latestConv.id, otherName));
       userList.appendChild(li);
     });
   });
 }
 loadUsers();
 
-replyForm.addEventListener("submit", async e=>{
+/* --- Open a conversation --- */
+function openConversation(conversationId, otherName) {
+  currentConversationId = conversationId;
+  modalTitle.textContent = otherName;
+
+  if (unsubscribeModalListener) unsubscribeModalListener();
+  unsubscribeModalListener = onSnapshot(doc(db, "message", conversationId), docSnap => {
+    if (!docSnap.exists()) return;
+    messagesContainer.innerHTML = "";
+    const data = docSnap.data();
+    addMessage(data.name, data.message, data.time);
+    (data.replies || [])
+      .sort((a,b) => new Date(a.time) - new Date(b.time))
+      .forEach(r => addMessage(r.author, r.text, r.time));
+  });
+
+  if (window.innerWidth <= 768) chatApp.classList.add("show-chat");
+}
+
+/* --- Send reply --- */
+replyForm.addEventListener("submit", async e => {
   e.preventDefault();
   if (!currentConversationId) return;
   const text = replyInput.value.trim();
   if (!text) return;
-  const now = new Date().toLocaleString("en-PH", { timeZone:"Asia/Manila" }).replace(",", "");
-  const reply = { author:admin.name, text, status:"unread", time: now };
+
+  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
+  const reply = { author: admin.name, text, status: "unread", time: now };
+
   try {
-    await updateDoc(doc(db,"message",currentConversationId), { replies: arrayUnion(reply) });
+    await updateDoc(doc(db, "message", currentConversationId), { replies: arrayUnion(reply) });
     replyInput.value = "";
-    replyInput.style.height = "40px";
-  } catch(err) {
-    alert("Failed to send reply: "+err.message);
+    autoResize(replyInput);  // reset height after sending
+  } catch (err) {
+    alert("Failed to send reply: " + err.message);
   }
 });
 
-replyInput.addEventListener("input", () => {
-  replyInput.style.height = "auto";
-  replyInput.style.height = Math.min(replyInput.scrollHeight, 150) + "px";
-});
+/* --- Textarea auto-resize (standard approach) --- */
+function autoResize(el) {
+  el.style.height = "0px";                // let it shrink
+  el.style.height = el.scrollHeight + "px"; // grow to fit content
+}
+replyInput.addEventListener("input", () => autoResize(replyInput));
+window.addEventListener("load", () => autoResize(replyInput));
+window.addEventListener("resize", () => autoResize(replyInput));
 
+/* --- Back (mobile) --- */
 backBtn.addEventListener("click", () => {
   chatApp.classList.remove("show-chat");
 });
