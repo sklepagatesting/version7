@@ -422,14 +422,13 @@ function loadUsers() {
 
 // --- Auto-resize textarea ---
 replyInput.addEventListener("input", () => {
-    replyInput.style.height = 'auto'; // Temporarily reset to auto to get the correct scrollHeight
-    replyInput.style.height = `${replyInput.scrollHeight}px`;
-    const maxHeight = parseFloat(window.getComputedStyle(replyInput).maxHeight);
-    if (replyInput.scrollHeight > maxHeight) {
-        replyInput.style.overflowY = 'scroll';
-    } else {
-        replyInput.style.overflowY = 'hidden';
-    }
+    replyInput.style.height = 'auto';
+    const scrollHeight = replyInput.scrollHeight;  // remove the padding subtraction
+    const style = window.getComputedStyle(replyInput);
+    const minHeight = parseFloat(style.minHeight);
+    const maxHeight = parseFloat(style.maxHeight);
+    const newHeight = Math.min(Math.max(scrollHeight + 2, minHeight), maxHeight); // +2px buffer
+    replyInput.style.height = `${newHeight}px`;
 });
 
 
