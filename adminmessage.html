@@ -169,23 +169,24 @@
     line-height: 1.4;
     scrollbar-width: none;
   }
-  .chat-input-wrapper textarea::-webkit-scrollbar { display: none; }
-
-  .chat-input-wrapper button {
-    margin-left: 0.75rem;
-    height: 48px;
-    width: 48px;
-    border: none;
-    background: var(--sender-bg);
-    color: white;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
+  .chat-input-wrapper textarea {
+    font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 12px; /* match .context on mobile */
+    line-height: 1.09; /* match .context */
+    font-weight: 300;
+    box-sizing: border-box;
+    flex: 1;
+    padding: 0.6rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    background: white;
+    outline: none;
+    resize: none;
+    min-height: 48px;
+    max-height: 30vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
 
   /* Initial State & Mobile */
   .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
@@ -422,17 +423,18 @@ function loadUsers() {
 
 // --- Smooth auto-resize with dynamic allowance ---
 replyInput.addEventListener("input", () => {
-    replyInput.style.height = 'auto'; // reset to measure content
+    // Reset height to measure true content
+    replyInput.style.height = 'auto';
 
     const style = window.getComputedStyle(replyInput);
     const minHeight = parseFloat(style.minHeight);
     const maxHeight = parseFloat(style.maxHeight);
 
-    // Dynamic allowance based on line-height
-    const lineHeight = parseFloat(style.lineHeight) || 20; // fallback if not set
-    const allowance = Math.max(2, lineHeight * 0.2); // 20% of line-height, at least 2px
+    // Dynamic allowance: 20% of line-height or at least 2px
+    const lineHeight = parseFloat(style.lineHeight) || 20;
+    const allowance = Math.max(2, lineHeight * 0.2);
 
-    // Calculate new height with allowance
+    // Calculate new height
     const newHeight = Math.min(Math.max(replyInput.scrollHeight + allowance, minHeight), maxHeight);
 
     replyInput.style.height = `${newHeight}px`;
