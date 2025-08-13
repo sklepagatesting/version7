@@ -7,177 +7,182 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   body {
-  margin: 0;
-  height: 100vh;
-  display: flex;
-  background: #f5f5f5;
-  font-family: Arial, sans-serif;
-  overflow: hidden;
-}
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    background: #f5f5f5;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+  }
 
-.chat-app {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
+  .chat-app {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
 
-.sidebar {
-  width: 300px;
-  background: #fff;
-  border-right: 1px solid #ddd;
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.3s ease;
-}
-
-.sidebar-header {
-  padding: 1rem;
-  border-bottom: 1px solid #ddd;
-  font-weight: bold;
-  background: #f0f0f0;
-}
-
-.conversation-list {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.conversation {
-  padding: 1rem;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.conversation:hover {
-  background: #f9f9f9;
-}
-
-.chat-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: #e5ddd5;
-  transition: transform 0.3s ease;
-}
-
-.chat-header {
-  padding: 1rem;
-  background: #fff;
-  border-bottom: 1px solid #ddd;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.back-btn {
-  display: none;
-  margin-right: 1rem;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-}
-
-.messages {
-  flex: 1;
-  padding: 1rem;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  word-break: break-word;
-}
-
-.message {
-  max-width: 80%;
-  padding: 0.6rem 0.8rem;
-  margin-bottom: 0.6rem;
-  border-radius: 10px;
-  background: #fff;
-  word-break: break-word;
-  white-space: pre-wrap;
-}
-.message.sent {
-  background: #dcf8c6;
-  margin-left: auto;
-}
-
-.chat-input {
-  display: flex;
-  border-top: 1px solid #ddd;
-  background: #fff;
-  padding: 0.5rem;
-  align-items: flex-end;
-  position: sticky;
-  bottom: 0;
-}
-.chat-input textarea {
-  flex: 1;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 20px;
-  outline: none;
-  resize: none;
-  min-height: 40px;
-  max-height: 150px;
-  overflow-y: auto;
-  font-size: 1rem;
-}
-.chat-input button {
-  margin-left: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: none;
-  background: #0084ff;
-  color: white;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-/* Mobile View Improvements */
-@media (max-width: 768px) {
   .sidebar {
-    width: 100%;
-    height: 100%;
-    transform: translateX(0);
-    flex-shrink: 0;
+    width: 300px;
+    background: #fff;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease;
+    z-index: 2;
   }
+
+  .sidebar-header {
+    padding: 1rem;
+    border-bottom: 1px solid #ddd;
+    font-weight: bold;
+    background: #f0f0f0;
+  }
+
+  .conversation-list {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .conversation {
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .conversation:hover {
+    background: #f9f9f9;
+  }
+
   .chat-panel {
-    width: 100%;
-    height: 100%;
-    transform: translateX(100%);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #e5ddd5;
+    transition: transform 0.3s ease;
+    z-index: 1;
+  }
+
+  .chat-header {
+    padding: 1rem;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    align-items: center;
     flex-shrink: 0;
   }
-  .chat-app.show-chat .sidebar {
-    transform: translateX(-100%);
-  }
-  .chat-app.show-chat .chat-panel {
-    transform: translateX(0);
-  }
+
   .back-btn {
-    display: inline-block;
+    display: none;
+    margin-right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
   }
+
   .messages {
-    padding-bottom: 4rem; /* room for input bar */
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    word-break: break-word;
   }
+
+  .message {
+    max-width: 80%;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0.6rem;
+    border-radius: 10px;
+    background: #fff;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .message.sent {
+    background: #dcf8c6;
+    margin-left: auto;
+  }
+
   .chat-input {
-    position: fixed;
+    display: flex;
+    border-top: 1px solid #ddd;
+    background: #fff;
+    padding: 0.5rem;
+    align-items: flex-end;
     bottom: 0;
-    left: 0;
-    width: 100%;
   }
-}
+  .chat-input textarea {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    outline: none;
+    resize: none;
+    min-height: 40px;
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: 1rem;
+  }
+  .chat-input button {
+    margin-left: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    background: #0084ff;
+    color: white;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  /* Mobile View Fixes */
+  @media (max-width: 768px) {
+    .sidebar {
+      width: 100%;
+      height: 100%;
+      transform: translateX(0);
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .chat-panel {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: translateX(100%);
+      background: #e5ddd5;
+    }
+    .chat-app.show-chat .sidebar {
+      transform: translateX(-100%);
+    }
+    .chat-app.show-chat .chat-panel {
+      transform: translateX(0);
+    }
+    .back-btn {
+      display: inline-block;
+    }
+    .messages {
+      padding-bottom: 4rem;
+    }
+    .chat-input {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 3;
+    }
+  }
 </style>
 </head>
 <body>
 <div class="chat-app" id="chatApp">
-  <!-- Sidebar -->
   <div class="sidebar">
     <div class="sidebar-header">Admin Messages</div>
     <div class="conversation-list" id="userList"></div>
   </div>
 
-  <!-- Chat Panel -->
   <div class="chat-panel">
     <div class="chat-header">
       <button class="back-btn" id="backBtn">&#8592;</button>
@@ -198,12 +203,11 @@ import {
   updateDoc, arrayUnion
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
   authDomain: "sklepaga-8790e.firebaseapp.com",
   projectId: "sklepaga-8790e",
-  storageBucket: "sklepaga-8790e.firebasestorage.app",
+  storageBucket: "sklepaga-8790e.appspot.com",
   messagingSenderId: "815409129057",
   appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
   measurementId: "G-9GH707G2WZ"
@@ -212,10 +216,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Admin account
 const admin = { name: "Dzey Autajay" };
 
-// DOM
 const chatApp = document.getElementById("chatApp");
 const userList = document.getElementById("userList");
 const messagesContainer = document.getElementById("messagesContainer");
@@ -227,7 +229,6 @@ const backBtn = document.getElementById("backBtn");
 let currentConversationId = null;
 let unsubscribeModalListener = null;
 
-// Escape HTML
 function escapeHtml(text) {
   if (!text) return "";
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -334,13 +335,6 @@ replyForm.addEventListener("submit", async e=>{
 replyInput.addEventListener("input", () => {
   replyInput.style.height = "auto";
   replyInput.style.height = Math.min(replyInput.scrollHeight, 150) + "px";
-});
-
-// Mobile keyboard fix
-window.addEventListener("resize", () => {
-  if (/Mobi|Android/i.test(navigator.userAgent)) {
-    document.activeElement.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
 });
 
 backBtn.addEventListener("click", () => {
