@@ -22,6 +22,7 @@
     transition: all 0.3s ease;
   }
 
+  /* Sidebar */
   .sidebar {
     width: 300px;
     background: #fff;
@@ -30,20 +31,17 @@
     flex-direction: column;
     transition: transform 0.3s ease;
     z-index: 2;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
-
   .sidebar-header {
     padding: 1rem;
     border-bottom: 1px solid #ddd;
     font-weight: bold;
     background: #f0f0f0;
+    flex-shrink: 0;
   }
-
-  .conversation-list {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
+  .conversation-list { flex: 1; }
 
   .conversation {
     padding: 1rem;
@@ -53,13 +51,15 @@
   }
   .conversation:hover { background: #f9f9f9; }
 
+  /* Chat panel */
   .chat-panel {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: white; /* background behind bubbles */
+    background: white;
     transition: transform 0.3s ease;
     z-index: 1;
+    min-width: 0;
   }
 
   .chat-header {
@@ -82,7 +82,9 @@
 
   .messages {
     flex: 1;
+    min-height: 0; /* critical for flex scrolling */
     padding: 1rem;
+    padding-bottom: 160px; /* max height of input + margin */
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -94,7 +96,6 @@
     display: flex;
     margin-bottom: 8px;
   }
-
   .message-row.sender { justify-content: flex-end; }
   .message-row.receiver { justify-content: flex-start; }
 
@@ -106,16 +107,8 @@
     white-space: pre-wrap;
     max-width: 75%;
   }
-
-  .chat-bubble.sender {
-    background-color: #0084ff;
-    color: white;
-  }
-
-  .chat-bubble.receiver {
-    background-color: #e5e5ea;
-    color: black;
-  }
+  .chat-bubble.sender { background-color: #0084ff; color: white; }
+  .chat-bubble.receiver { background-color: #e5e5ea; color: black; }
 
   .chat-input {
     display: flex;
@@ -123,9 +116,7 @@
     background: #fff;
     padding: 0.5rem;
     align-items: flex-end;
-    bottom: 0;
   }
-
   .chat-input textarea {
     flex: 1;
     padding: 0.5rem 0.75rem;
@@ -137,10 +128,9 @@
     max-height: 150px;
     overflow-y: auto;
     font-size: 1rem;
-    scrollbar-width: none; /* Firefox */
+    scrollbar-width: none;
   }
-  .chat-input textarea::-webkit-scrollbar { display: none; } /* Chrome/Safari */
-  
+  .chat-input textarea::-webkit-scrollbar { display: none; }
   .chat-input button {
     margin-left: 0.5rem;
     padding: 0.5rem 1rem;
@@ -152,9 +142,8 @@
     font-size: 1rem;
   }
 
-  /* Mobile View Fixes */
+  /* Mobile view */
   @media (max-width: 768px) {
-    body { overflow: hidden; } /* prevent scrolling past convo */
     .sidebar {
       width: 100%;
       height: 100%;
@@ -175,8 +164,8 @@
     .chat-app.show-chat .sidebar { transform: translateX(-100%); }
     .chat-app.show-chat .chat-panel { transform: translateX(0); }
     .back-btn { display: inline-block; }
-    .messages { padding-bottom: 4rem; }
     .chat-input { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; }
+    .messages { padding-bottom: 160px; } /* ensures last message visible */
   }
 </style>
 </head>
@@ -320,6 +309,7 @@ replyForm.addEventListener("submit", async e=>{
 replyInput.addEventListener("input", () => {
   replyInput.style.height = "auto";
   replyInput.style.height = Math.min(replyInput.scrollHeight, 150) + "px";
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
 });
 
 backBtn.addEventListener("click", () => { chatApp.classList.remove("show-chat"); });
