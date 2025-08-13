@@ -6,13 +6,13 @@
 <title>Admin Messages</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  /* General */
   body {
     margin: 0;
     height: 100vh;
     display: flex;
+    background: #f5f5f5;
     font-family: Arial, sans-serif;
-    overflow: hidden; /* prevent overscroll on mobile */
+    overflow: hidden;
   }
 
   .chat-app {
@@ -22,7 +22,6 @@
     transition: all 0.3s ease;
   }
 
-  /* Sidebar */
   .sidebar {
     width: 300px;
     background: #fff;
@@ -32,36 +31,37 @@
     transition: transform 0.3s ease;
     z-index: 2;
   }
+
   .sidebar-header {
     padding: 1rem;
     border-bottom: 1px solid #ddd;
     font-weight: bold;
     background: #f0f0f0;
   }
+
   .conversation-list {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
+
   .conversation {
     padding: 1rem;
     border-bottom: 1px solid #eee;
     cursor: pointer;
     transition: background 0.2s;
   }
-  .conversation:hover {
-    background: #f9f9f9;
-  }
+  .conversation:hover { background: #f9f9f9; }
 
-  /* Chat panel */
   .chat-panel {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: #e5ddd5;
+    background: white; /* background behind bubbles */
     transition: transform 0.3s ease;
     z-index: 1;
   }
+
   .chat-header {
     padding: 1rem;
     background: #fff;
@@ -70,6 +70,7 @@
     align-items: center;
     flex-shrink: 0;
   }
+
   .back-btn {
     display: none;
     margin-right: 1rem;
@@ -79,31 +80,43 @@
     cursor: pointer;
   }
 
-  /* Messages */
   .messages {
     flex: 1;
     padding: 1rem;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     -webkit-overflow-scrolling: touch;
     word-break: break-word;
   }
-  .message {
-    display: inline-block;
-    max-width: 80%;
-    padding: 0.6rem 0.8rem;
-    margin-bottom: 0.6rem;
-    border-radius: 10px;
-    background: #e0e0e0;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-  .message.sent {
-    background: #0084ff;
-    color: #fff;
-    margin-left: auto;
+
+  .message-row {
+    display: flex;
+    margin-bottom: 8px;
   }
 
-  /* Input */
+  .message-row.sender { justify-content: flex-end; }
+  .message-row.receiver { justify-content: flex-start; }
+
+  .chat-bubble {
+    display: inline-block;
+    padding: 10px 14px;
+    border-radius: 16px;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    max-width: 75%;
+  }
+
+  .chat-bubble.sender {
+    background-color: #0084ff;
+    color: white;
+  }
+
+  .chat-bubble.receiver {
+    background-color: #e5e5ea;
+    color: black;
+  }
+
   .chat-input {
     display: flex;
     border-top: 1px solid #ddd;
@@ -111,8 +124,8 @@
     padding: 0.5rem;
     align-items: flex-end;
     bottom: 0;
-    z-index: 3;
   }
+
   .chat-input textarea {
     flex: 1;
     padding: 0.5rem 0.75rem;
@@ -123,11 +136,11 @@
     min-height: 40px;
     max-height: 150px;
     overflow-y: auto;
+    font-size: 1rem;
     scrollbar-width: none; /* Firefox */
   }
-  .chat-input textarea::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
-  }
+  .chat-input textarea::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+  
   .chat-input button {
     margin-left: 0.5rem;
     padding: 0.5rem 1rem;
@@ -139,11 +152,9 @@
     font-size: 1rem;
   }
 
-  /* Mobile */
+  /* Mobile View Fixes */
   @media (max-width: 768px) {
-    body {
-      overflow: hidden; /* prevent scrolling past chat panel */
-    }
+    body { overflow: hidden; } /* prevent scrolling past convo */
     .sidebar {
       width: 100%;
       height: 100%;
@@ -159,26 +170,13 @@
       top: 0;
       left: 0;
       transform: translateX(100%);
-      background: #e5ddd5;
+      background: white;
     }
-    .chat-app.show-chat .sidebar {
-      transform: translateX(-100%);
-    }
-    .chat-app.show-chat .chat-panel {
-      transform: translateX(0);
-    }
-    .back-btn {
-      display: inline-block;
-    }
-    .messages {
-      padding-bottom: 4rem; /* space for input */
-    }
-    .chat-input {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-    }
+    .chat-app.show-chat .sidebar { transform: translateX(-100%); }
+    .chat-app.show-chat .chat-panel { transform: translateX(0); }
+    .back-btn { display: inline-block; }
+    .messages { padding-bottom: 4rem; }
+    .chat-input { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; }
   }
 </style>
 </head>
@@ -240,11 +238,14 @@ function escapeHtml(text) {
 
 function addMessage(author, text, time) {
   const isSender = author === admin.name;
-  const msgDiv = document.createElement("div");
-  msgDiv.className = "message" + (isSender ? " sent" : "");
-  msgDiv.innerHTML = `<div>${escapeHtml(text)}</div><div style="font-size:10px;color:gray;text-align:right">${escapeHtml(time)}</div>`;
-  messagesContainer.appendChild(msgDiv);
-  msgDiv.scrollIntoView({behavior:'smooth', block:'end'}); // last message fully visible
+  const row = document.createElement("div");
+  row.className = "message-row " + (isSender ? "sender" : "receiver");
+  const bubble = document.createElement("div");
+  bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
+  bubble.textContent = text;
+  row.appendChild(bubble);
+  messagesContainer.appendChild(row);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
 function openConversation(conversationId, otherName) {
@@ -273,7 +274,7 @@ function loadUsers() {
     const userConversations = {};
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
-      let otherName = data.name === admin.name ? (data.replies?.[0]?.author || data.userName || "Unknown User") : data.name;
+      let otherName = data.name === admin.name && data.replies?.length>0 ? data.replies[0].author : (data.name === admin.name ? data.userName || "Unknown User" : data.name);
       if (!userConversations[otherName]) userConversations[otherName] = [];
       userConversations[otherName].push({id: docSnap.id, data});
     });
@@ -285,7 +286,7 @@ function loadUsers() {
       });
       const latestConv = convArr[0];
       const data = latestConv.data;
-      let otherName = data.name === admin.name ? (data.replies?.[0]?.author || data.userName || "Unknown User") : data.name;
+      let otherName = data.name === admin.name && data.replies?.length>0 ? data.replies[0].author : (data.name === admin.name ? data.userName || "Unknown User" : data.name);
       const lastMessage = data.replies?.length ? data.replies[data.replies.length-1].text : data.message;
       const lastTime = data.replies?.length ? data.replies[data.replies.length-1].time : data.time;
       const li = document.createElement("div");
@@ -321,9 +322,7 @@ replyInput.addEventListener("input", () => {
   replyInput.style.height = Math.min(replyInput.scrollHeight, 150) + "px";
 });
 
-backBtn.addEventListener("click", () => {
-  chatApp.classList.remove("show-chat");
-});
+backBtn.addEventListener("click", () => { chatApp.classList.remove("show-chat"); });
 </script>
 </body>
 </html>
