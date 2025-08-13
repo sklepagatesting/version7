@@ -17,10 +17,9 @@
   }
   body {
     margin: 0;
-    overflow: hidden; /* Prevent body scrolling */
+    overflow: hidden;
   }
 
-  /* FIX: Lock the app to the viewport to prevent "pass-through" scrolling on mobile */
   .chat-app {
     position: fixed;
     top: 0;
@@ -31,7 +30,6 @@
     overflow: hidden;
   }
 
-  /* Sidebar */
   .sidebar {
     width: 320px;
     background: #fff;
@@ -63,7 +61,6 @@
   .conversation:hover { background: #f9f9f9; }
   .conversation.active { background-color: #eef5ff; }
 
-  /* Chat panel */
   .chat-panel {
     flex: 1;
     display: flex;
@@ -146,29 +143,29 @@
   .chat-input-wrapper {
     border-top: 1px solid #ddd;
     background: var(--body-bg);
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 1rem;
     display: flex;
     align-items: flex-end;
   }
-  .chat-input-wrapper textarea {
-  box-sizing: border-box;
-  flex: 1;
-  padding: 8px 14px; /* Reduced top/bottom padding */
-  border: 1px solid #ccc;
-  border-radius: 20px;
-  background: white;
-  outline: none;
-  resize: none;
-  min-height: 42px;
-  max-height: 30vh;
-  overflow-y: auto;
-  font-size: 1rem;
-  line-height: 24px; /* Adjusted line-height */
-  scrollbar-width: none;
-  height: 42px; /* Ensure initial height is exactly 42px */
-}
+  /* FIXED TEXTAREA */
+  .chat-input-wrapper textarea.context {
+    box-sizing: border-box;
+    flex: 1;
+    padding: 6px 14px; /* top/bottom padding smaller */
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    background: white;
+    outline: none;
+    resize: none;
+    min-height: 36px; /* smaller base */
+    max-height: 30vh;
+    overflow-y: auto;
+    font-size: 1rem;
+    line-height: 1.4; /* relative line-height for proper auto-sizing */
+    height: auto;
+  }
+  .chat-input-wrapper textarea.context::-webkit-scrollbar { display: none; }
 
-    .chat-input-wrapper textarea::-webkit-scrollbar { display: none; }
   .chat-input-wrapper button {
     margin-left: 0.75rem;
     height: 42px;
@@ -185,7 +182,6 @@
     flex-shrink: 0;
   }
 
-  /* Initial State & Mobile */
   .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
   .chat-app.no-chat-selected .placeholder {
       display: flex;
@@ -289,162 +285,3 @@ function formatTimestamp(dateString) {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    if (messageDate.getTime() === today.getTime()) return timeString;
-    if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
-    if (messageDate.getTime() > oneWeekAgo.getTime()) {
-        const dayString = date.toLocaleDateString('en-US', { weekday: 'long' });
-        return `${dayString} ${timeString}`;
-    }
-    return `${date.toLocaleDateString('en-US')} ${timeString}`;
-}
-
-function formatTimestampForList(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    if (messageDate.getTime() === today.getTime()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    if (messageDate.getTime() === yesterday.getTime()) return 'Yesterday';
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
-    if (messageDate.getTime() > oneWeekAgo.getTime()) return date.toLocaleDateString('en-US', { weekday: 'short' });
-    return date.toLocaleDateString('en-US');
-}
-
-function scrollToBottom() {
-    setTimeout(() => {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }, 0);
-}
-
-function addMessage(author, text, time) {
-  const isSender = author === admin.name;
-  const row = document.createElement("div");
-  row.className = "message-row " + (isSender ? "sender" : "receiver");
-  const content = document.createElement("div");
-  content.className = "message-content";
-  const bubble = document.createElement("div");
-  bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
-  bubble.textContent = text;
-  const timeEl = document.createElement("div");
-  timeEl.className = "message-time";
-  timeEl.textContent = formatTimestamp(time);
-  content.appendChild(bubble);
-  content.appendChild(timeEl);
-  row.appendChild(content);
-  messagesContainer.appendChild(row);
-}
-
-function openConversation(conversationId, otherName) {
-  currentConversationId = conversationId;
-  chatTitle.textContent = escapeHtml(otherName);
-  chatApp.classList.remove('no-chat-selected');
-  document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
-  document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
-  
-  replyInput.value = "";
-  replyInput.style.height = "47px";
-
-  if (unsubscribeConversationListener) unsubscribeConversationListener();
-  unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
-    if (!docSnap.exists()) return;
-    messagesContainer.innerHTML = "";
-    const data = docSnap.data();
-    const allMessages = [];
-    if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
-    if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
-    allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-    allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
-    scrollToBottom();
-  });
-  if (window.innerWidth <= 768) {
-    chatApp.classList.add("show-chat");
-  }
-}
-
-function loadUsers() {
-  const q = query(collection(db, "message"), orderBy("time","desc"));
-  onSnapshot(q, snapshot => {
-    userList.innerHTML = "";
-    if (snapshot.empty) {
-      userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
-      return;
-    }
-    const userConversations = {};
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      const id = docSnap.id;
-      const otherName = data.name === admin.name && data.replies?.length > 0
-        ? data.replies[0].author
-        : (data.name === admin.name ? data.userName || "Unknown User" : data.name);
-      if (!userConversations[otherName]) userConversations[otherName] = [];
-      userConversations[otherName].push({ id, ...data });
-    });
-    const latestConversations = Object.entries(userConversations).map(([userName, threads]) => {
-        threads.sort((a, b) => {
-            const lastTimeA = a.replies?.slice(-1)[0]?.time || a.time;
-            const lastTimeB = b.replies?.slice(-1)[0]?.time || b.time;
-            return new Date(lastTimeB) - new Date(lastTimeA);
-        });
-        return { userName, thread: threads[0] };
-    });
-    latestConversations.sort((a, b) => {
-        const lastTimeA = a.thread.replies?.slice(-1)[0]?.time || a.thread.time;
-        const lastTimeB = b.thread.replies?.slice(-1)[0]?.time || b.thread.time;
-        return new Date(lastTimeB) - new Date(lastTimeA);
-    });
-    latestConversations.forEach(({ userName, thread }) => {
-      const lastMessage = thread.replies?.slice(-1)[0] || { text: thread.message, time: thread.time };
-      const li = document.createElement("div");
-      li.className = "conversation";
-      li.dataset.id = thread.id;
-      li.innerHTML = `
-        <div class="flex justify-between items-center">
-            <strong class="font-semibold text-gray-800">${escapeHtml(userName)}</strong>
-            <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
-        </div>
-        <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
-      `;
-      li.addEventListener("click", () => openConversation(thread.id, userName));
-      userList.appendChild(li);
-    });
-  });
-}
-
-replyForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!currentConversationId) return;
-  const text = replyInput.value.trim();
-  if (!text) return;
-  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
-  const reply = { author: admin.name, text: text, status: "unread", time: now };
-  try {
-    await updateDoc(doc(db, "message", currentConversationId), { replies: arrayUnion(reply) });
-    replyInput.value = "";
-    replyInput.style.height = "42px";
-    scrollToBottom();
-  } catch (err) {
-    alert("Failed to send reply: " + err.message);
-  }
-});
-
-replyInput.addEventListener("input", () => {
-  replyInput.style.height = "auto";
-  replyInput.style.height = replyInput.scrollHeight + "px";
-});
-
-backBtn.addEventListener("click", () => {
-  chatApp.classList.remove("show-chat");
-});
-
-loadUsers();
-</script>
-</body>
-</html>
