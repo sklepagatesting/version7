@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Admin Messages</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="font/font.css">
 <style>
   :root {
     --sender-bg: #0084ff;
@@ -20,6 +19,7 @@
     overflow: hidden; /* Prevent body scrolling */
   }
 
+  /* FIX: Lock the app to the viewport to prevent "pass-through" scrolling on mobile */
   .chat-app {
     position: fixed;
     top: 0;
@@ -61,9 +61,6 @@
   }
   .conversation:hover { background: #f9f9f9; }
   .conversation.active { background-color: #eef5ff; }
-  .context {
-    font-size: 0.75rem;
-  }
 
   /* Chat panel */
   .chat-panel {
@@ -137,6 +134,7 @@
   }
 
   .message-time {
+      font-size: 0.75rem;
       color: #6b7280;
       margin-top: 4px;
       padding: 0 6px;
@@ -144,7 +142,6 @@
   .message-row.sender .message-time { align-self: flex-end; }
   .message-row.receiver .message-time { align-self: flex-start; }
 
-  /* Chat input */
   .chat-input-wrapper {
     border-top: 1px solid #ddd;
     background: var(--body-bg);
@@ -152,9 +149,8 @@
     display: flex;
     align-items: flex-end;
   }
-
   .chat-input-wrapper textarea {
-    box-sizing: border-box;
+    box-sizing: border-box; /* FIX: Makes height calculation predictable */
     flex: 1;
     padding: 0.6rem 1rem;
     border: 1px solid #ccc;
@@ -162,31 +158,29 @@
     background: white;
     outline: none;
     resize: none;
-    min-height: 48px;
+    min-height: 42px;
     max-height: 30vh;
     overflow-y: auto;
     font-size: 1rem;
     line-height: 1.4;
     scrollbar-width: none;
   }
-  .chat-input-wrapper textarea {
-    font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 12px; /* match .context on mobile */
-    line-height: 1.09; /* match .context */
-    font-weight: 300;
-    box-sizing: border-box;
-    flex: 1;
-    padding: 0.6rem 1rem;
-    border: 1px solid #ccc;
-    border-radius: 20px;
-    background: white;
-    outline: none;
-    resize: none;
-    min-height: 48px;
-    max-height: 30vh;
-    overflow-y: auto;
-    scrollbar-width: none;
-}
+  .chat-input-wrapper textarea::-webkit-scrollbar { display: none; }
+  .chat-input-wrapper button {
+    margin-left: 0.75rem;
+    height: 42px;
+    width: 42px;
+    border: none;
+    background: var(--sender-bg);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
 
   /* Initial State & Mobile */
   .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
@@ -337,7 +331,7 @@ function addMessage(author, text, time) {
   bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
   bubble.textContent = text;
   const timeEl = document.createElement("div");
-  timeEl.className = "message-time context";
+  timeEl.className = "message-time";
   timeEl.textContent = formatTimestamp(time);
   content.appendChild(bubble);
   content.appendChild(timeEl);
@@ -353,7 +347,7 @@ function openConversation(conversationId, otherName) {
   document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
   
   replyInput.value = "";
-  replyInput.style.height = `48px`;
+  replyInput.style.height = "42px";
 
   if (unsubscribeConversationListener) unsubscribeConversationListener();
   unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
@@ -411,34 +405,15 @@ function loadUsers() {
       li.innerHTML = `
         <div class="flex justify-between items-center">
             <strong class="font-semibold text-gray-800">${escapeHtml(userName)}</strong>
-            <span class="text-xs text-gray-500 context">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
+            <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
         </div>
-        <p class="text-sm text-gray-600 truncate context">${escapeHtml(lastMessage.text)}</p>
+        <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
       `;
       li.addEventListener("click", () => openConversation(thread.id, userName));
       userList.appendChild(li);
     });
   });
 }
-
-// --- Smooth auto-resize with dynamic allowance ---
-replyInput.addEventListener("input", () => {
-    // Reset height to measure true content
-    replyInput.style.height = 'auto';
-
-    const style = window.getComputedStyle(replyInput);
-    const minHeight = parseFloat(style.minHeight);
-    const maxHeight = parseFloat(style.maxHeight);
-
-    // Dynamic allowance: 20% of line-height or at least 2px
-    const lineHeight = parseFloat(style.lineHeight) || 20;
-    const allowance = Math.max(2, lineHeight * 0.2);
-
-    // Calculate new height
-    const newHeight = Math.min(Math.max(replyInput.scrollHeight + allowance, minHeight), maxHeight);
-
-    replyInput.style.height = `${newHeight}px`;
-});
 
 replyForm.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -450,18 +425,22 @@ replyForm.addEventListener("submit", async (e) => {
   try {
     await updateDoc(doc(db, "message", currentConversationId), { replies: arrayUnion(reply) });
     replyInput.value = "";
-    replyInput.style.height = "48px"; // reset to single line height
+    replyInput.style.height = "42px";
     scrollToBottom();
   } catch (err) {
-    console.error("Error sending message:", err);
+    alert("Failed to send reply: " + err.message);
   }
+});
+
+replyInput.addEventListener("input", () => {
+  replyInput.style.height = "auto";
+  replyInput.style.height = replyInput.scrollHeight + "px";
 });
 
 backBtn.addEventListener("click", () => {
   chatApp.classList.remove("show-chat");
 });
 
-// Initialize
 loadUsers();
 </script>
 </body>
