@@ -72,7 +72,7 @@ function addMessage(author, text, time, isAdmin=false) {
   const msgDiv = document.createElement("div");
   msgDiv.className = `flex ${isAdmin ? "justify-start" : "justify-end"}`;
   msgDiv.innerHTML = `
-    <div class="max-w-xs md:max-w-md p-3 rounded-lg mb-2 ${isAdmin ? "bg-indigo-50 text-left" : "bg-indigo-600 text-white text-right"}">
+    <div class="max-w-xs md:max-w-md p-3 rounded-lg mb-2 ${isAdmin?"bg-indigo-50 text-left":"bg-indigo-600 text-white text-right"}">
       <strong>${escapeHtml(author)}</strong><br/>
       ${escapeHtml(text)}<br/>
       <span class="text-xs text-gray-500">${escapeHtml(time)}</span>
@@ -88,16 +88,20 @@ function openConversation(conversationId, userName, userEmail) {
   modalTitle.textContent = userName;
   modalEmail.textContent = userEmail;
 
+  // Real-time listener
   if (unsubscribeModalListener) unsubscribeModalListener();
-  unsubscribeModalListener = onSnapshot(doc(db, "message", conversationId), docSnap => {
-    if (!docSnap.exists()) return;
+  unsubscribeModalListener = onSnapshot(doc(db, "message", conversationId), docSnap=>{
+    if(!docSnap.exists()) return;
     messagesContainer.innerHTML = "";
     const data = docSnap.data();
-    // Add main message
-    addMessage(data.name, data.message, data.time, data.name === admin.name);
-    // Add replies sorted by time
-    (data.replies || []).sort((a, b) => new Date(a.time) - new Date(b.time))
-      .forEach(r => addMessage(r.author, r.text, r.time, r.author === admin.name));
+
+    addMessage(data.name, data.message, data.time, data.name===admin.name);
+
+    (data.replies || []).sort((a,b)=>new Date(a.time)-new Date(b.time))
+      .forEach(r=>{
+        addMessage(r.author, r.text, r.time, r.author===admin.name);
+      });
+
     modalOverlay.classList.remove("hidden");
     modalOverlay.classList.add("flex");
     replyInput.focus();
@@ -106,57 +110,80 @@ function openConversation(conversationId, userName, userEmail) {
 
 // --- Load all user conversations ---
 function loadUsers() {
-  const q = query(collection(db, "message"), orderBy("time", "desc"));
-  onSnapshot(q, snapshot => {
+  const q = query(collection(db, "message"), orderBy("time","desc"));
+  onSnapshot(q, snapshot=>{
     userList.innerHTML = "";
-    if (snapshot.empty) {
+    if(snapshot.empty){
       userList.innerHTML = `<p class="text-gray-500 p-2">No conversations yet.</p>`;
       return;
     }
 
     const userConversations = {};
 
-    snapshot.forEach(docSnap => {
+    snapshot.forEach(docSnap=>{
       const data = docSnap.data();
-      // Determine the other person
-      let userName, userEmail;
-      if (data.name === admin.name) {
-        userName = data.userName || "Unknown User";
-        userEmail = data.userEmail || "unknown@example.com";
+      let otherName, otherEmail;
+
+      if(data.name === admin.name) {
+        // Admin sent the first message
+        if(data.replies && data.replies.length > 0){
+          otherName = data.replies[0].author;
+          otherEmail = data.replies[0].email || "unknown@example.com";
+        } else {
+          // No replies yet
+          otherName = data.userName || "Unknown User";
+          otherEmail = data.userEmail || "unknown@example.com";
+        }
       } else {
-        userName = data.name;
-        userEmail = data.email || "unknown@example.com";
+        // Someone else sent the first message
+        otherName = data.name;
+        otherEmail = data.email || "unknown@example.com";
       }
 
-      if (!userConversations[userEmail]) userConversations[userEmail] = [];
-      userConversations[userEmail].push({ id: docSnap.id, data });
+      if(!userConversations[otherEmail]) userConversations[otherEmail] = [];
+      userConversations[otherEmail].push({id: docSnap.id, data});
     });
 
-    // Render only the latest conversation per user
-    Object.values(userConversations).forEach(convArr => {
-      convArr.sort((a, b) => {
-        const lastA = a.data.replies?.length ? a.data.replies[a.data.replies.length-1].time : a.data.time;
-        const lastB = b.data.replies?.length ? b.data.replies[b.data.replies.length-1].time : b.data.time;
+    // Render latest conversation per user
+    Object.values(userConversations).forEach(convArr=>{
+      convArr.sort((a,b)=>{
+        const lastA = a.data.replies?.length?a.data.replies[a.data.replies.length-1].time:a.data.time;
+        const lastB = b.data.replies?.length?b.data.replies[b.data.replies.length-1].time:b.data.time;
         return new Date(lastB) - new Date(lastA);
       });
 
       const latestConv = convArr[0];
+
+      let otherName, otherEmail;
       const data = latestConv.data;
+      if(data.name === admin.name) {
+        if(data.replies && data.replies.length>0){
+          otherName = data.replies[0].author;
+          otherEmail = data.replies[0].email || "unknown@example.com";
+        } else {
+          otherName = data.userName || "Unknown User";
+          otherEmail = data.userEmail || "unknown@example.com";
+        }
+      } else {
+        otherName = data.name;
+        otherEmail = data.email || "unknown@example.com";
+      }
 
-      const userName = data.name === admin.name ? data.userName || "Unknown User" : data.name;
-      const userEmail = data.email === admin.email ? data.userEmail || "unknown@example.com" : data.email || "unknown@example.com";
-
-      const lastMessage = data.replies?.length ? data.replies[data.replies.length-1].text : data.message;
-      const lastTime = data.replies?.length ? data.replies[data.replies.length-1].time : data.time;
+      const lastMessage = data.replies?.length
+                          ? data.replies[data.replies.length-1].text
+                          : data.message;
+      const lastTime = data.replies?.length
+                       ? data.replies[data.replies.length-1].time
+                       : data.time;
 
       const li = document.createElement("div");
       li.className = "p-3 border-b cursor-pointer hover:bg-gray-50";
       li.innerHTML = `
-        <strong>${escapeHtml(userName)}</strong><br/>
+        <strong>${escapeHtml(otherName)}</strong><br/>
         <span class="text-gray-500 text-sm">${escapeHtml(lastMessage)}</span><br/>
         <span class="text-gray-400 text-xs">${escapeHtml(lastTime)}</span>
       `;
-      li.addEventListener("click", () => openConversation(latestConv.id, userName, userEmail));
+      li.addEventListener("click", ()=>openConversation(latestConv.id, otherName, otherEmail));
       userList.appendChild(li);
     });
   });
@@ -165,21 +192,22 @@ function loadUsers() {
 loadUsers();
 
 // --- Send reply ---
-replyForm.addEventListener("submit", async e => {
+replyForm.addEventListener("submit", async e=>{
   e.preventDefault();
-  if (!currentConversationId) return;
+  if(!currentConversationId) return;
   const text = replyInput.value.trim();
-  if (!text) return;
+  if(!text) return;
   const now = new Date().toLocaleString("en-PH", { timeZone:"Asia/Manila" }).replace(",", "");
-  const reply = { author: admin.name, text, status: "unread", time: now };
+  const reply = { author:admin.name, text, status:"unread", time: now };
   try {
-    await updateDoc(doc(db, "message", currentConversationId), { replies: arrayUnion(reply) });
+    await updateDoc(doc(db,"message",currentConversationId), { replies: arrayUnion(reply) });
     replyInput.value = "";
-  } catch (err) {
-    alert("Failed to send reply: " + err.message);
+  } catch(err){
+    alert("Failed to send reply: "+err.message);
   }
 });
 </script>
+
 </head>
 <body class="bg-gray-50 p-4 min-h-screen">
 
