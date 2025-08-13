@@ -141,47 +141,48 @@
   .message-row.receiver .message-time { align-self: flex-start; }
 
   .chat-input-wrapper {
-    border-top: 1px solid #ddd;
-    background: var(--body-bg);
-    padding: 0.5rem 1rem;
-    display: flex;
-    align-items: flex-end;
-  }
-  /* FIXED TEXTAREA */
-  .chat-input-wrapper textarea.context {
-    box-sizing: border-box;
-    flex: 1;
-    padding: 6px 14px; /* top/bottom padding smaller */
-    border: 1px solid #ccc;
-    border-radius: 20px;
-    background: white;
-    outline: none;
-    resize: none;
-    min-height: 36px; /* smaller base */
-    max-height: 30vh;
-    overflow-y: auto;
-    font-size: 1rem;
-    line-height: 1.4; /* relative line-height for proper auto-sizing */
-    height: auto;
-  }
+  border-top: 1px solid #ddd;
+  background: var(--body-bg);
+  padding: 0.75rem 1rem; /* Keep top/bottom equal */
+  display: flex;
+  align-items: flex-end; /* ensures bottom alignment of button */
+  gap: 0.75rem; /* spacing between textarea and button */
+}
+
+.chat-input-wrapper textarea {
+  box-sizing: border-box;
+  flex: 1;
+  padding: 10px 14px; /* slightly more top to balance bottom */
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  background: white;
+  outline: none;
+  resize: none;
+  min-height: 42px;
+  max-height: 30vh;
+  overflow-y: auto;
+  font-size: 1rem;
+  line-height: 1.4rem; /* ensure correct single-line height */
+  height: 42px; /* initial height */
+}
+
+
   .chat-input-wrapper textarea.context::-webkit-scrollbar { display: none; }
 
   .chat-input-wrapper button {
-    margin-left: 0.75rem;
-    height: 42px;
-    width: 42px;
-    border: none;
-    background: var(--sender-bg);
-    color: white;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
+  height: auto; /* allow to grow with textarea */
+  min-height: 42px; /* same as textarea min-height */
+  padding: 0 12px; /* optional: horizontal padding */
+  border: none;
+  background: var(--sender-bg);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: flex-end; /* bottom aligned with growing textarea */
+  justify-content: center;
+}
   .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
   .chat-app.no-chat-selected .placeholder {
       display: flex;
