@@ -146,44 +146,45 @@
   .message-row.receiver .message-time { align-self: flex-start; }
 
   .chat-input-wrapper {
-    border-top: 1px solid #ddd;
-    background: var(--body-bg);
-    padding: 0.75rem 1rem;
-    display: flex;
-    align-items: flex-end;
-  }
-  .chat-input-wrapper textarea {
-    box-sizing: border-box; /* Makes height calculation predictable */
-    flex: 1;
-    padding: 0.6rem 1rem;
-    border: 1px solid #ccc;
-    border-radius: 20px;
-    background: white;
-    outline: none;
-    resize: none;
-    min-height: 48px; /* Increased min-height to prevent premature doubling */
-    max-height: 30vh;
-    overflow-y: auto;
-    font-size: 1rem;
-    line-height: 1.4;
-    scrollbar-width: none;
-  }
-  .chat-input-wrapper textarea::-webkit-scrollbar { display: none; }
-  .chat-input-wrapper button {
-    margin-left: 0.75rem;
-    height: 42px;
-    width: 42px;
-    border: none;
-    background: var(--sender-bg);
-    color: white;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
+  border-top: 1px solid #ddd;
+  background: var(--body-bg);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: flex-end; /* keeps button bottom-aligned */
+}
+
+.chat-input-wrapper textarea {
+  box-sizing: border-box;
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  background: white;
+  outline: none;
+  resize: none;
+  min-height: 48px;
+  max-height: 30vh;
+  overflow-y: auto;
+  font-size: 1rem;
+  line-height: 1.4;
+  scrollbar-width: none;
+}
+
+.chat-input-wrapper button {
+  margin-left: 0.75rem;
+  height: 48px; /* match min-height of textarea */
+  width: 48px;
+  border: none;
+  background: var(--sender-bg);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 
   /* Initial State & Mobile */
   .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
