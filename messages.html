@@ -5,145 +5,203 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Messages</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, collection, doc, onSnapshot, updateDoc, arrayUnion, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-      authDomain: "sklepaga-8790e.firebaseapp.com",
-      projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.firebasestorage.app",
-      messagingSenderId: "815409129057",
-      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-      measurementId: "G-9GH707G2WZ"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    // Get current user from localStorage
-    const account = JSON.parse(localStorage.getItem("account"));
-    if (!account) window.location.href = "authentication.html";
-
-    const userName = account.name;
-    const userEmail = account.email;
-    const userUid = account.uid;
-
-    // DOM Elements
-    const leftPanel = document.getElementById("conversationList");
-    const rightPanel = document.getElementById("conversationThread");
-    const replyForm = document.getElementById("replyForm");
-    const replyInput = document.getElementById("replyInput");
-    const selectedTitle = document.getElementById("selectedTitle");
-
-    let currentConversationId = null;
-    let unsubscribeThread = null;
-
-    // Escape HTML
-    function escapeHtml(text) {
-      if (!text) return "";
-      return text.replace(/&/g, "&amp;")
-                 .replace(/</g, "&lt;")
-                 .replace(/>/g, "&gt;")
-                 .replace(/"/g, "&quot;")
-                 .replace(/'/g, "&#39;");
-    }
-
-    // Render left panel conversations
-    const convRef = collection(db, "message");
-    onSnapshot(convRef, snapshot => {
-      leftPanel.innerHTML = "";
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        const convDiv = document.createElement("div");
-        convDiv.className = "p-4 border-b hover:bg-gray-50 cursor-pointer";
-        const latestReply = data.replies?.length ? data.replies[data.replies.length-1].text : data.message;
-        convDiv.innerHTML = `
-          <div class="flex justify-between">
-            <span class="font-semibold">${escapeHtml(data.name)}</span>
-            <span class="text-xs text-gray-500">${escapeHtml(data.time)}</span>
-          </div>
-          <div class="text-gray-600 text-sm truncate">${escapeHtml(latestReply)}</div>
-        `;
-        convDiv.addEventListener("click", () => openConversation(docSnap.id, data));
-        leftPanel.appendChild(convDiv);
-      });
-    });
-
-    function openConversation(id, data) {
-      currentConversationId = id;
-      selectedTitle.textContent = data.name;
-
-      if (unsubscribeThread) unsubscribeThread();
-
-      const threadRef = doc(db, "message", id);
-      unsubscribeThread = onSnapshot(threadRef, docSnap => {
-        const convData = docSnap.data();
-        rightPanel.innerHTML = "";
-
-        // Main message
-        const mainDiv = document.createElement("div");
-        mainDiv.className = "mb-4 p-3 rounded bg-gray-100 shadow-sm";
-        mainDiv.innerHTML = `<strong>${escapeHtml(convData.name)}</strong><br>${escapeHtml(convData.message)}<br><span class="text-xs text-gray-500">${escapeHtml(convData.time)}</span>`;
-        rightPanel.appendChild(mainDiv);
-
-        // Replies
-        const replies = convData.replies || [];
-        replies.sort((a,b) => new Date(a.time) - new Date(b.time));
-        replies.forEach(reply => {
-          const rDiv = document.createElement("div");
-          rDiv.className = `mb-2 p-2 rounded shadow-sm max-w-xs ${reply.author===userName ? "bg-green-100 ml-auto text-right" : "bg-white"}`;
-          rDiv.innerHTML = `<strong>${escapeHtml(reply.author)}</strong><br>${escapeHtml(reply.text)}<br><span class="text-xs text-gray-500">${escapeHtml(reply.time)}</span>`;
-          rightPanel.appendChild(rDiv);
-        });
-
-        rightPanel.scrollTop = rightPanel.scrollHeight;
-      });
-    }
-
-    replyForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!currentConversationId) return;
-      const text = replyInput.value.trim();
-      if (!text) return;
-
-      const newReply = {
-        author: userName,
-        text,
-        time: new Date().toISOString(),
-        status: "sent"
-      };
-      try {
-        await updateDoc(doc(db, "message", currentConversationId), {
-          replies: arrayUnion(newReply)
-        });
-        replyInput.value = "";
-      } catch(err) {
-        alert("Failed to send reply: " + err.message);
-      }
-    });
-  </script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="flex flex-col md:flex-row min-h-screen">
+<body class="bg-white p-6 min-h-screen font-sans relative">
 
-  <!-- Left panel -->
-  <div class="w-full md:w-1/3 border-r border-gray-300 p-4 overflow-y-auto" id="conversationList">
-    <h2 class="text-xl font-bold mb-4">Conversations</h2>
-    <!-- Conversations dynamically inserted here -->
+  <h1 class="text-3xl font-bold mb-2 text-center">My Messages</h1>
+
+  <!-- User info display -->
+  <div class="max-w-5xl mx-auto mb-6 p-4 border rounded bg-gray-50 flex justify-center space-x-8 text-gray-700">
+    <div><strong>Name:</strong> <span id="userNameDisplay" class="text-gray-900"></span></div>
+    <div><strong>Email:</strong> <span id="userEmailDisplay" class="text-gray-900"></span></div>
   </div>
 
-  <!-- Right panel -->
-  <div class="w-full md:w-2/3 p-4 flex flex-col">
-    <h2 id="selectedTitle" class="text-xl font-bold mb-4">Select a conversation</h2>
-    <div id="conversationThread" class="flex-grow overflow-y-auto border rounded p-4 bg-gray-50 mb-4">
-      <!-- Conversation thread dynamically inserted here -->
+  <div class="max-w-5xl mx-auto flex flex-col md:flex-row gap-4">
+    <!-- Left panel: conversation list -->
+    <div class="w-full md:w-1/3 border rounded overflow-y-auto max-h-[70vh]" id="conversationList"></div>
+
+    <!-- Right panel: selected conversation -->
+    <div class="w-full md:w-2/3 border rounded flex flex-col max-h-[70vh]">
+      <div id="conversationHeader" class="p-4 border-b bg-gray-100 font-semibold"></div>
+      <div id="conversationMessages" class="flex-1 p-4 overflow-y-auto bg-gray-50"></div>
+      <form id="replyForm" class="flex p-4 border-t">
+        <input id="replyInput" type="text" placeholder="Type your reply..." required
+          class="flex-grow border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+        <button type="submit"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded ml-2 font-semibold">
+          Send
+        </button>
+      </form>
     </div>
-    <form id="replyForm" class="flex space-x-2">
-      <input id="replyInput" class="flex-grow border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Type a reply..." required>
-      <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Send</button>
-    </form>
   </div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+    authDomain: "sklepaga-8790e.firebaseapp.com",
+    projectId: "sklepaga-8790e",
+    storageBucket: "sklepaga-8790e.firebasestorage.app",
+    messagingSenderId: "815409129057",
+    appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+    measurementId: "G-9GH707G2WZ"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // Get user info from localStorage
+  const userId = localStorage.getItem("uid");
+  const userName = localStorage.getItem("name");
+  const userEmail = localStorage.getItem("email");
+
+  if (!userId || !userName || !userEmail) {
+    window.location.href = "authentication.html";
+  }
+
+  document.getElementById("userNameDisplay").textContent = userName;
+  document.getElementById("userEmailDisplay").textContent = userEmail;
+
+  const conversationListEl = document.getElementById("conversationList");
+  const conversationHeader = document.getElementById("conversationHeader");
+  const conversationMessages = document.getElementById("conversationMessages");
+  const replyForm = document.getElementById("replyForm");
+  const replyInput = document.getElementById("replyInput");
+
+  let conversations = [];
+  let selectedConversationId = null;
+  let unsubscribeSelected = null;
+
+  // Escape HTML to prevent XSS
+  function escapeHtml(text) {
+    if (!text) return "";
+    return text.replace(/&/g, "&amp;")
+               .replace(/</g, "&lt;")
+               .replace(/>/g, "&gt;")
+               .replace(/"/g, "&quot;")
+               .replace(/'/g, "&#39;");
+  }
+
+  // Load all conversations
+  async function loadConversations() {
+    const snapshot = await db.collection("message")
+                             .where("userId", "==", userId)
+                             .orderBy("time", "asc")
+                             .get();
+    conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (conversations.length === 0) {
+      await ensureAdminConversation();
+    } else {
+      renderConversationList();
+      selectConversation(conversations[0].id);
+    }
+  }
+
+  // Create default Admin conversation if none exists
+  async function ensureAdminConversation() {
+    const snapshot = await db.collection("message")
+                             .where("userId", "==", userId)
+                             .where("email", "==", "mlanggoodsamaritanhospitalco@gmail.com")
+                             .get();
+    if (!snapshot.empty) {
+      conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderConversationList();
+      selectConversation(conversations[0].id);
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const newDocRef = db.collection("message").doc();
+    const adminMessage = {
+      name: "Admin",
+      email: "mlanggoodsamaritanhospitalco@gmail.com",
+      time: now,
+      message: "Hello, how can I help you?",
+      status: "sent",
+      replies: [],
+      messageid: newDocRef.id,
+      userId: userId
+    };
+    await newDocRef.set(adminMessage);
+    conversations.push({ id: newDocRef.id, ...adminMessage });
+    renderConversationList();
+    selectConversation(newDocRef.id);
+  }
+
+  function renderConversationList() {
+    conversationListEl.innerHTML = "";
+    conversations.forEach(conv => {
+      const div = document.createElement("div");
+      div.className = `p-4 border-b cursor-pointer ${conv.id === selectedConversationId ? "bg-indigo-100" : "hover:bg-gray-100"}`;
+      div.innerHTML = `<strong>${escapeHtml(conv.name)}</strong><br>
+                       <span class="text-gray-600 text-sm truncate">${escapeHtml(conv.message)}</span>
+                       <div class="text-xs text-gray-400 mt-1">${escapeHtml(conv.time)}</div>`;
+      div.addEventListener("click", () => selectConversation(conv.id));
+      conversationListEl.appendChild(div);
+    });
+  }
+
+  function selectConversation(id) {
+    selectedConversationId = id;
+    renderConversationList();
+    if (unsubscribeSelected) unsubscribeSelected();
+    unsubscribeSelected = db.collection("message").doc(id)
+      .onSnapshot(docSnap => {
+        if (!docSnap.exists) return;
+        const data = docSnap.data();
+        renderConversation(data);
+      });
+  }
+
+  function renderConversation(data) {
+    conversationHeader.textContent = data.name;
+    conversationMessages.innerHTML = "";
+    // Main message bubble
+    const mainMsgDiv = document.createElement("div");
+    mainMsgDiv.className = "p-2 mb-2 rounded shadow-sm max-w-xs";
+    mainMsgDiv.classList.add(data.email === userEmail ? "bg-indigo-100 self-end" : "bg-gray-200 self-start");
+    mainMsgDiv.innerHTML = `<strong>${escapeHtml(data.name)}</strong><br>${escapeHtml(data.message)}
+                            <div class="text-xs text-gray-500 mt-1">${escapeHtml(data.time)}</div>`;
+    conversationMessages.appendChild(mainMsgDiv);
+
+    // Replies
+    const replies = data.replies || [];
+    replies.forEach(reply => {
+      const div = document.createElement("div");
+      div.className = "p-2 mb-2 rounded shadow-sm max-w-xs";
+      div.classList.add(reply.author === userName ? "bg-indigo-100 self-end" : "bg-gray-200 self-start");
+      div.innerHTML = `<strong>${escapeHtml(reply.author)}</strong><br>${escapeHtml(reply.text)}
+                       <div class="text-xs text-gray-500 mt-1">${escapeHtml(reply.time)}</div>`;
+      conversationMessages.appendChild(div);
+    });
+
+    conversationMessages.scrollTop = conversationMessages.scrollHeight;
+  }
+
+  replyForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!selectedConversationId) return;
+    const text = replyInput.value.trim();
+    if (!text) return;
+    const now = new Date().toISOString();
+    const newReply = {
+      author: userName,
+      text,
+      time: now,
+      status: "sent"
+    };
+    try {
+      await db.collection("message").doc(selectedConversationId)
+        .update({ replies: firebase.firestore.FieldValue.arrayUnion(newReply) });
+      replyInput.value = "";
+    } catch (err) {
+      alert("Failed to send reply: " + err.message);
+    }
+  });
+
+  // Initialize
+  loadConversations();
+</script>
 
 </body>
 </html>
