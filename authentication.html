@@ -48,7 +48,7 @@
       try {
         const result = await signInWithPopup(auth, provider);
         await saveUser(result.user);
-        window.location.href = "messages.html";
+        window.location.href = "MessagesPage.jsx";
       } catch (error) {
         console.error("Login failed:", error);
         alert("Login failed: " + error.message);
@@ -59,7 +59,7 @@
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         await saveUser(user);
-        window.location.href = "messages.html";
+        window.location.href = "MessagesPage.jsx";
       } else {
         // Trigger login popup immediately
         login();
@@ -73,3 +73,4 @@
   </div>
 </body>
 </html>
+
