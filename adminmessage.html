@@ -113,20 +113,49 @@ function loadUsers() {
       userList.innerHTML = `<p class="text-gray-500 p-2">No conversations yet.</p>`;
       return;
     }
+
+    const userConversations = {};
+
     snapshot.forEach(docSnap=>{
       const data = docSnap.data();
+      // Use the user's email as key, always the other person
+      const userEmail = data.userEmail || data.email || "unknown";
+      if(!userConversations[userEmail]) userConversations[userEmail] = [];
+      userConversations[userEmail].push({id: docSnap.id, data});
+    });
+
+    // Render only the latest conversation per user
+    Object.values(userConversations).forEach(convArr=>{
+      convArr.sort((a,b)=>{
+        const lastA = a.data.replies?.length?a.data.replies[a.data.replies.length-1].time:a.data.time;
+        const lastB = b.data.replies?.length?b.data.replies[b.data.replies.length-1].time:b.data.time;
+        return new Date(lastB) - new Date(lastA);
+      });
+
+      const latestConv = convArr[0];
+      const userName = latestConv.data.userName || latestConv.data.name || "Unknown";
+      const userEmail = latestConv.data.userEmail || latestConv.data.email || "unknown@example.com";
+
+      const lastMessage = latestConv.data.replies?.length 
+                          ? latestConv.data.replies[latestConv.data.replies.length-1].text 
+                          : latestConv.data.message;
+      const lastTime = latestConv.data.replies?.length 
+                       ? latestConv.data.replies[latestConv.data.replies.length-1].time 
+                       : latestConv.data.time;
+
       const li = document.createElement("div");
       li.className = "p-3 border-b cursor-pointer hover:bg-gray-50";
       li.innerHTML = `
-        <strong>${escapeHtml(data.name)}</strong><br/>
-        <span class="text-gray-500 text-sm">${escapeHtml(data.message)}</span><br/>
-        <span class="text-gray-400 text-xs">${escapeHtml(data.time)}</span>
+        <strong>${escapeHtml(userName)}</strong><br/>
+        <span class="text-gray-500 text-sm">${escapeHtml(lastMessage)}</span><br/>
+        <span class="text-gray-400 text-xs">${escapeHtml(lastTime)}</span>
       `;
-      li.addEventListener("click", ()=>openConversation(docSnap.id, data.name, data.userEmail));
+      li.addEventListener("click", ()=>openConversation(latestConv.id, userName, userEmail));
       userList.appendChild(li);
     });
   });
 }
+
 
 loadUsers();
 
