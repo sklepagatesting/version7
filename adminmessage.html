@@ -161,7 +161,7 @@
     background: white;
     outline: none;
     resize: none;
-    min-height: 42px; /* Set a fixed initial height */
+    min-height: 48px; /* Increased min-height to prevent premature doubling */
     max-height: 30vh;
     overflow-y: auto;
     font-size: 1rem;
@@ -272,17 +272,6 @@ const backBtn = document.getElementById("backBtn");
 
 let currentConversationId = null;
 let unsubscribeConversationListener = null;
-let singleLineHeight = null;
-
-function getSingleLineHeight() {
-  if (singleLineHeight) return singleLineHeight;
-  const computedStyle = window.getComputedStyle(replyInput);
-  const lineHeight = parseFloat(computedStyle.lineHeight);
-  const paddingTop = parseFloat(computedStyle.paddingTop);
-  const paddingBottom = parseFloat(computedStyle.paddingBottom);
-  singleLineHeight = lineHeight + paddingTop + paddingBottom;
-  return singleLineHeight;
-}
 
 function escapeHtml(text) {
   if (typeof text !== 'string') return "";
@@ -361,8 +350,8 @@ function openConversation(conversationId, otherName) {
   document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
   
   replyInput.value = "";
-  // Reset the height to its single line value
-  replyInput.style.height = `${getSingleLineHeight()}px`;
+  // Reset the height to its min-height value
+  replyInput.style.height = `48px`;
 
   if (unsubscribeConversationListener) unsubscribeConversationListener();
   unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
@@ -440,8 +429,8 @@ replyForm.addEventListener("submit", async (e) => {
   try {
     await updateDoc(doc(db, "message", currentConversationId), { replies: arrayUnion(reply) });
     replyInput.value = "";
-    // Reset the height to its single line value after sending
-    replyInput.style.height = `${getSingleLineHeight()}px`;
+    // Reset the height to its min-height value after sending
+    replyInput.style.height = `48px`;
     scrollToBottom();
   } catch (err) {
     alert("Failed to send reply: " + err.message);
@@ -450,15 +439,8 @@ replyForm.addEventListener("submit", async (e) => {
 
 replyInput.addEventListener("input", () => {
     replyInput.style.height = 'auto'; // Reset height
-    const initialHeight = getSingleLineHeight();
     const scrollHeight = replyInput.scrollHeight;
-    
-    // Only expand if scrollHeight is more than the single line height
-    if (scrollHeight > initialHeight) {
-        replyInput.style.height = `${Math.min(scrollHeight, parseFloat(window.getComputedStyle(replyInput).maxHeight))}px`;
-    } else {
-        replyInput.style.height = `${initialHeight}px`;
-    }
+    replyInput.style.height = `${Math.min(scrollHeight, parseFloat(window.getComputedStyle(replyInput).maxHeight))}px`;
 });
 
 replyInput.addEventListener('keydown', (e) => {
@@ -481,13 +463,12 @@ backBtn.addEventListener("click", () => {
 });
 
 window.addEventListener('resize', () => {
-  // Recalculate single line height on resize
-  singleLineHeight = null;
-  replyInput.style.height = `${getSingleLineHeight()}px`;
+  // Reset height to prevent issues with responsive layouts
+  replyInput.style.height = `48px`;
 });
 
 // Initialize height on first load
-replyInput.style.height = `${getSingleLineHeight()}px`;
+replyInput.style.height = `48px`;
 
 loadUsers();
 </script>
