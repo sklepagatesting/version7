@@ -1,186 +1,172 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin Messages</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin Messages</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import {
+  getFirestore, collection, query, where, orderBy, doc, onSnapshot,
+  updateDoc, arrayUnion
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+// --- Firebase config ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+  authDomain: "sklepaga-8790e.firebaseapp.com",
+  projectId: "sklepaga-8790e",
+  storageBucket: "sklepaga-8790e.firebasestorage.app",
+  messagingSenderId: "815409129057",
+  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+  measurementId: "G-9GH707G2WZ"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// --- Admin account ---
+const admin = {
+  name: "Dzey Autajay",
+  email: "autajaydzey@gmail.com",
+  avatarColor: "#3498DB",
+  avatarLetter: "D",
+  uid: "yX0rfptwb2SKESPuPBzvfkv8gti2"
+};
+
+// --- Escape HTML ---
+function escapeHtml(text) {
+  if (!text) return "";
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+             .replace(/'/g, "&#39;");
+}
+
+// --- DOM Elements ---
+const userList = document.getElementById("userList");
+const modalOverlay = document.getElementById("modalOverlay");
+const closeModalBtn = document.getElementById("closeModalBtn");
+const messagesContainer = document.getElementById("messagesContainer");
+const replyForm = document.getElementById("replyForm");
+const replyInput = document.getElementById("replyInput");
+const modalTitle = document.getElementById("modalTitle");
+const modalEmail = document.getElementById("modalEmail");
+
+let currentConversationId = null;
+let unsubscribeModalListener = null;
+
+// --- Close modal ---
+function closeModal() {
+  modalOverlay.classList.add("hidden");
+  modalOverlay.classList.remove("flex");
+  currentConversationId = null;
+  messagesContainer.innerHTML = "";
+  if (unsubscribeModalListener) unsubscribeModalListener();
+  unsubscribeModalListener = null;
+}
+closeModalBtn.addEventListener("click", closeModal);
+
+// --- Render message in modal ---
+function addMessage(author, text, time, isAdmin=false) {
+  const msgDiv = document.createElement("div");
+  msgDiv.className = `flex ${isAdmin ? "justify-start" : "justify-end"}`;
+  msgDiv.innerHTML = `
+    <div class="max-w-xs md:max-w-md p-3 rounded-lg mb-2 ${isAdmin?"bg-indigo-50 text-left":"bg-indigo-600 text-white text-right"}">
+      <strong>${escapeHtml(author)}</strong><br/>
+      ${escapeHtml(text)}<br/>
+      <span class="text-xs text-gray-500">${escapeHtml(time)}</span>
+    </div>
+  `;
+  messagesContainer.appendChild(msgDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// --- Open conversation modal ---
+function openConversation(conversationId, userName, userEmail) {
+  currentConversationId = conversationId;
+  modalTitle.textContent = userName;
+  modalEmail.textContent = userEmail;
+
+  // Real-time listener
+  if (unsubscribeModalListener) unsubscribeModalListener();
+  unsubscribeModalListener = onSnapshot(doc(db, "message", conversationId), docSnap=>{
+    if(!docSnap.exists()) return;
+    messagesContainer.innerHTML = "";
+    const data = docSnap.data();
+    addMessage(data.name, data.message, data.time, data.name===admin.name);
+    (data.replies || []).sort((a,b)=>new Date(a.time)-new Date(b.time)).forEach(r=>{
+      addMessage(r.author, r.text, r.time, r.author===admin.name);
+    });
+    modalOverlay.classList.remove("hidden");
+    modalOverlay.classList.add("flex");
+    replyInput.focus();
+  });
+}
+
+// --- Load all user conversations ---
+function loadUsers() {
+  const q = query(collection(db, "message"), orderBy("time","desc"));
+  onSnapshot(q, snapshot=>{
+    userList.innerHTML = "";
+    if(snapshot.empty){
+      userList.innerHTML = `<p class="text-gray-500 p-2">No conversations yet.</p>`;
+      return;
+    }
+    snapshot.forEach(docSnap=>{
+      const data = docSnap.data();
+      const li = document.createElement("div");
+      li.className = "p-3 border-b cursor-pointer hover:bg-gray-50";
+      li.innerHTML = `
+        <strong>${escapeHtml(data.name)}</strong><br/>
+        <span class="text-gray-500 text-sm">${escapeHtml(data.message)}</span><br/>
+        <span class="text-gray-400 text-xs">${escapeHtml(data.time)}</span>
+      `;
+      li.addEventListener("click", ()=>openConversation(docSnap.id, data.name, data.userEmail));
+      userList.appendChild(li);
+    });
+  });
+}
+
+loadUsers();
+
+// --- Send reply ---
+replyForm.addEventListener("submit", async e=>{
+  e.preventDefault();
+  if(!currentConversationId) return;
+  const text = replyInput.value.trim();
+  if(!text) return;
+  const now = new Date().toLocaleString("en-PH", { timeZone:"Asia/Manila" }).replace(",", "");
+  const reply = { author:admin.name, text, status:"unread", time: now };
+  try {
+    await updateDoc(doc(db,"message",currentConversationId), { replies: arrayUnion(reply) });
+    replyInput.value = "";
+  } catch(err){
+    alert("Failed to send reply: "+err.message);
+  }
+});
+</script>
 </head>
-<body class="bg-gray-50 min-h-screen p-6 font-sans">
+<body class="bg-gray-50 p-4 min-h-screen">
 
-  <h1 class="text-3xl font-bold text-center mb-6">Admin Messages</h1>
+  <h1 class="text-3xl font-bold mb-4 text-center">Admin Messages</h1>
 
-  <div class="max-w-5xl mx-auto mb-6 p-4 border rounded bg-white flex justify-between items-center">
-    <div class="flex items-center space-x-3">
-      <div id="adminAvatar" class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg" 
-           style="background-color: #3498DB;">D</div>
-      <div>
-        <div><strong>Admin:</strong> Dzey Autajay</div>
-        <div class="text-sm text-gray-500">autajaydzey@gmail.com</div>
-      </div>
-    </div>
-  </div>
+  <!-- Users List -->
+  <div id="userList" class="max-w-4xl mx-auto border rounded bg-white overflow-y-auto max-h-[70vh]"></div>
 
-  <!-- Conversation List -->
-  <div class="max-w-5xl mx-auto">
-    <div id="conversationList" class="bg-white border rounded shadow divide-y divide-gray-200 max-h-[70vh] overflow-y-auto">
-      <!-- Conversations injected here -->
-    </div>
-    <p id="noConversations" class="text-center text-gray-500 mt-4 hidden">No conversations found.</p>
-  </div>
-
-  <!-- Modal Overlay -->
+  <!-- Modal -->
   <div id="modalOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-lg shadow-lg p-6 relative flex flex-col">
+    <div class="bg-white max-w-3xl w-full max-h-[90vh] overflow-y-auto rounded-lg shadow-lg p-6 relative flex flex-col">
       <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-900 text-xl font-bold">&times;</button>
-      <h2 class="text-2xl font-bold mb-1" id="modalUserName"></h2>
-      <p class="text-gray-500 mb-4" id="modalUserEmail"></p>
-
-      <div id="messagesContainer" class="flex-1 flex flex-col gap-3 overflow-y-auto mb-4 p-2 bg-gray-50 border rounded"></div>
-
-      <form id="replyForm" class="flex space-x-3">
-        <input id="replyInput" type="text" placeholder="Type your reply..." required
-               class="flex-grow border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-        <button type="submit"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-semibold transition duration-150">
-          Send
-        </button>
+      <h2 class="text-2xl font-bold" id="modalTitle"></h2>
+      <p class="text-gray-500 mb-4" id="modalEmail"></p>
+      <div id="messagesContainer" class="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-50 border rounded mb-4"></div>
+      <form id="replyForm" class="flex space-x-2">
+        <input id="replyInput" type="text" placeholder="Type your reply..." class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Send</button>
       </form>
     </div>
   </div>
 
-<script>
-  // --- Firebase config ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-    authDomain: "sklepaga-8790e.firebaseapp.com",
-    projectId: "sklepaga-8790e",
-    storageBucket: "sklepaga-8790e.firebasestorage.app",
-    messagingSenderId: "815409129057",
-    appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-    measurementId: "G-9GH707G2WZ"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-
-  // Admin info
-  const admin = {
-    name: "Dzey Autajay",
-    email: "autajaydzey@gmail.com",
-    uid: "yX0rfptwb2SKESPuPBzvfkv8gti2",
-    avatarColor: "#3498DB",
-    avatarLetter: "D"
-  };
-
-  const conversationList = document.getElementById("conversationList");
-  const noConversations = document.getElementById("noConversations");
-  const modalOverlay = document.getElementById("modalOverlay");
-  const closeModalBtn = document.getElementById("closeModalBtn");
-  const modalUserName = document.getElementById("modalUserName");
-  const modalUserEmail = document.getElementById("modalUserEmail");
-  const messagesContainer = document.getElementById("messagesContainer");
-  const replyForm = document.getElementById("replyForm");
-  const replyInput = document.getElementById("replyInput");
-
-  let currentConversationId = null;
-  let currentUser = null;
-  let unsubscribeModalListener = null;
-
-  function escapeHtml(text) {
-    if (!text) return "";
-    return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-               .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
-  }
-
-  closeModalBtn.addEventListener("click", () => {
-    modalOverlay.classList.add("hidden");
-    modalOverlay.classList.remove("flex");
-    currentConversationId = null;
-    currentUser = null;
-    if(unsubscribeModalListener) unsubscribeModalListener();
-  });
-
-  function addMessage(authorName, text, time, isAdmin=false) {
-    const msgDiv = document.createElement("div");
-    msgDiv.className = `p-2 rounded shadow-sm max-w-[75%] ${isAdmin?'self-end bg-indigo-100 text-right':'self-start bg-gray-100 text-left'}`;
-    msgDiv.innerHTML = `<strong>${escapeHtml(authorName)}</strong><br/>${escapeHtml(text)}<br/><span class="text-xs text-gray-500">${escapeHtml(time)}</span>`;
-    messagesContainer.appendChild(msgDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  }
-
-  function openConversation(conversationId, user) {
-    currentConversationId = conversationId;
-    currentUser = user;
-    modalUserName.textContent = user.name;
-    modalUserEmail.textContent = user.email;
-
-    if (unsubscribeModalListener) unsubscribeModalListener();
-    unsubscribeModalListener = db.collection("message").doc(conversationId).onSnapshot(docSnap => {
-      if (!docSnap.exists()) return;
-      const data = docSnap.data();
-      messagesContainer.innerHTML = "";
-
-      // Original message
-      addMessage(data.name, data.message, data.time, data.name===admin.name);
-
-      // Replies
-      (data.replies || []).sort((a,b)=>new Date(a.time)-new Date(b.time)).forEach(r=>{
-        addMessage(r.author, r.text, r.time, r.author===admin.name);
-      });
-
-      modalOverlay.classList.remove("hidden");
-      modalOverlay.classList.add("flex");
-      replyInput.focus();
-    });
-  }
-
-  replyForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!currentConversationId) return;
-    const text = replyInput.value.trim();
-    if(!text) return;
-
-    const now = new Date().toLocaleString("en-PH", {hour12:false}); // Philippine time
-    const newReply = {author: admin.name, text, time: now, status: "unread"};
-
-    try {
-      await db.collection("message").doc(currentConversationId).update({
-        replies: firebase.firestore.FieldValue.arrayUnion(newReply)
-      });
-      replyInput.value="";
-    } catch(err){
-      alert("Failed to send reply: "+err.message);
-    }
-  });
-
-  // Load conversations for admin
-  db.collection("message").onSnapshot(snapshot => {
-    conversationList.innerHTML="";
-    if(snapshot.empty){
-      noConversations.classList.remove("hidden");
-      return;
-    }
-    noConversations.classList.add("hidden");
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const userName = data.userName || data.name;
-      const userEmail = data.userEmail || data.email;
-      const convDiv = document.createElement("div");
-      convDiv.className="p-3 cursor-pointer hover:bg-gray-100 flex justify-between items-center";
-      convDiv.innerHTML = `
-        <div>
-          <strong>${escapeHtml(userName)}</strong><br/>
-          <span class="text-gray-500 text-sm">${escapeHtml(data.message)}</span>
-        </div>
-        <div class="text-gray-400 text-xs">${escapeHtml(data.time)}</div>
-      `;
-      convDiv.addEventListener("click", ()=>openConversation(doc.id, {name:userName,email:userEmail}));
-      conversationList.appendChild(convDiv);
-    });
-  });
-</script>
 </body>
 </html>
