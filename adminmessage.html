@@ -166,21 +166,24 @@
     line-height: 1.4;
     scrollbar-width: none;
   }
-  .chat-input-wrapper textarea::-webkit-scrollbar { display: none; }
-  .chat-input-wrapper button {
-    margin-left: 0.75rem;
-    height: 47px;
-    width: 47px;
-    border: none;
-    background: var(--sender-bg);
-    color: white;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
+  .chat-input-wrapper textarea {
+  box-sizing: border-box;
+  flex: 1;
+  padding: 10px 14px; /* Use px for precise control */
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  background: white;
+  outline: none;
+  resize: none;
+  min-height: 42px;
+  max-height: 30vh;
+  overflow-y: auto;
+  font-size: 1rem;
+  line-height: 22px; /* Set a specific line-height in px */
+  scrollbar-width: none;
+  height: 42px; /* Explicitly set the initial height */
+}
+
 
   /* Initial State & Mobile */
   .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
