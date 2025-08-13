@@ -422,15 +422,18 @@ function loadUsers() {
 
 // --- Auto-resize textarea ---
 replyInput.addEventListener("input", () => {
+    // Reset height to measure true content height
     replyInput.style.height = 'auto';
-    const scrollHeight = replyInput.scrollHeight;  // remove the padding subtraction
+
     const style = window.getComputedStyle(replyInput);
     const minHeight = parseFloat(style.minHeight);
     const maxHeight = parseFloat(style.maxHeight);
-    const newHeight = Math.min(Math.max(scrollHeight + 2, minHeight), maxHeight); // +2px buffer
+
+    // Use scrollHeight as the actual content height, but never go below minHeight
+    const newHeight = Math.min(Math.max(replyInput.scrollHeight, minHeight), maxHeight);
+
     replyInput.style.height = `${newHeight}px`;
 });
-
 
 replyForm.addEventListener("submit", async (e) => {
   e.preventDefault();
