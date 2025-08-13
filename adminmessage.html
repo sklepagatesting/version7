@@ -20,7 +20,6 @@
     overflow: hidden; /* Prevent body scrolling */
   }
 
-  /* FIX: Lock the app to the viewport to prevent "pass-through" scrolling on mobile */
   .chat-app {
     position: fixed;
     top: 0;
@@ -145,72 +144,76 @@
   .message-row.sender .message-time { align-self: flex-end; }
   .message-row.receiver .message-time { align-self: flex-start; }
 
-  /* FIX: Align items to center */
+  /* Chat input */
   .chat-input-wrapper {
-  border-top: 1px solid #ddd;
-  background: var(--body-bg);
-  padding: 0.75rem 1rem;
-  display: flex;
-  align-items: center; /* FIX: Align items to center */
-}
+    border-top: 1px solid #ddd;
+    background: var(--body-bg);
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: flex-end;
+  }
 
-/* FIX: Align items to center */
-.chat-input-wrapper textarea {
-  flex: 1;
-  border: 1px solid #ccc;
-  border-radius: 20px;
-  padding: 12px 16px;
-  resize: none;
-  min-height: 42px; /* Consistent with button height */
-  max-height: 200px;
-  line-height: 1.5;
-  box-sizing: border-box;
-}
+  .chat-input-wrapper textarea {
+    box-sizing: border-box;
+    flex: 1;
+    padding: 0.6rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    background: white;
+    outline: none;
+    resize: none;
+    min-height: 48px;
+    max-height: 30vh;
+    overflow-y: auto;
+    font-size: 1rem;
+    line-height: 1.4;
+    scrollbar-width: none;
+  }
+  .chat-input-wrapper textarea::-webkit-scrollbar { display: none; }
 
-.chat-input-wrapper textarea::-webkit-scrollbar { display: none; }
-.chat-input-wrapper button {
-  margin-left: 0.75rem;
-  height: 42px; /* FIX: Set height to match min-height of textarea */
-  width: 42px;
-  border: none;
-  background: var(--sender-bg);
-  color: white;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-/* Initial State & Mobile */
-.chat-app.no-chat-selected .chat-input-wrapper { display: none; }
-.chat-app.no-chat-selected .placeholder {
+  .chat-input-wrapper button {
+    margin-left: 0.75rem;
+    height: 48px;
+    width: 48px;
+    border: none;
+    background: var(--sender-bg);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.25rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100%;
-    color: #6b7280;
-    text-align: center;
-    font-size: 1.1rem;
-}
-.placeholder { display: none; }
-
-@media (max-width: 768px) {
-  .sidebar, .chat-panel {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
+    flex-shrink: 0;
   }
-  .sidebar { transform: translateX(0); }
-  .chat-panel { transform: translateX(100%); }
-  .chat-app.show-chat .sidebar { transform: translateX(-100%); }
-  .chat-app.show-chat .chat-panel { transform: translateX(0); }
-  .back-btn { display: inline-block; }
-}
+
+  /* Initial State & Mobile */
+  .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
+  .chat-app.no-chat-selected .placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #6b7280;
+      text-align: center;
+      font-size: 1.1rem;
+  }
+  .placeholder { display: none; }
+
+  @media (max-width: 768px) {
+    .sidebar, .chat-panel {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .sidebar { transform: translateX(0); }
+    .chat-panel { transform: translateX(100%); }
+    .chat-app.show-chat .sidebar { transform: translateX(-100%); }
+    .chat-app.show-chat .chat-panel { transform: translateX(0); }
+    .back-btn { display: inline-block; }
+  }
 </style>
 </head>
 <body>
@@ -349,8 +352,7 @@ function openConversation(conversationId, otherName) {
   document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
   
   replyInput.value = "";
-  // Reset the height to its min-height value
-  replyInput.style.height = `42px`;
+  replyInput.style.height = `48px`;
 
   if (unsubscribeConversationListener) unsubscribeConversationListener();
   unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
@@ -418,6 +420,18 @@ function loadUsers() {
   });
 }
 
+// --- Auto-resize textarea ---
+replyInput.addEventListener("input", () => {
+    replyInput.style.height = 'auto';
+    const style = window.getComputedStyle(replyInput);
+    const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    const scrollHeight = replyInput.scrollHeight - padding;
+    const minHeight = parseFloat(style.minHeight);
+    const maxHeight = parseFloat(style.maxHeight);
+    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+    replyInput.style.height = `${newHeight}px`;
+});
+
 replyForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!currentConversationId) return;
@@ -428,32 +442,19 @@ replyForm.addEventListener("submit", async (e) => {
   try {
     await updateDoc(doc(db, "message", currentConversationId), { replies: arrayUnion(reply) });
     replyInput.value = "";
-    // Reset the height to its min-height value after sending
-    replyInput.style.height = `42px`;
+    replyInput.style.height = "48px"; // reset to single line height
     scrollToBottom();
   } catch (err) {
-    alert("Failed to send reply: " + err.message);
+    console.error("Error sending message:", err);
   }
 });
 
-replyInput.addEventListener("input", () => {
-    // Reset height so scrollHeight is accurate
-    replyInput.style.height = 'auto';
-    
-    const style = window.getComputedStyle(replyInput);
-    const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-    const border = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
-    const scrollHeight = replyInput.scrollHeight - padding;
-    
-    // Apply height clamped to min-height and max-height
-    const minHeight = parseFloat(style.minHeight);
-    const maxHeight = parseFloat(style.maxHeight);
-    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
-    
-    replyInput.style.height = `${newHeight}px`;
+backBtn.addEventListener("click", () => {
+  chatApp.classList.remove("show-chat");
 });
 
-replyInput.addEventListener('keydown', (e) => {
-    // Only send on Enter if it's a physical keyboard (not a mobile "Enter" button)
-    // The keydown event on mobile virtual keyboards often has key.length > 1 or is 'Enter'
-    // but e
+// Initialize
+loadUsers();
+</script>
+</body>
+</html>
