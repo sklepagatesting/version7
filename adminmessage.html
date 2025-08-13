@@ -10,46 +10,45 @@
 </head>
 <body class="bg-gray-50 min-h-screen p-6 font-sans">
 
-  <h1 class="text-3xl font-bold text-center mb-6">Admin Messages</h1>
+<h1 class="text-3xl font-bold text-center mb-6">Admin Messages</h1>
 
-  <div class="max-w-5xl mx-auto mb-6 p-4 border rounded bg-white flex justify-between items-center">
-    <div class="flex items-center space-x-3">
-      <div id="adminAvatar" class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg" 
-           style="background-color: #3498DB;">D</div>
-      <div>
-        <div><strong>Admin:</strong> Dzey Autajay</div>
-        <div class="text-sm text-gray-500">autajaydzey@gmail.com</div>
-      </div>
+<div class="max-w-5xl mx-auto mb-6 p-4 border rounded bg-white flex justify-between items-center">
+  <div class="flex items-center space-x-3">
+    <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg" style="background-color: #3498DB;">D</div>
+    <div>
+      <div><strong>Admin:</strong> Dzey Autajay</div>
+      <div class="text-sm text-gray-500">autajaydzey@gmail.com</div>
     </div>
   </div>
+</div>
 
-  <!-- Conversation List -->
-  <div class="max-w-5xl mx-auto">
-    <div id="conversationList" class="bg-white border rounded shadow divide-y divide-gray-200 max-h-[70vh] overflow-y-auto">
-      <!-- Conversations injected here -->
-    </div>
-    <p id="noConversations" class="text-center text-gray-500 mt-4 hidden">No conversations found.</p>
+<!-- Conversation List -->
+<div class="max-w-5xl mx-auto">
+  <div id="conversationList" class="bg-white border rounded shadow divide-y divide-gray-200 max-h-[70vh] overflow-y-auto">
+    <!-- Conversations injected here -->
   </div>
+  <p id="noConversations" class="text-center text-gray-500 mt-4 hidden">No conversations found.</p>
+</div>
 
-  <!-- Modal Overlay -->
-  <div id="modalOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-lg shadow-lg p-6 relative flex flex-col">
-      <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-900 text-xl font-bold">&times;</button>
-      <h2 class="text-2xl font-bold mb-1" id="modalUserName"></h2>
-      <p class="text-gray-500 mb-4" id="modalUserEmail"></p>
+<!-- Modal Overlay -->
+<div id="modalOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+  <div class="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-lg shadow-lg p-6 relative flex flex-col">
+    <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-900 text-xl font-bold">&times;</button>
+    <h2 class="text-2xl font-bold mb-1" id="modalUserName"></h2>
+    <p class="text-gray-500 mb-4" id="modalUserEmail"></p>
 
-      <div id="messagesContainer" class="flex-1 flex flex-col gap-3 overflow-y-auto mb-4 p-2 bg-gray-50 border rounded"></div>
+    <div id="messagesContainer" class="flex-1 flex flex-col gap-3 overflow-y-auto mb-4 p-2 bg-gray-50 border rounded"></div>
 
-      <form id="replyForm" class="flex space-x-3">
-        <input id="replyInput" type="text" placeholder="Type your reply..." required
-               class="flex-grow border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-        <button type="submit"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-semibold transition duration-150">
-          Send
-        </button>
-      </form>
-    </div>
+    <form id="replyForm" class="flex space-x-3">
+      <input id="replyInput" type="text" placeholder="Type your reply..." required
+             class="flex-grow border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+      <button type="submit"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-semibold transition duration-150">
+        Send
+      </button>
+    </form>
   </div>
+</div>
 
 <script>
   // --- Firebase config ---
@@ -65,7 +64,6 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
-  // Admin info
   const admin = {
     name: "Dzey Autajay",
     email: "autajaydzey@gmail.com",
@@ -122,12 +120,12 @@
       const data = docSnap.data();
       messagesContainer.innerHTML = "";
 
-      // Original message
-      addMessage(data.name, data.message, data.time, data.name===admin.name);
+      // Sort all messages by time (original + replies)
+      let allMessages = [{author:data.name,text:data.message,time:data.time}].concat(data.replies||[]);
+      allMessages.sort((a,b)=>new Date(a.time)-new Date(b.time));
 
-      // Replies
-      (data.replies || []).sort((a,b)=>new Date(a.time)-new Date(b.time)).forEach(r=>{
-        addMessage(r.author, r.text, r.time, r.author===admin.name);
+      allMessages.forEach(msg=>{
+        addMessage(msg.author,msg.text,msg.time,msg.author===admin.name);
       });
 
       modalOverlay.classList.remove("hidden");
@@ -142,7 +140,7 @@
     const text = replyInput.value.trim();
     if(!text) return;
 
-    const now = new Date().toLocaleString("en-PH", {hour12:false}); // Philippine time
+    const now = new Date().toLocaleString("en-PH", {hour12:false});
     const newReply = {author: admin.name, text, time: now, status: "unread"};
 
     try {
@@ -155,7 +153,7 @@
     }
   });
 
-  // Load conversations for admin
+  // Load conversations grouped by user
   db.collection("message").onSnapshot(snapshot => {
     conversationList.innerHTML="";
     if(snapshot.empty){
@@ -164,20 +162,38 @@
     }
     noConversations.classList.add("hidden");
 
-    snapshot.forEach(doc => {
+    // Group by user email
+    const usersMap = {};
+    snapshot.forEach(doc=>{
       const data = doc.data();
-      const userName = data.userName || data.name;
-      const userEmail = data.userEmail || data.email;
+      const userKey = data.email; // use email as unique folder
+      if(!usersMap[userKey]) usersMap[userKey] = [];
+      usersMap[userKey].push({id:doc.id,...data});
+    });
+
+    // Render each user as a folder with latest message
+    Object.values(usersMap).forEach(convArr=>{
+      convArr.sort((a,b)=>{
+        const lastA = a.replies?.length?a.replies[a.replies.length-1].time:a.time;
+        const lastB = b.replies?.length?b.replies[b.replies.length-1].time:b.time;
+        return new Date(lastB)-new Date(lastA);
+      });
+      const latestConv = convArr[0];
+      const user = {name: latestConv.name, email: latestConv.email};
+
       const convDiv = document.createElement("div");
       convDiv.className="p-3 cursor-pointer hover:bg-gray-100 flex justify-between items-center";
+      const lastMessage = latestConv.replies?.length ? latestConv.replies[latestConv.replies.length-1].text : latestConv.message;
+      const lastTime = latestConv.replies?.length ? latestConv.replies[latestConv.replies.length-1].time : latestConv.time;
+
       convDiv.innerHTML = `
         <div>
-          <strong>${escapeHtml(userName)}</strong><br/>
-          <span class="text-gray-500 text-sm">${escapeHtml(data.message)}</span>
+          <strong>${escapeHtml(user.name)}</strong><br/>
+          <span class="text-gray-500 text-sm">${escapeHtml(lastMessage)}</span>
         </div>
-        <div class="text-gray-400 text-xs">${escapeHtml(data.time)}</div>
+        <div class="text-gray-400 text-xs">${escapeHtml(lastTime)}</div>
       `;
-      convDiv.addEventListener("click", ()=>openConversation(doc.id, {name:userName,email:userEmail}));
+      convDiv.addEventListener("click", ()=>openConversation(latestConv.id,user));
       conversationList.appendChild(convDiv);
     });
   });
