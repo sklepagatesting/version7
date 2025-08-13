@@ -2,13 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Google Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Authentication</title>
   <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="flex items-center justify-center min-h-screen bg-gray-100">
+
+  <div id="status" class="text-lg font-medium text-gray-700">
+    Signing you in...
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
     // --- Firebase Config ---
     const firebaseConfig = {
@@ -21,55 +27,33 @@
       measurementId: "G-9GH707G2WZ"
     };
 
+    // --- Init Firebase ---
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
-    const db = getFirestore(app);
 
-    async function login() {
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        const token = await user.getIdToken();
+    const statusDiv = document.getElementById("status");
 
-        // Save to Firestore
-        await setDoc(doc(db, "accounts", user.uid), {
-          uid: user.uid,
-          name: user.displayName || "",
-          email: user.email || "",
-          avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
-          avatarColor: "#3498DB",
-          idToken: token,
-          tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString()
-        });
-
-        // Save locally
-        localStorage.setItem("account", JSON.stringify({
-          uid: user.uid,
-          name: user.displayName || "",
-          email: user.email || "",
-          avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
-          avatarColor: "#3498DB",
-          idToken: token,
-          tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString()
-        }));
-
-        window.location.href = "index.html";
-      } catch (error) {
-        console.error("Login failed:", error);
-        alert("Login failed: " + error.message);
+    // Check if already signed in
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Already signed in
+        window.location.href = "messages.html";
+      } else {
+        // Not signed in, trigger popup immediately
+        signInWithPopup(auth, provider)
+          .then((result) => {
+            statusDiv.textContent = "Signed in successfully! Redirecting...";
+            setTimeout(() => {
+              window.location.href = "messages.html";
+            }, 1000);
+          })
+          .catch((error) => {
+            console.error(error);
+            statusDiv.textContent = "Sign-in failed: " + error.message;
+          });
       }
-    }
-
-    window.login = login;
+    });
   </script>
-</head>
-<body class="flex items-center justify-center min-h-screen bg-gray-100">
-  <div class="bg-white shadow-lg rounded-lg p-6 text-center">
-    <h1 class="text-2xl font-bold mb-4">Welcome</h1>
-    <button onclick="login()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-      Login with Google
-    </button>
-  </div>
 </body>
 </html>
