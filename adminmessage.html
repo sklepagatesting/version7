@@ -154,9 +154,8 @@
 }
 
 .chat-input-wrapper textarea {
-  box-sizing: border-box;
   flex: 1;
-  padding: 0.6rem 1rem;
+  padding: 0 16px;           /* horizontal padding only */
   border: 1px solid #ccc;
   border-radius: 20px;
   background: white;
@@ -167,7 +166,10 @@
   overflow-y: auto;
   font-size: 1rem;
   line-height: 1.4;
-  scrollbar-width: none;
+  box-sizing: border-box;
+  
+  display: flex;             /* use flex inside textarea wrapper */
+  align-items: center;       /* vertically center text */
 }
 
 .chat-input-wrapper button {
