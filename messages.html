@@ -5,15 +5,236 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Messages</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --sender-bg: #0084ff;
+      --receiver-bg: #e5e5ea;
+      --body-bg: #f5f5f5;
+    }
+    
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    .chat-app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    .left-panel {
+      width: 100%;
+      max-width: 380px;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      background-color: white;
+      transition: transform 0.3s ease-in-out;
+      transform: translateX(0);
+    }
+    
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--body-bg);
+      transition: transform 0.3s ease-in-out;
+      transform: translateX(0);
+      position: relative;
+    }
+    
+    /* Mobile view: left panel slides out, right panel slides in */
+    @media (max-width: 768px) {
+      .left-panel.active-thread {
+        transform: translateX(-100%);
+      }
+      .right-panel.active-thread {
+        transform: translateX(-100%);
+      }
+    }
+    
+    .header {
+      padding: 1rem;
+      border-bottom: 1px solid #ddd;
+      font-weight: 600;
+      background: white;
+    }
+    
+    .conversations-list {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .conversation-card {
+      padding: 1rem;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    
+    .conversation-card:hover {
+      background-color: #f9f9f9;
+    }
+    
+    .conversation-card.active {
+      background-color: #e5e5e5;
+    }
+    
+    .thread-header {
+      padding: 1rem;
+      background: white;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      background-color: white;
+      display: flex;
+      flex-direction: column;
+      word-break: break-word;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .message-row {
+      display: flex;
+      margin-bottom: 0.25rem;
+    }
+    .message-row.sender {
+      justify-content: flex-end;
+    }
+    .message-row.receiver {
+      justify-content: flex-start;
+    }
+    
+    .message-content {
+      display: flex;
+      flex-direction: column;
+      max-width: 80%;
+    }
+    
+    .chat-bubble {
+      padding: 10px 14px;
+      border-radius: 18px;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+    }
+    
+    .chat-bubble.sender {
+      background-color: var(--sender-bg);
+      color: white;
+    }
+    
+    .chat-bubble.receiver {
+      background-color: var(--receiver-bg);
+      color: black;
+    }
+    
+    .message-time {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-top: 4px;
+      padding: 0 6px;
+    }
+    
+    .message-row.sender .message-time {
+      align-self: flex-end;
+    }
+    
+    .message-row.receiver .message-time {
+      align-self: flex-start;
+    }
+    
+    .chat-input-wrapper {
+      border-top: 1px solid #ddd;
+      background: var(--body-bg);
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: flex-end;
+      gap: 0.75rem;
+    }
+    
+    .chat-input-wrapper textarea {
+      box-sizing: border-box;
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      background: white;
+      outline: none;
+      resize: none;
+      min-height: 42px;
+      max-height: 30vh;
+      overflow-y: auto;
+      font-size: 1rem;
+      line-height: 1.4rem;
+      height: 42px;
+    }
+    
+    .chat-input-wrapper textarea.context::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .chat-input-wrapper button {
+      height: auto;
+      min-height: 42px;
+      width: 42px;
+      padding: 0;
+      border: none;
+      background: var(--sender-bg);
+      color: white;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="chat-app">
+    <div id="leftPanel" class="left-panel">
+      <div class="header">
+        <h1 class="text-xl">Conversations</h1>
+      </div>
+      <div id="conversationList" class="conversations-list">
+        </div>
+    </div>
+
+    <div id="rightPanel" class="right-panel">
+      <div id="threadHeader" class="thread-header">
+        <button id="backBtn" class="md:hidden">&#8592;</button>
+        <h1 id="threadName" class="text-xl font-semibold">Select a conversation</h1>
+      </div>
+      <div id="messagesContainer" class="messages-container">
+        </div>
+      <form id="replyForm" class="chat-input-wrapper">
+        <textarea id="replyInput" placeholder="Type a message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="context"></textarea>
+        <button type="submit" aria-label="Send Message">&#10148;</button>
+      </form>
+    </div>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, collection, query, where, getDocs, doc, setDoc, onSnapshot, updateDoc, arrayUnion, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, setDoc, onSnapshot, query, where, updateDoc, arrayUnion, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
       authDomain: "sklepaga-8790e.firebaseapp.com",
       projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.firebasestorage.app",
+      storageBucket: "sklepaga-8790e.appspot.com",
       messagingSenderId: "815409129057",
       appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
       measurementId: "G-9GH707G2WZ"
@@ -22,182 +243,255 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    function escapeHtml(text) {
-      if (!text) return "";
-      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
-                 .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-                 .replace(/'/g, "&#39;");
-    }
-
     const account = JSON.parse(localStorage.getItem("account") || "{}");
     const userId = account.uid;
     const userName = account.name;
     const userEmail = account.email;
 
+    const admin = {
+      name: "Dzey Autajay",
+      email: "autajaydzey@gmail.com",
+      uid: "yX0rfptwb2SKESPuPBzvfkv8gti2"
+    };
+
     if (!userId || !userName || !userEmail) {
       window.location.href = "authentication.html";
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("userNameDisplay").textContent = userName;
-      document.getElementById("userEmailDisplay").textContent = userEmail;
-    });
-
     const conversationsCol = collection(db, "message");
-    const leftPanel = document.getElementById("conversationList");
-    const rightPanel = document.getElementById("conversationThread");
-    const replyInput = document.getElementById("replyInput");
+    const leftPanel = document.getElementById("leftPanel");
+    const rightPanel = document.getElementById("rightPanel");
+    const conversationList = document.getElementById("conversationList");
+    const messagesContainer = document.getElementById("messagesContainer");
     const replyForm = document.getElementById("replyForm");
+    const replyInput = document.getElementById("replyInput");
+    const threadHeader = document.getElementById("threadName");
     const backBtn = document.getElementById("backBtn");
 
     let currentConversationId = null;
+    let unsubscribeThread = null;
 
-    // --- Philippine Time helper ---
+    function escapeHtml(text) {
+      if (typeof text !== 'string') return "";
+      return text.replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#39;");
+    }
+
     function philippineTime() {
       const now = new Date();
       const utc = now.getTime() + now.getTimezoneOffset() * 60000;
       const phTime = new Date(utc + 8 * 3600000);
-      return phTime.toISOString().replace("T", " ").split(".")[0];
+      return phTime.toISOString();
     }
 
-    // --- Initialize default conversation with Admin ---
-    async function initDefaultConversation() {
-      const q = query(conversationsCol, where("e-mail", "==", userEmail), limit(1));
-      const snap = await getDocs(q);
-      if (snap.empty) {
-        const adminEmail = "autajaydzey@gmail.com";
-        const now = philippineTime();
-        const newDocRef = doc(conversationsCol);
-        await setDoc(newDocRef, {
-          name: "Admin",
-          "e-mail": adminEmail,
-          time: now,
-          message: "Hello, how can I help you?",
-          status: "sent",
-          replies: [],
-          messageid: newDocRef.id,
-          userId
-        });
+    function formatTimestamp(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+      const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+      if (messageDate.getTime() === today.getTime()) {
+        return timeString;
       }
+      if (messageDate.getTime() === yesterday.getTime()) {
+        return `Yesterday ${timeString}`;
+      }
+      return `${date.toLocaleDateString('en-US')} ${timeString}`;
     }
 
-    // --- Render conversation list ---
+    function scrollToBottom() {
+      requestAnimationFrame(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      });
+    }
+    
+    function addMessage(author, text, time) {
+      const isSender = author === userName;
+      const row = document.createElement("div");
+      row.className = "message-row " + (isSender ? "sender" : "receiver");
+
+      const content = document.createElement("div");
+      content.className = "message-content";
+
+      const bubble = document.createElement("div");
+      bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
+      bubble.textContent = escapeHtml(text);
+      
+      const timeEl = document.createElement("div");
+      timeEl.className = "message-time";
+      timeEl.textContent = formatTimestamp(time);
+
+      content.appendChild(bubble);
+      content.appendChild(timeEl);
+      
+      row.appendChild(content);
+      messagesContainer.appendChild(row);
+    }
+
+    async function initDefaultConversation() {
+        const q = query(conversationsCol, where("userEmail", "==", userEmail), limit(1));
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+            const now = philippineTime();
+            const newDocRef = doc(conversationsCol);
+            await setDoc(newDocRef, {
+                name: admin.name,
+                email: admin.email,
+                userId: userId,
+                userEmail: userEmail,
+                message: "Hello, how can I help you?",
+                time: now,
+                status: "sent",
+                replies: [],
+                messageid: newDocRef.id
+            });
+        }
+    }
+
     function renderConversations(snapshots) {
-      leftPanel.innerHTML = "";
+      conversationList.innerHTML = "";
       snapshots.forEach(docSnap => {
         const data = docSnap.data();
         const card = document.createElement("div");
-        card.className = `p-4 cursor-pointer border-b ${data.messageid===currentConversationId?'bg-indigo-50':''}`;
+        card.className = `conversation-card ${docSnap.id === currentConversationId ? 'active' : ''}`;
+        
+        let lastMessage = data.message;
+        let lastMessageTime = data.time;
+        if (data.replies && data.replies.length > 0) {
+            const lastReply = data.replies[data.replies.length - 1];
+            lastMessage = lastReply.text;
+            lastMessageTime = lastReply.time;
+        }
+
         card.innerHTML = `
           <strong>${escapeHtml(data.name)}</strong><br/>
-          <span class="text-gray-500 text-sm">${escapeHtml(data.message)}</span><br/>
-          <span class="text-gray-400 text-xs">${escapeHtml(data.time)}</span>
+          <span class="text-gray-500 text-sm">${escapeHtml(lastMessage)}</span><br/>
+          <span class="text-gray-400 text-xs">${escapeHtml(formatTimestamp(lastMessageTime))}</span>
         `;
-        card.addEventListener("click", () => openConversation(docSnap.id));
-        leftPanel.appendChild(card);
+        card.addEventListener("click", () => openConversation(docSnap.id, data.name));
+        conversationList.appendChild(card);
       });
     }
-
-    // --- Open conversation ---
-    function openConversation(id) {
+    
+    function openConversation(id, name) {
+      if (unsubscribeThread) {
+        unsubscribeThread();
+      }
       currentConversationId = id;
-      rightPanel.classList.remove("hidden");
-      backBtn.classList.remove("hidden");
+      threadHeader.textContent = name;
+      rightPanel.style.display = 'flex';
+      leftPanel.classList.add('active-thread');
+      rightPanel.classList.add('active-thread');
+      
+      // Highlight the selected card
+      Array.from(conversationList.children).forEach(card => card.classList.remove('active'));
+      const activeCard = Array.from(conversationList.children).find(c => c.onclick && c.onclick.toString().includes(id));
+      if (activeCard) activeCard.classList.add('active');
+
       loadConversation(id);
-      highlightConversation(id);
     }
-
-    function highlightConversation(id) {
-      Array.from(leftPanel.children).forEach(card => card.classList.remove("bg-indigo-50"));
-      const card = Array.from(leftPanel.children).find(c => c.onclick && c.onclick.toString().includes(id));
-      if (card) card.classList.add("bg-indigo-50");
-    }
-
+    
     backBtn.addEventListener("click", () => {
-      rightPanel.classList.add("hidden");
-      backBtn.classList.add("hidden");
+      currentConversationId = null;
+      if (unsubscribeThread) {
+        unsubscribeThread();
+      }
+      leftPanel.classList.remove('active-thread');
+      rightPanel.classList.remove('active-thread');
     });
 
-    // --- Load conversation thread ---
     function loadConversation(id) {
       const docRef = doc(conversationsCol, id);
-      onSnapshot(docRef, docSnap => {
+      unsubscribeThread = onSnapshot(docRef, docSnap => {
         if (!docSnap.exists()) return;
         const data = docSnap.data();
-        const container = document.getElementById("messagesContainer");
-        container.innerHTML = "";
+        
+        // This is a more efficient update mechanism
+        const newMessages = [];
+        if (data.message && data.time) {
+          newMessages.push({ author: data.name, text: data.message, time: data.time });
+        }
+        if (data.replies && Array.isArray(data.replies)) {
+          newMessages.push(...data.replies);
+        }
+        newMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
 
-        container.innerHTML += `
-          <div class="p-2 rounded shadow-sm mb-2 ${data.userId===userId?'self bg-indigo-100 text-right':'other bg-gray-100 text-left'}">
-            <strong>${escapeHtml(data.name)}</strong><br/>
-            ${escapeHtml(data.message)}<br/>
-            <span class="text-xs text-gray-500">${escapeHtml(data.time)}</span>
-          </div>
-        `;
+        const existingMessages = messagesContainer.querySelectorAll('.message-row');
 
-        (data.replies || []).sort((a,b)=> new Date(a.time)-new Date(b.time)).forEach(r=>{
-          container.innerHTML += `
-            <div class="p-2 rounded shadow-sm mb-2 ${r.author===userName?'self bg-indigo-100 text-right':'other bg-gray-100 text-left'}">
-              <strong>${escapeHtml(r.author)}</strong><br/>
-              ${escapeHtml(r.text)}<br/>
-              <span class="text-xs text-gray-500">${escapeHtml(r.time)}</span>
-            </div>
-          `;
-        });
-
-        container.scrollTop = container.scrollHeight;
+        // Only append new messages to avoid flickering
+        if (newMessages.length > existingMessages.length) {
+          // Clear all and re-render only if something is fundamentally wrong, otherwise just append
+          if (existingMessages.length === 0) {
+            messagesContainer.innerHTML = "";
+            newMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
+          } else {
+            const lastMessage = newMessages[newMessages.length - 1];
+            addMessage(lastMessage.author, lastMessage.text, lastMessage.time);
+          }
+        } else if (newMessages.length < existingMessages.length) {
+            // A message was removed, so re-render everything
+            messagesContainer.innerHTML = "";
+            newMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
+        }
+        
+        scrollToBottom();
       });
     }
 
-    // --- Send reply ---
-    replyForm.addEventListener("submit", async (e)=>{
+    replyForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = replyInput.value.trim();
-      if(!text || !currentConversationId) return;
+      if (!text || !currentConversationId) return;
+
       const now = philippineTime();
-      const newReply = {author:userName,text,status:"unread",time:now};
+      const newReply = { author: userName, text: text, status: "unread", time: now };
+      
       try {
-        const docRef = doc(conversationsCol,currentConversationId);
-        await updateDoc(docRef,{replies: arrayUnion(newReply)});
-        replyInput.value="";
-      } catch(err){
-        alert("Failed to send reply: "+err.message);
+        const docRef = doc(conversationsCol, currentConversationId);
+        await updateDoc(docRef, { replies: arrayUnion(newReply) });
+        replyInput.value = "";
+        replyInput.style.height = "42px";
+      } catch (err) {
+        alert("Failed to send reply: " + err.message);
+      }
+    });
+    
+    replyInput.addEventListener("input", () => {
+      replyInput.style.height = "auto";
+      replyInput.style.height = replyInput.scrollHeight + "px";
+    });
+    
+    replyInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        replyForm.requestSubmit();
       }
     });
 
-    // --- Load conversations realtime ---
     async function loadConversations() {
       await initDefaultConversation();
-      const q = query(conversationsCol, where("userId","==",userId), orderBy("time","desc"));
-      onSnapshot(q, snapshot=>{
+      const q = query(conversationsCol, where("userEmail", "==", userEmail), orderBy("time", "desc"));
+      onSnapshot(q, snapshot => {
         renderConversations(snapshot.docs);
+        if (snapshot.docs.length > 0 && !currentConversationId) {
+          // On first load, automatically open the most recent conversation
+          openConversation(snapshot.docs[0].id, snapshot.docs[0].data().name);
+        }
       });
     }
 
     loadConversations();
-
   </script>
-</head>
-<body class="bg-gray-50 min-h-screen p-4 flex flex-col md:flex-row">
-
-  <!-- Left panel -->
-  <div class="md:w-1/3 border-r border-gray-300 p-2 overflow-y-auto max-h-screen" id="conversationList"></div>
-
-  <!-- Right panel -->
-  <div class="md:w-2/3 p-2 flex flex-col hidden" id="conversationThread">
-    <button id="backBtn" class="mb-2 px-3 py-1 bg-gray-300 rounded hidden">Back</button>
-    <div id="messagesContainer" class="flex-grow overflow-y-auto p-2 space-y-2 bg-white border rounded mb-2 max-h-[80vh]"></div>
-    <form id="replyForm" class="flex space-x-2">
-      <input id="replyInput" type="text" placeholder="Type your reply..." class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-      <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Send</button>
-    </form>
-  </div>
-
-  <!-- User info display -->
-  <div class="absolute top-2 right-2 p-2 bg-white shadow rounded">
-    <div><strong>Name:</strong> <span id="userNameDisplay"></span></div>
-    <div><strong>Email:</strong> <span id="userEmailDisplay"></span></div>
-  </div>
-
 </body>
 </html>
