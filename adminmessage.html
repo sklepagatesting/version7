@@ -12,199 +12,44 @@
     --receiver-bg: #e5e5ea;
     --body-bg: #f5f5f5;
   }
-  html {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
-  body {
-    margin: 0;
-    overflow: hidden;
-  }
+  html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  body { margin: 0; overflow: hidden; }
 
-  .chat-app {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    overflow: hidden;
-  }
-
-  .sidebar {
-    width: 320px;
-    background: #fff;
-    border-right: 1px solid #ddd;
-    display: flex;
-    flex-direction: column;
-    transition: transform 0.3s ease;
-    z-index: 2;
-  }
-  .sidebar-header {
-    padding: 1rem;
-    border-bottom: 1px solid #ddd;
-    font-size: 1.25rem;
-    font-weight: bold;
-    flex-shrink: 0;
-  }
-  .conversation-list {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .conversation {
-    padding: 1rem;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
+  .chat-app { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; overflow: hidden; }
+  .sidebar { width: 320px; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: transform 0.3s ease; z-index: 2; }
+  .sidebar-header { padding: 1rem; border-bottom: 1px solid #ddd; font-size: 1.25rem; font-weight: bold; flex-shrink: 0; }
+  .conversation-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .conversation { padding: 1rem; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
   .conversation:hover { background: #f9f9f9; }
   .conversation.active { background-color: #eef5ff; }
 
-  .chat-panel {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: white;
-    transition: transform 0.3s ease;
-    z-index: 1;
-    min-width: 0;
-  }
+  .chat-panel { flex: 1; display: flex; flex-direction: column; background: white; transition: transform 0.3s ease; z-index: 1; min-width: 0; }
+  .chat-header { padding: 1rem; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; flex-shrink: 0; font-weight: 600; }
+  .back-btn { display: none; margin-right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
 
-  .chat-header {
-    padding: 1rem;
-    background: #fff;
-    border-bottom: 1px solid #ddd;
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    font-weight: 600;
-  }
-
-  .back-btn {
-    display: none;
-    margin-right: 1rem;
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-  }
-
-  .messages {
-    flex: 1;
-    min-height: 0;
-    padding: 1rem;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    -webkit-overflow-scrolling: touch;
-    word-break: break-word;
-    background-color: white;
-  }
-
-  .message-row {
-    display: flex;
-    margin-bottom: 0.25rem;
-  }
+  .messages { flex: 1; min-height: 0; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; word-break: break-word; background-color: white; }
+  .message-row { display: flex; margin-bottom: 0.25rem; }
   .message-row.sender { justify-content: flex-end; }
   .message-row.receiver { justify-content: flex-start; }
-
-  .message-content {
-      display: flex;
-      flex-direction: column;
-      max-width: 80%;
-  }
-
-  .chat-bubble {
-    padding: 10px 14px;
-    border-radius: 18px;
-    word-wrap: break-word;
-    white-space: pre-wrap;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.05);
-  }
-  .chat-bubble.sender {
-    background-color: var(--sender-bg);
-    color: white;
-  }
-  .chat-bubble.receiver {
-    background-color: var(--receiver-bg);
-    color: black;
-  }
-
-  .message-time {
-      font-size: 0.75rem;
-      color: #6b7280;
-      margin-top: 4px;
-      padding: 0 6px;
-  }
+  .message-content { display: flex; flex-direction: column; max-width: 80%; }
+  .chat-bubble { padding: 10px 14px; border-radius: 18px; word-wrap: break-word; white-space: pre-wrap; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
+  .chat-bubble.sender { background-color: var(--sender-bg); color: white; }
+  .chat-bubble.receiver { background-color: var(--receiver-bg); color: black; }
+  .message-time { font-size: 0.75rem; color: #6b7280; margin-top: 4px; padding: 0 6px; }
   .message-row.sender .message-time { align-self: flex-end; }
   .message-row.receiver .message-time { align-self: flex-start; }
 
-  .chat-input-wrapper {
-    border-top: 1px solid #ddd;
-    background: var(--body-bg);
-    padding: 0.75rem 1rem;
-    display: flex;
-    align-items: flex-end;
-    gap: 0.75rem;
-  }
-
-  .chat-input-wrapper textarea {
-    box-sizing: border-box;
-    flex: 1;
-    padding: 10px 14px;
-    border: 1px solid #ccc;
-    border-radius: 20px;
-    background: white;
-    outline: none;
-    resize: none;
-    min-height: 42px;
-    max-height: 30vh;
-    overflow-y: auto;
-    font-size: 1rem;
-    line-height: 1.4rem;
-    height: 42px;
-  }
-
-  .chat-input-wrapper textarea.context::-webkit-scrollbar {
-    display: none;
-  }
-
-  .chat-input-wrapper button {
-    height: auto;
-    min-height: 42px;
-    padding: 0 12px;
-    border: none;
-    background: var(--sender-bg);
-    color: white;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1.25rem;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-  }
+  .chat-input-wrapper { border-top: 1px solid #ddd; background: var(--body-bg); padding: 0.75rem 1rem; display: flex; align-items: flex-end; gap: 0.75rem; }
+  .chat-input-wrapper textarea { box-sizing: border-box; flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 20px; background: white; outline: none; resize: none; min-height: 42px; max-height: 30vh; overflow-y: auto; font-size: 1rem; line-height: 1.4rem; height: 42px; }
+  .chat-input-wrapper textarea.context::-webkit-scrollbar { display: none; }
+  .chat-input-wrapper button { height: auto; min-height: 42px; padding: 0 12px; border: none; background: var(--sender-bg); color: white; border-radius: 50%; cursor: pointer; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; }
 
   .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
-  .chat-app.no-chat-selected .placeholder {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: #6b7280;
-      text-align: center;
-      font-size: 1.1rem;
-  }
+  .chat-app.no-chat-selected .placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #6b7280; text-align: center; font-size: 1.1rem; }
   .placeholder { display: none; }
 
   @media (max-width: 768px) {
-    .sidebar, .chat-panel {
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
+    .sidebar, .chat-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
     .sidebar { transform: translateX(0); }
     .chat-panel { transform: translateX(100%); }
     .chat-app.show-chat .sidebar { transform: translateX(-100%); }
@@ -272,13 +117,8 @@ const backBtn = document.getElementById("backBtn");
 let currentConversationId = null;
 let unsubscribeConversationListener = null;
 
-function escapeHtml(text) {
-  if (typeof text !== 'string') return "";
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
-             .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-             .replace(/'/g, "&#39;");
-}
-
+// Helpers
+function escapeHtml(text) { if (typeof text !== 'string') return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 function formatTimestamp(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -299,7 +139,6 @@ function formatTimestamp(dateString) {
     }
     return `${date.toLocaleDateString('en-US')} ${timeString}`;
 }
-
 function formatTimestampForList(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -317,47 +156,93 @@ function formatTimestampForList(dateString) {
     return date.toLocaleDateString('en-US');
 }
 
-function scrollToBottom() {
-    requestAnimationFrame(() => {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    });
-}
+function scrollToBottom() { requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }); }
+let lastMessageTime = null; // track previous message time
 
 function addMessage(author, text, time) {
   const isSender = author === admin.name;
   const row = document.createElement("div");
   row.className = "message-row " + (isSender ? "sender" : "receiver");
+
   const content = document.createElement("div");
   content.className = "message-content";
+
   const bubble = document.createElement("div");
   bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
   bubble.textContent = text;
-  const timeEl = document.createElement("div");
-  timeEl.className = "message-time";
-  timeEl.textContent = formatTimestamp(time);
-  content.appendChild(bubble);
-  content.appendChild(timeEl);
+
+  const messageDate = new Date(time);
+  let showTime = true;
+
+  if (lastMessageTime) {
+    const last = new Date(lastMessageTime);
+    if (
+      last.getFullYear() === messageDate.getFullYear() &&
+      last.getMonth() === messageDate.getMonth() &&
+      last.getDate() === messageDate.getDate() &&
+      last.getHours() === messageDate.getHours() &&
+      last.getMinutes() === messageDate.getMinutes()
+    ) {
+      showTime = false; // same minute, skip time
+    }
+  }
+
+  if (showTime) {
+    const timeEl = document.createElement("div");
+    timeEl.className = "message-time";
+    timeEl.textContent = formatTimestamp(time);
+    content.appendChild(timeEl);
+    lastMessageTime = time;
+  }
+
+  content.insertBefore(bubble, content.firstChild); // bubble before time
   row.appendChild(content);
   messagesContainer.appendChild(row);
 }
 
-// Prevent textarea scroll from bubbling to chat panel
+
+// Detect mobile
+const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+// Prevent textarea scroll from bubbling to body
 replyInput.addEventListener("wheel", (e) => {
   const atTop = replyInput.scrollTop === 0;
   const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
-  if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) e.stopPropagation();
+  if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
 });
-replyInput.addEventListener("touchstart", (e) => e.stopPropagation());
+replyInput.addEventListener("touchstart", e => e.stopPropagation());
+replyInput.addEventListener("touchmove", (e) => {
+  const atTop = replyInput.scrollTop === 0;
+  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
+  if ((e.touches[0].clientY > 0 && atTop) || (e.touches[0].clientY < 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
+});
 
+// Enter key behavior
+replyInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    if (!isMobile || e.ctrlKey) {
+      e.preventDefault();
+      replyForm.requestSubmit();
+    }
+  }
+});
+
+// Auto-resize textarea
+replyInput.addEventListener("input", () => {
+  replyInput.style.height = "42px";
+  replyInput.style.height = replyInput.scrollHeight + "px";
+  scrollToBottom();
+});
+
+// Open conversation
 function openConversation(conversationId, otherName) {
   currentConversationId = conversationId;
   chatTitle.textContent = escapeHtml(otherName);
   chatApp.classList.remove('no-chat-selected');
   document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
   document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
-  
   replyInput.value = "";
-  replyInput.style.height = "42px"; // initial min-height
+  replyInput.style.height = "42px";
 
   if (unsubscribeConversationListener) unsubscribeConversationListener();
   unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
@@ -374,6 +259,7 @@ function openConversation(conversationId, otherName) {
   if (window.innerWidth <= 768) chatApp.classList.add("show-chat");
 }
 
+// Load users
 function loadUsers() {
   const q = query(collection(db, "message"), orderBy("time","desc"));
   onSnapshot(q, snapshot => {
@@ -423,6 +309,7 @@ function loadUsers() {
   });
 }
 
+// Send reply
 replyForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!currentConversationId) return;
@@ -433,22 +320,14 @@ replyForm.addEventListener("submit", async (e) => {
   try {
     await updateDoc(doc(db,"message", currentConversationId), { replies: arrayUnion(reply) });
     replyInput.value = "";
-    replyInput.style.height = "42px"; // reset to min-height
+    replyInput.style.height = "42px";
     scrollToBottom();
   } catch (err) {
     alert("Failed to send reply: " + err.message);
   }
 });
 
-// AUTO RESIZE TEXTAREA
-replyInput.addEventListener("input", () => {
-  replyInput.style.height = "42px"; // reset to min-height
-  replyInput.style.height = replyInput.scrollHeight + "px";
-});
-
-backBtn.addEventListener("click", () => {
-  chatApp.classList.remove("show-chat");
-});
+backBtn.addEventListener("click", () => { chatApp.classList.remove("show-chat"); });
 
 loadUsers();
 </script>
