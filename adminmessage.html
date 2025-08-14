@@ -16,7 +16,7 @@
   body { margin: 0; overflow: hidden; }
 
   .chat-app { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; overflow: hidden; }
-  .sidebar { width: 320px; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: transform 0.3s ease; z-index: 2; }
+  .sidebar { width: 30%; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: transform 0.3s ease; z-index: 2; }
   .sidebar-header { padding: 1rem; border-bottom: 1px solid #ddd; font-size: 1.25rem; font-weight: bold; flex-shrink: 0; }
   .conversation-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .conversation { padding: 1rem; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
@@ -24,7 +24,7 @@
   .conversation.active { background-color: #eef5ff; }
 
   .chat-panel { flex: 1; display: flex; flex-direction: column; background: white; transition: transform 0.3s ease; z-index: 1; min-width: 0; }
-  .chat-header { padding: 1rem; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; flex-shrink: 0; font-weight: 600; }
+  .chat-header { padding: 1rem; background: #fff; border-bottom: 1px solid #ddd; font-size: 1.25rem; display: flex; align-items: center; flex-shrink: 0; font-weight: 600; }
   .back-btn { display: none; margin-right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
 
   .messages { flex: 1; min-height: 0; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; word-break: break-word; background-color: white; }
