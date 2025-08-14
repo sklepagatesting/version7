@@ -157,23 +157,49 @@ function formatTimestampForList(dateString) {
 }
 
 function scrollToBottom() { requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }); }
+let lastMessageTime = null; // track previous message time
+
 function addMessage(author, text, time) {
   const isSender = author === admin.name;
   const row = document.createElement("div");
   row.className = "message-row " + (isSender ? "sender" : "receiver");
+
   const content = document.createElement("div");
   content.className = "message-content";
+
   const bubble = document.createElement("div");
   bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
   bubble.textContent = text;
-  const timeEl = document.createElement("div");
-  timeEl.className = "message-time";
-  timeEl.textContent = formatTimestamp(time);
-  content.appendChild(bubble);
-  content.appendChild(timeEl);
+
+  const messageDate = new Date(time);
+  let showTime = true;
+
+  if (lastMessageTime) {
+    const last = new Date(lastMessageTime);
+    if (
+      last.getFullYear() === messageDate.getFullYear() &&
+      last.getMonth() === messageDate.getMonth() &&
+      last.getDate() === messageDate.getDate() &&
+      last.getHours() === messageDate.getHours() &&
+      last.getMinutes() === messageDate.getMinutes()
+    ) {
+      showTime = false; // same minute, skip time
+    }
+  }
+
+  if (showTime) {
+    const timeEl = document.createElement("div");
+    timeEl.className = "message-time";
+    timeEl.textContent = formatTimestamp(time);
+    content.appendChild(timeEl);
+    lastMessageTime = time;
+  }
+
+  content.insertBefore(bubble, content.firstChild); // bubble before time
   row.appendChild(content);
   messagesContainer.appendChild(row);
 }
+
 
 // Detect mobile
 const isMobile = /Mobi|Android/i.test(navigator.userAgent);
