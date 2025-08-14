@@ -1,266 +1,346 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Messenger</title>
-<link rel="stylesheet" href="font/font.css">
-<style>
-:root {
-  --sender-bg: #0084ff;
-  --receiver-bg: #e5e5ea;
-  --body-bg: #f5f5f5;
-}
-html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-body { margin: 0; background-color: var(--body-bg); height: 100vh; }
-
-.chat-app {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-}
-.chat-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: white;
-  min-width: 0;
-}
-.chat-header {
-  padding: 1rem;
-  background: #fff;
-  border-bottom: 1px solid #ddd;
-  font-size: 1.25rem;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  font-weight: 600;
-}
-
-.messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem;
-  background-color: white;
-  display: flex;
-  flex-direction: column;
-  word-break: break-word;
-  -webkit-overflow-scrolling: touch;
-}
-
-.message-row { display: flex; margin-bottom: 0.25rem; }
-.message-row.sender { justify-content: flex-end; }
-.message-row.receiver { justify-content: flex-start; }
-.message-content { display: flex; flex-direction: column; max-width: 80%; }
-.chat-bubble { padding: 10px 14px; border-radius: 18px; word-wrap: break-word; white-space: pre-wrap; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
-.chat-bubble.sender { background-color: var(--sender-bg); color: white; }
-.chat-bubble.receiver { background-color: var(--receiver-bg); color: black; }
-.message-time { font-size: 0.75rem; color: #6b7280; margin-bottom: 4px; padding: 0 6px; }
-.message-row.sender .message-time { align-self: flex-end; }
-.message-row.receiver .message-time { align-self: flex-start; }
-
- .chat-input-wrapper { border-top: 1px solid #ddd; background: var(--body-bg); padding: 0.75rem 1rem; display: flex; align-items: flex-end; gap: 0.75rem; }
-      .chat-input-wrapper textarea { box-sizing: border-box; flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 20px; background: white; outline: none; resize: none; min-height: 42px; max-height: 30vh; overflow-y: auto; font-size: 1rem; line-height: 1.4rem; height: 42px; }
-      .chat-input-wrapper textarea.context::-webkit-scrollbar { display: none; }
-      .chat-input-wrapper button { height: auto; min-height: 42px; width: 42px; padding: 0; border: none; background: var(--sender-bg); color: white; border-radius: 50%; cursor: pointer; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Messenger</title>
+  <link rel="stylesheet" href="font/font.css">
+  <style>
+    :root {
+      --sender-bg: #0084ff;
+      --receiver-bg: #e5e5ea;
+      --body-bg: #f5f5f5;
+    }
+    html {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      margin: 0;
+      background-color: var(--body-bg);
+      height: 100vh;
+    }
+    
+    .chat-app {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      min-width: 0;
+    }
+    .chat-header {
+      padding: 1rem;
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      font-weight: 600;
+    }
+    
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      background-color: white;
+      display: flex;
+      flex-direction: column;
+      word-break: break-word;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .message-row {
+      display: flex;
+      margin-bottom: 0.25rem;
+    }
+    .message-row.sender {
+      justify-content: flex-end;
+    }
+    .message-row.receiver {
+      justify-content: flex-start;
+    }
+    .message-content {
+      display: flex;
+      flex-direction: column;
+      max-width: 80%;
+    }
+    .chat-bubble {
+      padding: 10px 14px;
+      border-radius: 18px;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+    }
+    .chat-bubble.sender {
+      background-color: var(--sender-bg);
+      color: white;
+    }
+    .chat-bubble.receiver {
+      background-color: var(--receiver-bg);
+      color: black;
+    }
+    .message-time {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-bottom: 4px;
+      padding: 0 6px;
+    }
+    .message-row.sender .message-time {
+      align-self: flex-end;
+    }
+    .message-row.receiver .message-time {
+      align-self: flex-start;
+    }
+    
+    .chat-input-wrapper {
+      border-top: 1px solid #ddd;
+      background: var(--body-bg);
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: flex-end;
+      gap: 0.75rem;
+    }
+    .chat-input-wrapper textarea {
+      box-sizing: border-box;
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      background: white;
+      outline: none;
+      resize: none;
+      min-height: 42px;
+      max-height: 30vh;
+      overflow-y: auto;
+      font-size: 1rem;
+      line-height: 1.4rem;
+      height: 42px;
+    }
+    .chat-input-wrapper textarea.context::-webkit-scrollbar {
+      display: none;
+    }
+    .chat-input-wrapper button {
+      height: auto;
+      min-height: 42px;
+      width: 42px;
+      padding: 0;
+      border: none;
+      background: var(--sender-bg);
+      color: white;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+  </style>
 </head>
 <body>
-
-<div class="chat-app">
-  <div class="chat-panel">
-    <div class="chat-header">
-      <span id="chatHeaderName">Loading...</span>
-    </div>
-    <div class="messages" id="messagesContainer"></div>
-    <form id="replyForm" class="chat-input-wrapper">
-      <textarea id="replyInput" placeholder="Type a message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="context"></textarea>
-      <button type="submit" aria-label="Send Message">&#10148;</button>
-    </form>
-  </div>
-</div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, onSnapshot, query, where, limit, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-  authDomain: "sklepaga-8790e.firebaseapp.com",
-  projectId: "sklepaga-8790e",
-  storageBucket: "sklepaga-8790e.appspot.com",
-  messagingSenderId: "815409129057",
-  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-  measurementId: "G-9GH707G2WZ"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const account = JSON.parse(localStorage.getItem("account") || "{}");
-const userId = account.uid;
-const userName = account.name;
-const userEmail = account.email;
-
-const admin = {
-  name: "Dzey Autajay",
-  email: "autajaydzey@gmail.com",
-  uid: "yX0rfptwb2SKESPuPBzvfkv8gti2"
-};
-
-if (!userId || !userName || !userEmail) {
-  window.location.href = "authentication.html";
-}
-
-const messagesContainer = document.getElementById("messagesContainer");
-const replyForm = document.getElementById("replyForm");
-const replyInput = document.getElementById("replyInput");
-const headerName = document.getElementById("chatHeaderName");
-
-function escapeHtml(text) {
-  if (typeof text !== 'string') return "";
-  return text.replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
-}
-function scrollToBottom() {
-  setTimeout(() => {
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  }, 50);
-}
-function formatTimestamp(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString;
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   
-  const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-
-  if (messageDate.getTime() === today.getTime()) {
-    return timeString;
-  }
-  if (messageDate.getTime() === yesterday.getTime()) {
-    return `Yesterday ${timeString}`;
-  }
-  return `${date.toLocaleDateString('en-US')} ${timeString}`;
-}
-
-let conversationId = null;
-
-function addMessage(author, text, time) {
-  const isSender = author === userName;
-  const row = document.createElement("div");
-  row.className = "message-row " + (isSender ? "sender" : "receiver");
-
-  const content = document.createElement("div");
-  content.className = "message-content";
-
-  const bubble = document.createElement("div");
-  bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
-  bubble.textContent = escapeHtml(text);
-  content.appendChild(bubble);
-
-  const timeEl = document.createElement("div");
-  timeEl.className = "message-time";
-  timeEl.textContent = formatTimestamp(time);
-  content.appendChild(timeEl);
-
-  row.appendChild(content);
-  messagesContainer.appendChild(row);
-}
-
-const messagesCol = collection(db, "message");
-let unsubscribe = null;
-
-async function initConversation() {
-  if (unsubscribe) unsubscribe();
-
-  const q = query(messagesCol, where("userEmail", "==", userEmail), limit(1));
-  unsubscribe = onSnapshot(q, async (snapshot) => {
-    messagesContainer.innerHTML = "";
-    headerName.textContent = admin.name;
-
-    if (snapshot.empty) {
-      const newDocRef = doc(messagesCol);
-      const now = new Date().toISOString();
-      const initialMessage = {
-        name: admin.name,
-        email: admin.email,
-        userId: userId,
-        userEmail: userEmail,
-        message: "Hello, how can I help you?",
-        time: now,
-        status: "sent",
-        replies: [],
-        messageid: newDocRef.id
-      };
-
-      await setDoc(newDocRef, initialMessage);
-      conversationId = newDocRef.id;
-      addMessage(admin.name, initialMessage.message, initialMessage.time);
-
-    } else {
-      const docSnap = snapshot.docs[0];
-      conversationId = docSnap.id;
-      const data = docSnap.data();
-
-      const allMessages = [];
-      if (data.message && data.time) {
-        allMessages.push({ author: data.name, text: data.message, time: data.time });
-      }
-      if (data.replies && Array.isArray(data.replies)) {
-        allMessages.push(...data.replies);
-      }
-      allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
+  <div class="chat-app">
+    <div class="chat-panel">
+      <div class="chat-header">
+        <span id="chatHeaderName">Loading...</span>
+      </div>
+      <div class="messages" id="messagesContainer"></div>
+      <form id="replyForm" class="chat-input-wrapper">
+        <textarea id="replyInput" placeholder="Type a message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="context"></textarea>
+        <button type="submit" aria-label="Send Message">&#10148;</button>
+      </form>
+    </div>
+  </div>
+  
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, doc, setDoc, onSnapshot, query, where, limit, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+      authDomain: "sklepaga-8790e.firebaseapp.com",
+      projectId: "sklepaga-8790e",
+      storageBucket: "sklepaga-8790e.appspot.com",
+      messagingSenderId: "815409129057",
+      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+      measurementId: "G-9GH707G2WZ"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    const account = JSON.parse(localStorage.getItem("account") || "{}");
+    const userId = account.uid;
+    const userName = account.name;
+    const userEmail = account.email;
+    
+    const admin = {
+      name: "Dzey Autajay",
+      email: "autajaydzey@gmail.com",
+      uid: "yX0rfptwb2SKESPuPBzvfkv8gti2"
+    };
+    
+    if (!userId || !userName || !userEmail) {
+      window.location.href = "authentication.html";
+    }
+    
+    const messagesContainer = document.getElementById("messagesContainer");
+    const replyForm = document.getElementById("replyForm");
+    const replyInput = document.getElementById("replyInput");
+    const headerName = document.getElementById("chatHeaderName");
+    
+    function escapeHtml(text) {
+      if (typeof text !== 'string') return "";
+      return text.replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#39;");
+    }
+    
+    function scrollToBottom() {
+      setTimeout(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }, 50);
+    }
+    
+    function formatTimestamp(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       
-      allMessages.forEach(msg => {
-        addMessage(msg.author, msg.text, msg.time);
+      const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    
+      if (messageDate.getTime() === today.getTime()) {
+        return timeString;
+      }
+      if (messageDate.getTime() === yesterday.getTime()) {
+        return `Yesterday ${timeString}`;
+      }
+      return `${date.toLocaleDateString('en-US')} ${timeString}`;
+    }
+    
+    let conversationId = null;
+    
+    function addMessage(author, text, time) {
+      const isSender = author === userName;
+      const row = document.createElement("div");
+      row.className = "message-row " + (isSender ? "sender" : "receiver");
+    
+      const content = document.createElement("div");
+      content.className = "message-content";
+    
+      const bubble = document.createElement("div");
+      bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
+      bubble.textContent = escapeHtml(text);
+      content.appendChild(bubble);
+    
+      const timeEl = document.createElement("div");
+      timeEl.className = "message-time";
+      timeEl.textContent = formatTimestamp(time);
+      content.appendChild(timeEl);
+    
+      row.appendChild(content);
+      messagesContainer.appendChild(row);
+    }
+    
+    const messagesCol = collection(db, "message");
+    let unsubscribe = null;
+    
+    async function initConversation() {
+      if (unsubscribe) unsubscribe();
+    
+      const q = query(messagesCol, where("userEmail", "==", userEmail), limit(1));
+      unsubscribe = onSnapshot(q, async (snapshot) => {
+        messagesContainer.innerHTML = "";
+        headerName.textContent = admin.name;
+    
+        if (snapshot.empty) {
+          const newDocRef = doc(messagesCol);
+          const now = new Date().toISOString();
+          const initialMessage = {
+            name: admin.name,
+            email: admin.email,
+            userId: userId,
+            userEmail: userEmail,
+            message: "Hello, how can I help you?",
+            time: now,
+            status: "sent",
+            replies: [],
+            messageid: newDocRef.id
+          };
+    
+          await setDoc(newDocRef, initialMessage);
+          conversationId = newDocRef.id;
+          addMessage(admin.name, initialMessage.message, initialMessage.time);
+    
+        } else {
+          const docSnap = snapshot.docs[0];
+          conversationId = docSnap.id;
+          const data = docSnap.data();
+    
+          const allMessages = [];
+          if (data.message && data.time) {
+            allMessages.push({ author: data.name, text: data.message, time: data.time });
+          }
+          if (data.replies && Array.isArray(data.replies)) {
+            allMessages.push(...data.replies);
+          }
+          allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
+    
+          allMessages.forEach(msg => {
+            addMessage(msg.author, msg.text, msg.time);
+          });
+        }
+        scrollToBottom();
       });
     }
-    scrollToBottom();
-  });
-}
-initConversation();
-
-replyForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!conversationId) return;
-  const text = replyInput.value.trim();
-  if (!text) return;
-
-  const now = new Date().toISOString();
-  const reply = { author: userName, text: text, status: "unread", time: now };
-
-  addMessage(userName, text, now);
-  scrollToBottom();
-
-  try {
-    await updateDoc(doc(db, "message", conversationId), { replies: arrayUnion(reply) });
-    replyInput.value = "";
-    replyInput.style.height = "42px";
-  } catch (err) {
-    alert("Failed to send reply: " + err.message);
-  }
-});
-
-replyInput.addEventListener("input", () => {
-  replyInput.style.height = "auto";
-  replyInput.style.height = replyInput.scrollHeight + "px";
-});
-replyInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    replyForm.requestSubmit();
-  }
-});
-</script>
+    
+    initConversation();
+    
+    replyForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!conversationId) return;
+      const text = replyInput.value.trim();
+      if (!text) return;
+    
+      const now = new Date().toISOString();
+      const reply = { author: userName, text: text, status: "unread", time: now };
+    
+      addMessage(userName, text, now);
+      scrollToBottom();
+    
+      try {
+        await updateDoc(doc(db, "message", conversationId), { replies: arrayUnion(reply) });
+        replyInput.value = "";
+        replyInput.style.height = "42px";
+      } catch (err) {
+        alert("Failed to send reply: " + err.message);
+      }
+    });
+    
+    replyInput.addEventListener("input", () => {
+      replyInput.style.height = "auto";
+      replyInput.style.height = replyInput.scrollHeight + "px";
+    });
+    
+    replyInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        replyForm.requestSubmit();
+      }
+    });
+  </script>
 </body>
 </html>
