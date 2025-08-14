@@ -159,10 +159,10 @@ const headerName = document.getElementById("chatHeaderName");
 function escapeHtml(text) {
   if (typeof text !== 'string') return "";
   return text.replace(/&/g, "&amp;")
-             .replace(/</g, "&lt;")
-             .replace(/>/g, "&gt;")
-             .replace(/"/g, "&quot;")
-             .replace(/'/g, "&#39;");
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
 }
 function scrollToBottom() {
   setTimeout(() => {
@@ -178,86 +178,77 @@ function formatTimestamp(dateString) {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
   const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  if (messageDate.getTime() === today.getTime()) return timeString;
-  if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;
+
+  if (messageDate.getTime() === today.getTime()) {
+    return timeString;
+  }
+  if (messageDate.getTime() === yesterday.getTime()) {
+    return `Yesterday ${timeString}`;
+  }
   return `${date.toLocaleDateString('en-US')} ${timeString}`;
 }
 
-let lastMessageTime = null;
+let conversationId = null;
 
-function addMessage(author, text, time, isAdmin = false) {
-  const isSender = !isAdmin;
+function addMessage(author, text, time) {
+  const isSender = author === userName;
   const row = document.createElement("div");
   row.className = "message-row " + (isSender ? "sender" : "receiver");
 
   const content = document.createElement("div");
   content.className = "message-content";
 
-  const messageDate = new Date(time);
-  let showTime = true;
-  if (lastMessageTime) {
-    const last = new Date(lastMessageTime);
-    if (
-      last.getFullYear() === messageDate.getFullYear() &&
-      last.getMonth() === messageDate.getMonth() &&
-      last.getDate() === messageDate.getDate() &&
-      last.getHours() === messageDate.getHours() &&
-      last.getMinutes() === messageDate.getMinutes()
-    ) {
-      showTime = false;
-    }
-  }
-
-  if (showTime) {
-    const timeEl = document.createElement("div");
-    timeEl.className = "message-time";
-    timeEl.textContent = formatTimestamp(time);
-    content.appendChild(timeEl);
-    lastMessageTime = time;
-  }
-
   const bubble = document.createElement("div");
   bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
   bubble.textContent = escapeHtml(text);
   content.appendChild(bubble);
+
+  const timeEl = document.createElement("div");
+  timeEl.className = "message-time";
+  timeEl.textContent = formatTimestamp(time);
+  content.appendChild(timeEl);
 
   row.appendChild(content);
   messagesContainer.appendChild(row);
 }
 
 const messagesCol = collection(db, "message");
-let conversationId = null;
+let unsubscribe = null;
 
 async function initConversation() {
+  if (unsubscribe) unsubscribe();
+
   const q = query(messagesCol, where("userEmail", "==", userEmail), limit(1));
-  onSnapshot(q, async (snapshot) => {
+  unsubscribe = onSnapshot(q, async (snapshot) => {
     messagesContainer.innerHTML = "";
-    lastMessageTime = null;
+    headerName.textContent = admin.name;
 
     if (snapshot.empty) {
-      const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
       const newDocRef = doc(messagesCol);
-      await setDoc(newDocRef, {
+      const now = new Date().toISOString();
+      const initialMessage = {
         name: admin.name,
         email: admin.email,
-        userId,
-        userEmail,
+        userId: userId,
+        userEmail: userEmail,
         message: "Hello, how can I help you?",
         time: now,
         status: "sent",
         replies: [],
         messageid: newDocRef.id
-      });
+      };
+
+      await setDoc(newDocRef, initialMessage);
       conversationId = newDocRef.id;
-      headerName.textContent = admin.name;
-      addMessage(admin.name, "Hello, how can I help you?", now, true);
+      addMessage(admin.name, initialMessage.message, initialMessage.time);
+
     } else {
       const docSnap = snapshot.docs[0];
       conversationId = docSnap.id;
       const data = docSnap.data();
 
-      headerName.textContent = admin.name;
       const allMessages = [];
       if (data.message && data.time) {
         allMessages.push({ author: data.name, text: data.message, time: data.time });
@@ -266,8 +257,9 @@ async function initConversation() {
         allMessages.push(...data.replies);
       }
       allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
+      
       allMessages.forEach(msg => {
-        addMessage(msg.author, msg.text, msg.time, msg.author === admin.name);
+        addMessage(msg.author, msg.text, msg.time);
       });
     }
     scrollToBottom();
@@ -281,10 +273,10 @@ replyForm.addEventListener("submit", async (e) => {
   const text = replyInput.value.trim();
   if (!text) return;
 
-  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
+  const now = new Date().toISOString();
   const reply = { author: userName, text: text, status: "unread", time: now };
 
-  addMessage(userName, text, now, false);
+  addMessage(userName, text, now);
   scrollToBottom();
 
   try {
