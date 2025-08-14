@@ -10,7 +10,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import {
   getFirestore, collection, doc, setDoc, onSnapshot,
-  query, where, limit, orderBy, addDoc, updateDoc, getDoc, getDocs
+  query, where, limit, orderBy, addDoc, updateDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 // --- Firebase config ---
@@ -42,12 +42,11 @@ if (!userId || !userName) {
   window.location.href = "authentication.html";
 }
 
-// --- Admin UID (use actual generated UID) ---
-const adminGeneratedUid = "yX0rfptwb2SKESPuPBzvfkv8gti2"; // replace with real admin UID
-
-let adminName = "Admin";
-let adminAvatarLetter = "A";
-let adminAvatarColor = "#3498DB";
+// --- Hardcoded Admin Account ---
+const adminGeneratedUid = "yX0rfptwb2SKESPuPBzvfkv8gti2";
+const adminName = "Dzey Autajay";
+const adminAvatarLetter = "D";
+const adminAvatarColor = "#3498DB";
 
 // --- DOM Elements ---
 const messagesContainer = document.getElementById("messagesContainer");
@@ -96,29 +95,9 @@ function addMessage(senderName, text, timestamp, isAdmin=false, avatarLetter="?"
 // --- Conversation variables ---
 let conversationId = null;
 
-// --- Fetch admin profile dynamically ---
-async function fetchAdminProfile() {
-  try {
-    const adminDocSnap = await getDoc(doc(db, "accounts", adminGeneratedUid));
-    if(adminDocSnap.exists()) {
-      const data = adminDocSnap.data();
-      adminName = data.name || "Admin";
-      adminAvatarLetter = data.avatarLetter || adminName[0].toUpperCase();
-      adminAvatarColor = data.avatarColor || "#3498DB";
-      console.log("Admin profile loaded:", data);
-    } else {
-      console.warn("Admin document not found, using defaults");
-    }
-  } catch(err) {
-    console.error("Error fetching admin profile:", err);
-    alert("Error fetching admin profile: " + err.message);
-  }
-}
-
 // --- Initialize / find conversation ---
 async function initConversation() {
   console.log("Initializing conversation for user:", userId);
-  await fetchAdminProfile();
 
   const convQuery = query(
     collection(db, "conversations"),
