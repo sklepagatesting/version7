@@ -35,20 +35,21 @@ const userEmail = account.email;
 const userAvatarLetter = account.avatarLetter || (userName ? userName[0].toUpperCase() : "?");
 const userAvatarColor = account.avatarColor || "#3498DB";
 
-const adminUid = "yX0rfptwb2SKESPuPBzvfkv8gti2";
-const adminName = "Admin";
-const adminAvatarLetter = "A";
-const adminAvatarColor = "#3498DB";
-
-if (!userId || !userName) {
-  window.location.href = "authentication.html";
-}
+// --- Admin UID (literally the 5-letter word "admin") ---
+const adminUid = "admin";
+let adminName = "Admin";
+let adminAvatarLetter = "A";
+let adminAvatarColor = "#3498DB";
 
 // --- DOM Elements ---
 const messagesContainer = document.getElementById("messagesContainer");
 const replyForm = document.getElementById("replyForm");
 const replyInput = document.getElementById("replyInput");
 const headerName = document.getElementById("chatHeaderName");
+
+if (!userId || !userName) {
+  window.location.href = "authentication.html";
+}
 
 // --- Escape HTML ---
 function escapeHtml(text) {
@@ -58,18 +59,18 @@ function escapeHtml(text) {
              .replace(/'/g, "&#39;");
 }
 
-// --- Render message with avatar ---
+// --- Render message ---
 function addMessage(senderName, text, timestamp, isAdmin=false, avatarLetter="?", avatarColor="#3498DB") {
   const msgDiv = document.createElement("div");
   msgDiv.className = `flex ${isAdmin ? "justify-start" : "justify-end"} items-end`;
-  
+
   const avatarHtml = `
     <div class="w-8 h-8 flex items-center justify-center rounded-full text-white font-bold mr-2"
          style="background-color: ${avatarColor}">
       ${escapeHtml(avatarLetter)}
     </div>
   `;
-  
+
   const messageHtml = `
     <div class="p-3 rounded-2xl mb-2 max-w-[70%] ${isAdmin ? "bg-indigo-50 text-left rounded-tl-none" : "bg-indigo-600 text-white text-right rounded-tr-none"}">
       <div class="font-semibold">${escapeHtml(senderName)}</div>
@@ -91,8 +92,25 @@ function addMessage(senderName, text, timestamp, isAdmin=false, avatarLetter="?"
 // --- Conversation variables ---
 let conversationId = null;
 
-// --- Initialize / find conversation with admin ---
+// --- Fetch admin profile dynamically ---
+async function fetchAdminProfile() {
+  try {
+    const adminDoc = await getDoc(doc(db, "users", adminUid));
+    if(adminDoc.exists()) {
+      const data = adminDoc.data();
+      adminName = data.name || "Admin";
+      adminAvatarLetter = data.avatarLetter || adminName[0].toUpperCase();
+      adminAvatarColor = data.avatarColor || "#3498DB";
+    }
+  } catch(err) {
+    console.warn("Failed to fetch admin profile, using defaults:", err);
+  }
+}
+
+// --- Initialize / find conversation ---
 async function initConversation() {
+  await fetchAdminProfile();
+
   const convQuery = query(
     collection(db, "conversations"),
     where("participants", "array-contains", userId),
@@ -103,6 +121,7 @@ async function initConversation() {
     messagesContainer.innerHTML = "";
 
     if(snapshot.empty){
+      // No conversation yet → create one
       const newConvRef = doc(collection(db, "conversations"));
       conversationId = newConvRef.id;
 
@@ -126,14 +145,14 @@ async function initConversation() {
       addMessage(adminName, adminMsg.text, adminMsg.timestamp, true, adminAvatarLetter, adminAvatarColor);
 
     } else {
+      // Existing conversation
       const docSnap = snapshot.docs[0];
       conversationId = docSnap.id;
       headerName.textContent = adminName;
 
-      // Listen to messages subcollection
       const msgColRef = collection(db, "conversations", conversationId, "messages");
       const msgQuery = query(msgColRef, orderBy("timestamp", "asc"));
-      onSnapshot(msgQuery, async msgSnapshot => {
+      onSnapshot(msgQuery, msgSnapshot => {
         messagesContainer.innerHTML = "";
         for(const msgDoc of msgSnapshot.docs){
           const msgData = msgDoc.data();
