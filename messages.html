@@ -1,313 +1,82 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Messenger</title>
-<style>
-:root {
-  --sender-bg: #0084ff;
-  --receiver-bg: #e5e5ea;
-  --body-bg: #f5f5f5;
-}
-html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-body { margin: 0; background-color: var(--body-bg); }
-
-.chat-app { 
-  position: fixed; 
-  inset: 0; 
-  display: flex; 
-  flex-direction: column; 
-}
-.chat-panel { 
-  flex: 1; 
-  display: flex; 
-  flex-direction: column; 
-  background: white; 
-  min-width: 0; 
-}
-.chat-header { 
-  padding: 1rem; 
-  background: #fff; 
-  border-bottom: 1px solid #ddd; 
-  font-size: 1.25rem; 
-  display: flex; 
-  align-items: center; 
-  flex-shrink: 0; 
-  font-weight: 600; 
-}
-
-.messages { 
-  flex: 1; 
-  min-height: 0; 
-  padding: 1rem; 
-  overflow-y: auto; 
-  display: flex; 
-  flex-direction: column; 
-  -webkit-overflow-scrolling: touch; 
-  word-break: break-word; 
-  background-color: white; 
-}
-.message-row { display: flex; margin-bottom: 0.25rem; }
-.message-row.sender { justify-content: flex-end; }
-.message-row.receiver { justify-content: flex-start; }
-.message-content { display: flex; flex-direction: column; max-width: 80%; }
-.chat-bubble { padding: 10px 14px; border-radius: 18px; word-wrap: break-word; white-space: pre-wrap; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
-.chat-bubble.sender { background-color: var(--sender-bg); color: white; }
-.chat-bubble.receiver { background-color: var(--receiver-bg); color: black; }
-.message-time { font-size: 0.75rem; color: #6b7280; margin-bottom: 4px; padding: 0 6px; }
-.message-row.sender .message-time { align-self: flex-end; }
-.message-row.receiver .message-time { align-self: flex-start; }
-
-.chat-input-wrapper {
-  flex-shrink: 0;
-  border-top: 1px solid #ddd;
-  background: var(--body-bg);
-  padding: 0.75rem 1rem;
-  display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
-}
-
-.chat-input-wrapper textarea { 
-  box-sizing: border-box; 
-  flex: 1; 
-  padding: 10px 14px; 
-  border: 1px solid #ccc; 
-  border-radius: 20px; 
-  background: white; 
-  outline: none; 
-  resize: none; 
-  min-height: 42px; 
-  max-height: 30vh; 
-  overflow-y: auto; 
-  font-size: 1rem; 
-  line-height: 1.4rem; 
-  height: 42px; 
-}
-.chat-input-wrapper textarea::-webkit-scrollbar { display: none; }
-.chat-input-wrapper button { 
-  height: auto; 
-  min-height: 42px; 
-  width: 42px; 
-  border: none; 
-  background: var(--sender-bg); 
-  color: white; 
-  border-radius: 50%; 
-  cursor: pointer; 
-  font-size: 1.25rem; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  flex-shrink: 0; 
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Messenger</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
-<body>
+<body class="h-screen bg-gray-100 flex flex-col">
 
-<div class="chat-app">
-  <div class="chat-panel">
-    <div class="chat-header">
-      <span id="chatHeaderName">Loading...</span>
+  <!-- Chat wrapper -->
+  <div class="flex flex-col flex-1 max-w-4xl w-full mx-auto bg-white shadow-lg">
+
+    <!-- Messages -->
+    <div id="messagesContainer" class="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
+      <!-- Messages injected here -->
     </div>
-    <div class="messages" id="messagesContainer"></div>
-    <form id="replyForm" class="chat-input-wrapper">
-      <textarea id="replyInput" placeholder="Type a message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
-      <button type="submit" aria-label="Send Message">&#10148;</button>
-    </form>
+
+    <!-- Chat input -->
+    <div class="chat-input-wrapper flex-shrink-0 border-t border-gray-200 bg-white p-3 flex items-end gap-2">
+      <textarea id="replyInput" rows="1" class="flex-1 resize-none border border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500" placeholder="Type a message..."></textarea>
+      <button id="sendButton" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Send</button>
+    </div>
   </div>
-</div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, onSnapshot, query, where, limit, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+  <script>
+    // Your Firebase config from your original file
+    const firebaseConfig = {
+      apiKey: "AIzaSyBEdQd16opvVRwIaxFOHZzgwMX_i32tuP8",
+      authDomain: "messenger-83e9b.firebaseapp.com",
+      projectId: "messenger-83e9b",
+      storageBucket: "messenger-83e9b.appspot.com",
+      messagingSenderId: "215762388926",
+      appId: "1:215762388926:web:fe7950eddb6d62141bb8b3"
+    };
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-  authDomain: "sklepaga-8790e.firebaseapp.com",
-  projectId: "sklepaga-8790e",
-  storageBucket: "sklepaga-8790e.appspot.com",
-  messagingSenderId: "815409129057",
-  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-  measurementId: "G-9GH707G2WZ"
-};
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+    const messagesContainer = document.getElementById('messagesContainer');
+    const replyInput = document.getElementById('replyInput');
+    const sendButton = document.getElementById('sendButton');
 
-const account = JSON.parse(localStorage.getItem("account") || "{}");
-const userId = account.uid;
-const userName = account.name;
-const userEmail = account.email;
+    // Auto-resize textarea
+    replyInput.addEventListener('input', () => {
+      replyInput.style.height = 'auto';
+      replyInput.style.height = replyInput.scrollHeight + 'px';
+    });
 
-const admin = {
-  name: "Dzey Autajay",
-  email: "autajaydzey@gmail.com",
-  uid: "yX0rfptwb2SKESPuPBzvfkv8gti2"
-};
-
-if (!userId || !userName || !userEmail) {
-  window.location.href = "authentication.html";
-}
-
-const messagesContainer = document.getElementById("messagesContainer");
-const replyForm = document.getElementById("replyForm");
-const replyInput = document.getElementById("replyInput");
-const headerName = document.getElementById("chatHeaderName");
-
-function escapeHtml(text) { 
-  if (typeof text !== 'string') return ""; 
-  return text.replace(/&/g, "&amp;")
-             .replace(/</g, "&lt;")
-             .replace(/>/g, "&gt;")
-             .replace(/"/g, "&quot;")
-             .replace(/'/g, "&#39;"); 
-}
-function scrollToBottom() { 
-  requestAnimationFrame(() => { 
-    messagesContainer.scrollTop = messagesContainer.scrollHeight; 
-  }); 
-}
-function formatTimestamp(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString;
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  if (messageDate.getTime() === today.getTime()) return timeString;
-  if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;
-  return `${date.toLocaleDateString('en-US')} ${timeString}`;
-}
-
-let lastMessageTime = null;
-
-function addMessage(author, text, time, isAdmin = false) {
-  const isSender = !isAdmin;
-  const row = document.createElement("div");
-  row.className = "message-row " + (isSender ? "sender" : "receiver");
-
-  const content = document.createElement("div");
-  content.className = "message-content";
-
-  const messageDate = new Date(time);
-  let showTime = true;
-  if (lastMessageTime) {
-    const last = new Date(lastMessageTime);
-    if (
-      last.getFullYear() === messageDate.getFullYear() &&
-      last.getMonth() === messageDate.getMonth() &&
-      last.getDate() === messageDate.getDate() &&
-      last.getHours() === messageDate.getHours() &&
-      last.getMinutes() === messageDate.getMinutes()
-    ) {
-      showTime = false;
-    }
-  }
-
-  if (showTime) {
-    const timeEl = document.createElement("div");
-    timeEl.className = "message-time";
-    timeEl.textContent = formatTimestamp(time);
-    content.appendChild(timeEl);
-    lastMessageTime = time;
-  }
-
-  const bubble = document.createElement("div");
-  bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
-  bubble.textContent = escapeHtml(text);
-  content.appendChild(bubble);
-
-  row.appendChild(content);
-  messagesContainer.appendChild(row);
-}
-
-const messagesCol = collection(db, "message");
-let conversationId = null;
-
-async function initConversation() {
-  const q = query(messagesCol, where("userEmail", "==", userEmail), limit(1));
-  
-  onSnapshot(q, async (snapshot) => {
-    messagesContainer.innerHTML = "";
-    lastMessageTime = null;
-
-    if (snapshot.empty) {
-      const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
-      const newDocRef = doc(messagesCol);
-      await setDoc(newDocRef, {
-        name: admin.name,
-        email: admin.email,
-        userId,
-        userEmail,
-        message: "Hello, how can I help you?",
-        time: now,
-        status: "sent",
-        replies: [],
-        messageid: newDocRef.id
+    // Load messages
+    db.collection("messages").orderBy("time", "asc").onSnapshot(snapshot => {
+      messagesContainer.innerHTML = '';
+      snapshot.forEach(doc => {
+        const msg = doc.data();
+        const msgDiv = document.createElement('div');
+        msgDiv.className = "bg-gray-100 p-2 rounded-lg";
+        msgDiv.innerHTML = `
+          <div>${msg.message}</div>
+          <div class="text-xs text-gray-500">${msg.time}</div>
+        `;
+        messagesContainer.appendChild(msgDiv);
       });
-      conversationId = newDocRef.id;
-      headerName.textContent = admin.name;
-      addMessage(admin.name, "Hello, how can I help you?", now, true);
-    } else {
-      const docSnap = snapshot.docs[0];
-      conversationId = docSnap.id;
-      const data = docSnap.data();
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    });
 
-      headerName.textContent = admin.name;
-      const allMessages = [];
-      if (data.message && data.time) {
-        allMessages.push({ author: data.name, text: data.message, time: data.time });
+    // Send message
+    sendButton.addEventListener('click', () => {
+      const text = replyInput.value.trim();
+      if (text) {
+        db.collection("messages").add({
+          message: text,
+          time: new Date().toLocaleTimeString()
+        });
+        replyInput.value = '';
+        replyInput.style.height = 'auto';
       }
-      if (data.replies && Array.isArray(data.replies)) {
-        allMessages.push(...data.replies);
-      }
-      allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-      allMessages.forEach(msg => {
-        addMessage(msg.author, msg.text, msg.time, msg.author === admin.name);
-      });
-    }
-    scrollToBottom();
-  });
-}
-
-initConversation();
-
-replyForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!conversationId) return;
-  const text = replyInput.value.trim();
-  if (!text) return;
-
-  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
-  const reply = { author: userName, text: text, status: "unread", time: now };
-
-  addMessage(userName, text, now, false);
-  scrollToBottom();
-
-  try {
-    await updateDoc(doc(db, "message", conversationId), { replies: arrayUnion(reply) });
-    replyInput.value = "";
-    replyInput.style.height = "42px";
-  } catch (err) {
-    alert("Failed to send reply: " + err.message);
-  }
-});
-
-replyInput.addEventListener("input", () => {
-  replyInput.style.height = "auto";
-  replyInput.style.height = Math.max(replyInput.scrollHeight, 42) + "px";
-});
-
-replyInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    replyForm.requestSubmit();
-  }
-});
-</script>
+    });
+  </script>
 </body>
 </html>
