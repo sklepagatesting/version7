@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Messenger</title>
+<link rel="stylesheet" href="font/font.css">
 <style>
 :root {
   --sender-bg: #0084ff;
@@ -114,7 +115,7 @@ body { margin: 0; background-color: var(--body-bg); }
     </div>
     <div class="messages" id="messagesContainer"></div>
     <form id="replyForm" class="chat-input-wrapper">
-      <textarea id="replyInput" placeholder="Type a message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+      <textarea id="replyInput" placeholder="Type a message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class"context"></textarea>
       <button type="submit" aria-label="Send Message">&#10148;</button>
     </form>
   </div>
