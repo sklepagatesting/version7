@@ -88,7 +88,7 @@
     .message-time {
       font-size: 0.75rem;
       color: #6b7280;
-      margin-bottom: 4px;
+      margin-top: 4px; /* Changed from margin-bottom to margin-top for better spacing */
       padding: 0 6px;
     }
     .message-row.sender .message-time {
@@ -205,15 +205,17 @@
     }
     
     function scrollToBottom() {
-      setTimeout(() => {
+      // Use requestAnimationFrame for smoother scrolling
+      requestAnimationFrame(() => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      }, 50);
+      });
     }
     
     function formatTimestamp(dateString) {
       if (!dateString) return '';
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return dateString;
+      
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const yesterday = new Date(today);
@@ -244,13 +246,15 @@
       const bubble = document.createElement("div");
       bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
       bubble.textContent = escapeHtml(text);
-      content.appendChild(bubble);
-    
+      
       const timeEl = document.createElement("div");
       timeEl.className = "message-time";
       timeEl.textContent = formatTimestamp(time);
-      content.appendChild(timeEl);
     
+      // Appending elements in correct order
+      content.appendChild(bubble);
+      content.appendChild(timeEl);
+      
       row.appendChild(content);
       messagesContainer.appendChild(row);
     }
@@ -263,8 +267,11 @@
     
       const q = query(messagesCol, where("userEmail", "==", userEmail), limit(1));
       unsubscribe = onSnapshot(q, async (snapshot) => {
-        messagesContainer.innerHTML = "";
-        headerName.textContent = admin.name;
+        // Clear messages and set header name only on initial load or if snapshot is empty
+        if (messagesContainer.innerHTML === "" || snapshot.empty) {
+          messagesContainer.innerHTML = "";
+          headerName.textContent = admin.name;
+        }
     
         if (snapshot.empty) {
           const newDocRef = doc(messagesCol);
@@ -283,6 +290,7 @@
     
           await setDoc(newDocRef, initialMessage);
           conversationId = newDocRef.id;
+          // Render only the new initial message
           addMessage(admin.name, initialMessage.message, initialMessage.time);
     
         } else {
@@ -298,7 +306,9 @@
             allMessages.push(...data.replies);
           }
           allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-    
+          
+          // Re-render all messages from scratch
+          messagesContainer.innerHTML = "";
           allMessages.forEach(msg => {
             addMessage(msg.author, msg.text, msg.time);
           });
@@ -318,9 +328,9 @@
       const now = new Date().toISOString();
       const reply = { author: userName, text: text, status: "unread", time: now };
     
-      addMessage(userName, text, now);
-      scrollToBottom();
-    
+      // We no longer manually add the message here, as the onSnapshot listener will handle it.
+      // This prevents duplicate messages from appearing briefly.
+      
       try {
         await updateDoc(doc(db, "message", conversationId), { replies: arrayUnion(reply) });
         replyInput.value = "";
