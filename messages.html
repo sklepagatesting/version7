@@ -1,27 +1,163 @@
-<!DOCTYPE html><html lang="en" class="scroll-smooth"><head>    <meta charset="UTF-8" />    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />    <title>Contact Us</title>    <link rel="stylesheet" href="font/font.css">    <style>      :root {        --sender-bg: #0084ff;        --receiver-bg: #e5e5ea;        --body-bg: #f5f5f5;      }      html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }      body { margin: 0; background: var(--body-bg); }
-      .chat-app { display: flex; flex-direction: column; height: 100vh; max-width: 800px; margin: auto; border: 1px solid #ddd; }      .chat-header { padding: 1rem; background: #fff; border-bottom: 1px solid #ddd; font-size: 1.25rem; display: flex; align-items: center; flex-shrink: 0; font-weight: 600; }
-      .messages { flex: 1; min-height: 0; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; word-break: break-word; background-color: white; }      .message-row { display: flex; margin-bottom: 0.25rem; }      .message-row.sender { justify-content: flex-end; }      .message-row.receiver { justify-content: flex-start; }      .message-content { display: flex; flex-direction: column; max-width: 80%; }      .chat-bubble { padding: 10px 14px; border-radius: 18px; word-wrap: break-word; white-space: pre-wrap; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }      .chat-bubble.sender { background-color: var(--sender-bg); color: white; }      .chat-bubble.receiver { background-color: var(--receiver-bg); color: black; }      .message-time { font-size: 0.75rem; color: #6b7280; margin-top: 4px; padding: 0 6px; }      .message-row.sender .message-time { align-self: flex-end; }      .message-row.receiver .message-time { align-self: flex-start; }
-      .chat-input-wrapper { border-top: 1px solid #ddd; background: var(--body-bg); padding: 0.75rem 1rem; display: flex; align-items: flex-end; gap: 0.75rem; }      .chat-input-wrapper textarea { box-sizing: border-box; flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 20px; background: white; outline: none; resize: none; min-height: 42px; max-height: 30vh; overflow-y: auto; font-size: 1rem; line-height: 1.4rem; height: 42px; }      .chat-input-wrapper textarea.context::-webkit-scrollbar { display: none; }      .chat-input-wrapper button { height: auto; min-height: 42px; width: 42px; padding: 0; border: none; background: var(--sender-bg); color: white; border-radius: 50%; cursor: pointer; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-      .placeholder { display: none; align-items: center; justify-content: center; height: 100%; color: #6b7280; text-align: center; font-size: 1.1rem; }      .chat-app.no-chat-selected .placeholder { display: flex; }    </style></head><body><div class="chat-app no-chat-selected" id="chatApp">  <div class="chat-header">    <span id="chatTitle">Contact Us</span>  </div>  <div class="messages" id="messagesContainer">    <div class="placeholder">      <div>        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" style="stroke-width: 1;">          <path stroke-linecap="round" stroke-linejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />        </svg>        <h3 style="margin-top: 0.5rem; font-size: 0.875rem; font-weight: 500; color: #111827;">Start a conversation</h3>        <p style="margin-top: 0.25rem; font-size: 0.875rem; color: #6B7280;">Send a message and we'll get back to you as soon as we can.</p>      </div>    </div>  </div>  <form id="replyForm" class="chat-input-wrapper">    <textarea id="replyInput" placeholder="Type a message..." autocomplete="off" class="context"></textarea>    <button type="submit" aria-label="Send Message">&#10148;</button>  </form></div>
-<script type="module">import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";import { getFirestore, doc, onSnapshot, setDoc, updateDoc, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-const firebaseConfig = {  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",  authDomain: "sklepaga-8790e.firebaseapp.com",  projectId: "sklepaga-8790e",  storageBucket: "sklepaga-8790e.appspot.com",  messagingSenderId: "815409129057",  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",  measurementId: "G-9GH707G2WZ"};
-const app = initializeApp(firebaseConfig);const db = getFirestore(app);const auth = getAuth(app);const adminName = "Dzey Autajay"; // Admin's name for message comparison
-const chatApp = document.getElementById("chatApp");const messagesContainer = document.getElementById("messagesContainer");const replyForm = document.getElementById("replyForm");const replyInput = document.getElementById("replyInput");const chatTitle = document.getElementById("chatTitle");
-let currentUserId = null;
-// Helpersfunction escapeHtml(text) { if (typeof text !== 'string') return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }function formatTimestamp(dateString) {    if (!dateString) return '';    const date = new Date(dateString);    if (isNaN(date.getTime())) return dateString;    const now = new Date();    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());    const yesterday = new Date(today);    yesterday.setDate(yesterday.getDate() - 1);    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());    const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });    if (messageDate.getTime() === today.getTime()) return timeString;    if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;    return `${date.toLocaleDateString('en-US')} ${timeString}`;}
-function scrollToBottom() { requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }); }let lastMessageTime = null;
-function addMessage(author, text, time) {  const isSender = author === currentUserId;  const row = document.createElement("div");  row.className = "message-row " + (isSender ? "sender" : "receiver");  const content = document.createElement("div");  content.className = "message-content";  const bubble = document.createElement("div");  bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");  bubble.textContent = text;  const messageDate = new Date(time);  let showTime = true;  if (lastMessageTime) {    const last = new Date(lastMessageTime);    if (last.getFullYear() === messageDate.getFullYear() && last.getMonth() === messageDate.getMonth() && last.getDate() === messageDate.getDate() && last.getHours() === messageDate.getHours() && last.getMinutes() === messageDate.getMinutes()) {      showTime = false;    }  }  if (showTime) {    const timeEl = document.createElement("div");    timeEl.className = "message-time";    timeEl.textContent = formatTimestamp(time);    content.appendChild(timeEl);    lastMessageTime = time;  }  content.insertBefore(bubble, content.firstChild);  row.appendChild(content);  messagesContainer.appendChild(row);}
-// User login and chat initialization
-onAuthStateChanged(auth, (user) => {  if (user) {    currentUserId = user.uid;    loadConversation(user);  } else {    // If not signed in, the login guide will handle redirection.    // In a real app, this page would only be accessible after login.    chatTitle.textContent = "Please Sign In";    chatApp.classList.add('no-chat-selected');  }});
-async function loadConversation(user) {  const chatDocRef = doc(db, "message", user.uid);  onSnapshot(chatDocRef, (docSnap) => {    if (docSnap.exists()) {      const data = docSnap.data();      messagesContainer.innerHTML = "";      lastMessageTime = null;      const allMessages = [];
-      // Initial message from the user      if (data.message && data.time) {        allMessages.push({ author: data.name, text: data.message, time: data.time });      }
-      // Replies from both user and admin      if (data.replies && Array.isArray(data.replies)) {        allMessages.push(...data.replies);      }
-      allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-      allMessages.forEach(msg => {        const isUserMessage = msg.author === user.uid || (data.name === user.uid && msg.author === user.uid);        const authorId = isUserMessage ? user.uid : adminName; // Use a distinct identifier for the admin        addMessage(authorId, msg.text, msg.time);      });
-      chatApp.classList.remove('no-chat-selected');      // After loading, mark admin replies as read for this user.      const unreadAdminReplies = (data.replies || []).filter(r => r.author === adminName && r.status === 'unread');      if (unreadAdminReplies.length > 0) {        const updatedReplies = data.replies.map(r => r.author === adminName ? { ...r, status: 'read' } : r);        updateDoc(chatDocRef, { replies: updatedReplies });      }      scrollToBottom();    } else {      chatApp.classList.add('no-chat-selected');      chatTitle.textContent = "New Conversation";      console.log("No conversation found for this user.");    }  });}
-// Send message or start new conversationreplyForm.addEventListener("submit", async (e) => {  e.preventDefault();  if (!currentUserId) return;  const text = replyInput.value.trim();  if (!text) return;
-  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
-  try {    const chatDocRef = doc(db, "message", currentUserId);    const docSnapshot = await getDoc(chatDocRef);
-    if (!docSnapshot.exists()) {      // Initial message to start a new conversation      await setDoc(chatDocRef, {        name: currentUserId, // Stores the user UID as the primary author        userName: localStorage.getItem("account") ? JSON.parse(localStorage.getItem("account")).name : `User - ${currentUserId.substring(0, 8)}`, // Use Google display name if available        message: text,        time: now,        status: "unread", // Initial message is always unread for the admin        replies: []      });    } else {      // Subsequent message, add as a reply      const reply = { author: currentUserId, text: text, status: "unread", time: now };      await updateDoc(chatDocRef, {        replies: arrayUnion(reply)      });    }
-    replyInput.value = "";    replyInput.style.height = "42px";    scrollToBottom();  } catch (err) {    alert("Failed to send message: " + err.message);  }});
-// --- UI Event Listeners ---replyInput.addEventListener("keydown", (e) => {  if (e.key === "Enter" && !e.shiftKey) {    e.preventDefault();    replyForm.requestSubmit();  }});replyInput.addEventListener("input", () => {  replyInput.style.height = "42px";  replyInput.style.height = replyInput.scrollHeight + "px";  scrollToBottom();});</script></body></html>
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Messenger</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import {
+  getFirestore, collection, doc, setDoc, onSnapshot,
+  query, where, limit, updateDoc, arrayUnion
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+// --- Firebase config ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+  authDomain: "sklepaga-8790e.firebaseapp.com",
+  projectId: "sklepaga-8790e",
+  storageBucket: "sklepaga-8790e.firebasestorage.app",
+  messagingSenderId: "815409129057",
+  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+  measurementId: "G-9GH707G2WZ"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// --- User & Admin ---
+const account = JSON.parse(localStorage.getItem("account") || "{}");
+const userId = account.uid;
+const userName = account.name;
+const userEmail = account.email;
+
+const admin = {
+  name: "Dzey Autajay",
+  email: "autajaydzey@gmail.com",
+  avatarColor: "#3498DB",
+  avatarLetter: "D",
+  uid: "yX0rfptwb2SKESPuPBzvfkv8gti2"
+};
+
+if (!userId || !userName || !userEmail) {
+  window.location.href = "authentication.html";
+}
+
+// --- Escape HTML ---
+function escapeHtml(text) {
+  if (!text) return "";
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+             .replace(/'/g, "&#39;");
+}
+
+// --- DOM Elements ---
+const messagesContainer = document.getElementById("messagesContainer");
+const replyForm = document.getElementById("replyForm");
+const replyInput = document.getElementById("replyInput");
+const headerName = document.getElementById("chatHeaderName");
+
+// --- Render message ---
+function addMessage(author, text, time, isAdmin=false) {
+  const msgDiv = document.createElement("div");
+  msgDiv.className = `flex ${isAdmin ? "justify-start" : "justify-end"}`;
+  msgDiv.innerHTML = `
+    <div class="p-3 rounded-2xl mb-2 max-w-[70%] ${isAdmin ? "bg-indigo-50 text-left rounded-tl-none" : "bg-indigo-600 text-white text-right rounded-tr-none"}">
+      <div class="font-semibold">${escapeHtml(author)}</div>
+      <div>${escapeHtml(text)}</div>
+      <div class="text-xs text-gray-400 mt-1">${escapeHtml(time)}</div>
+    </div>
+  `;
+  messagesContainer.appendChild(msgDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// --- Initialize conversation ---
+const messagesCol = collection(db, "message");
+let conversationId = null;
+
+async function initConversation() {
+  const q = query(messagesCol, where("userEmail","==",userEmail), limit(1));
+  onSnapshot(q, async snapshot => {
+    messagesContainer.innerHTML = "";
+    if(snapshot.empty) {
+      // Create initial Admin message
+      const now = new Date().toLocaleString("en-PH", { timeZone:"Asia/Manila" }).replace(",", "");
+      const newDocRef = doc(messagesCol);
+      await setDoc(newDocRef, {
+        name: admin.name,
+        email: admin.email,
+        userId,
+        userEmail,
+        message: "Hello, how can I help you?",
+        time: now,
+        status: "sent",
+        replies: [],
+        messageid: newDocRef.id
+      });
+      conversationId = newDocRef.id;
+      headerName.textContent = admin.name;
+      addMessage(admin.name, "Hello, how can I help you?", now, true);
+    } else {
+      const docSnap = snapshot.docs[0];
+      conversationId = docSnap.id;
+      const data = docSnap.data();
+      headerName.textContent = admin.name; // always show admin as the header
+      addMessage(data.name, data.message, data.time, data.name===admin.name);
+      (data.replies || []).sort((a,b)=> new Date(a.time)-new Date(b.time)).forEach(r=>{
+        addMessage(r.author, r.text, r.time, r.author===admin.name);
+      });
+    }
+  });
+}
+
+initConversation();
+
+// --- Send reply ---
+replyForm.addEventListener("submit", async e=>{
+  e.preventDefault();
+  if(!conversationId) return;
+  const text = replyInput.value.trim();
+  if(!text) return;
+  const now = new Date().toLocaleString("en-PH", { timeZone:"Asia/Manila" }).replace(",", "");
+  const reply = { author:userName, text, status:"unread", time: now };
+  try {
+    await updateDoc(doc(db, "message", conversationId), { replies: arrayUnion(reply) });
+    replyInput.value = "";
+  } catch(err) {
+    alert("Failed to send reply: "+err.message);
+  }
+});
+</script>
+
+<style>
+#messagesContainer::-webkit-scrollbar {
+  width: 8px;
+}
+#messagesContainer::-webkit-scrollbar-thumb {
+  background-color: rgba(0,0,0,0.2);
+  border-radius: 4px;
+}
+</style>
+</head>
+
+<body class="bg-gray-50 flex flex-col h-screen p-4 overflow-hidden">
+
+<!-- Header showing other side -->
+<div class="bg-white p-4 shadow rounded mb-4 flex items-center">
+  <div id="chatHeaderName" class="font-bold text-lg"></div>
+</div>
+
+<!-- Chat container -->
+<div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-2 bg-white border rounded mb-4 max-h-[75vh]"></div>
+
+<!-- Reply form -->
+<form id="replyForm" class="flex space-x-2">
+  <input id="replyInput" type="text" placeholder="Type your message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+         class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+  <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Send</button>
+</form>
+
+</body>
+</html>
