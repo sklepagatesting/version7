@@ -5,51 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Messenger</title>
 <script src="https://cdn.tailwindcss.com"></script>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import {
-getFirestore, collection, doc, setDoc, onSnapshot,
-query, where, limit, updateDoc, arrayUnion
+  getFirestore, collection, doc, setDoc, onSnapshot,
+  query, where, limit, orderBy, addDoc, updateDoc, getDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 // --- Firebase config ---
 const firebaseConfig = {
-apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-authDomain: "sklepaga-8790e.firebaseapp.com",
-projectId: "sklepaga-8790e",
-storageBucket: "sklepaga-8790e.firebasestorage.app",
-messagingSenderId: "815409129057",
-appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-measurementId: "G-9GH707G2WZ"
+  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+  authDomain: "sklepaga-8790e.firebaseapp.com",
+  projectId: "sklepaga-8790e",
+  storageBucket: "sklepaga-8790e.firebasestorage.app",
+  messagingSenderId: "815409129057",
+  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+  measurementId: "G-9GH707G2WZ"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// --- User & Admin ---
+// --- Current User ---
 const account = JSON.parse(localStorage.getItem("account") || "{}");
 const userId = account.uid;
 const userName = account.name;
 const userEmail = account.email;
+const userAvatarLetter = account.avatarLetter || (userName ? userName[0].toUpperCase() : "?");
+const userAvatarColor = account.avatarColor || "#3498DB";
 
-const admin = {
-name: "Dzey Autajay",
-email: "autajaydzey@gmail.com",
-avatarColor: "#3498DB",
-avatarLetter: "D",
-uid: "yX0rfptwb2SKESPuPBzvfkv8gti2"
-};
+const adminUid = "yX0rfptwb2SKESPuPBzvfkv8gti2";
+const adminName = "Admin";
+const adminAvatarLetter = "A";
+const adminAvatarColor = "#3498DB";
 
-if (!userId || !userName || !userEmail) {
-window.location.href = "authentication.html";
-}
-
-// --- Escape HTML ---
-function escapeHtml(text) {
-if (!text) return "";
-return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
-.replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-.replace(/'/g, "&#39;");
+if (!userId || !userName) {
+  window.location.href = "authentication.html";
 }
 
 // --- DOM Elements ---
@@ -58,86 +50,140 @@ const replyForm = document.getElementById("replyForm");
 const replyInput = document.getElementById("replyInput");
 const headerName = document.getElementById("chatHeaderName");
 
-// --- Render message ---
-function addMessage(author, text, time, isAdmin=false) {
-const msgDiv = document.createElement("div");
-msgDiv.className = `flex ${isAdmin ? "justify-start" : "justify-end"}`;
-msgDiv.innerHTML = `
-<div class="p-3 rounded-2xl mb-2 max-w-[70%] ${isAdmin ? "bg-indigo-50 text-left rounded-tl-none" : "bg-indigo-600 text-white text-right rounded-tr-none"}">
-<div class="font-semibold">${escapeHtml(author)}</div>
-<div>${escapeHtml(text)}</div>
-<div class="text-xs text-gray-400 mt-1">${escapeHtml(time)}</div>
-</div>
-`;
-messagesContainer.appendChild(msgDiv);
-messagesContainer.scrollTop = messagesContainer.scrollHeight;
+// --- Escape HTML ---
+function escapeHtml(text) {
+  if (!text) return "";
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+             .replace(/'/g, "&#39;");
 }
 
-// --- Initialize conversation ---
-const messagesCol = collection(db, "message");
+// --- Render message with avatar ---
+function addMessage(senderName, text, timestamp, isAdmin=false, avatarLetter="?", avatarColor="#3498DB") {
+  const msgDiv = document.createElement("div");
+  msgDiv.className = `flex ${isAdmin ? "justify-start" : "justify-end"} items-end`;
+  
+  const avatarHtml = `
+    <div class="w-8 h-8 flex items-center justify-center rounded-full text-white font-bold mr-2"
+         style="background-color: ${avatarColor}">
+      ${escapeHtml(avatarLetter)}
+    </div>
+  `;
+  
+  const messageHtml = `
+    <div class="p-3 rounded-2xl mb-2 max-w-[70%] ${isAdmin ? "bg-indigo-50 text-left rounded-tl-none" : "bg-indigo-600 text-white text-right rounded-tr-none"}">
+      <div class="font-semibold">${escapeHtml(senderName)}</div>
+      <div>${escapeHtml(text)}</div>
+      <div class="text-xs text-gray-400 mt-1">${timestamp ? new Date(timestamp.seconds*1000).toLocaleString("en-PH") : ""}</div>
+    </div>
+  `;
+
+  if(isAdmin){
+    msgDiv.innerHTML = avatarHtml + messageHtml;
+  } else {
+    msgDiv.innerHTML = messageHtml + avatarHtml;
+  }
+
+  messagesContainer.appendChild(msgDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// --- Conversation variables ---
 let conversationId = null;
 
+// --- Initialize / find conversation with admin ---
 async function initConversation() {
-const q = query(messagesCol, where("userEmail","==",userEmail), limit(1));
-onSnapshot(q, async snapshot => {
-messagesContainer.innerHTML = "";
-if(snapshot.empty) {
-// Create initial Admin message
-const now = new Date().toLocaleString("en-PH", { timeZone:"Asia/Manila" }).replace(",", "");
-const newDocRef = doc(messagesCol);
-await setDoc(newDocRef, {
-name: admin.name,
-email: admin.email,
-userId,
-userEmail,
-message: "Hello, how can I help you?",
-time: now,
-status: "sent",
-replies: [],
-messageid: newDocRef.id
-});
-conversationId = newDocRef.id;
-headerName.textContent = admin.name;
-addMessage(admin.name, "Hello, how can I help you?", now, true);
-} else {
-const docSnap = snapshot.docs[0];
-conversationId = docSnap.id;
-const data = docSnap.data();
-headerName.textContent = admin.name; // always show admin as the header
-addMessage(data.name, data.message, data.time, data.name===admin.name);
-(data.replies || []).sort((a,b)=> new Date(a.time)-new Date(b.time)).forEach(r=>{
-addMessage(r.author, r.text, r.time, r.author===admin.name);
-});
-}
-});
+  const convQuery = query(
+    collection(db, "conversations"),
+    where("participants", "array-contains", userId),
+    limit(1)
+  );
+
+  onSnapshot(convQuery, async snapshot => {
+    messagesContainer.innerHTML = "";
+
+    if(snapshot.empty){
+      const newConvRef = doc(collection(db, "conversations"));
+      conversationId = newConvRef.id;
+
+      await setDoc(newConvRef, {
+        participants: [userId, adminUid],
+        timeCreated: new Date(),
+        lastUpdated: new Date()
+      });
+
+      headerName.textContent = adminName;
+
+      // initial admin message
+      const msgColRef = collection(db, "conversations", conversationId, "messages");
+      const adminMsg = {
+        uidSender: adminUid,
+        text: "Hello, how can I help you?",
+        status: "sent",
+        timestamp: new Date()
+      };
+      await addDoc(msgColRef, adminMsg);
+      addMessage(adminName, adminMsg.text, adminMsg.timestamp, true, adminAvatarLetter, adminAvatarColor);
+
+    } else {
+      const docSnap = snapshot.docs[0];
+      conversationId = docSnap.id;
+      headerName.textContent = adminName;
+
+      // Listen to messages subcollection
+      const msgColRef = collection(db, "conversations", conversationId, "messages");
+      const msgQuery = query(msgColRef, orderBy("timestamp", "asc"));
+      onSnapshot(msgQuery, async msgSnapshot => {
+        messagesContainer.innerHTML = "";
+        for(const msgDoc of msgSnapshot.docs){
+          const msgData = msgDoc.data();
+          const isAdmin = msgData.uidSender === adminUid;
+          const senderName = isAdmin ? adminName : userName;
+          const avatarLetter = isAdmin ? adminAvatarLetter : userAvatarLetter;
+          const avatarColor = isAdmin ? adminAvatarColor : userAvatarColor;
+
+          addMessage(senderName, msgData.text, msgData.timestamp, isAdmin, avatarLetter, avatarColor);
+        }
+      });
+    }
+  });
 }
 
 initConversation();
 
 // --- Send reply ---
-replyForm.addEventListener("submit", async e=>{
-e.preventDefault();
-if(!conversationId) return;
-const text = replyInput.value.trim();
-if(!text) return;
-const now = new Date().toLocaleString("en-PH", { timeZone:"Asia/Manila" }).replace(",", "");
-const reply = { author:userName, text, status:"unread", time: now };
-try {
-await updateDoc(doc(db, "message", conversationId), { replies: arrayUnion(reply) });
-replyInput.value = "";
-} catch(err) {
-alert("Failed to send reply: "+err.message);
-}
+replyForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  if(!conversationId) return;
+  const text = replyInput.value.trim();
+  if(!text) return;
+
+  const msgColRef = collection(db, "conversations", conversationId, "messages");
+  const newMsg = {
+    uidSender: userId,
+    text,
+    status: "unread",
+    timestamp: new Date()
+  };
+
+  try {
+    await addDoc(msgColRef, newMsg);
+    const convRef = doc(db, "conversations", conversationId);
+    await updateDoc(convRef, { lastUpdated: new Date() });
+    replyInput.value = "";
+  } catch(err){
+    alert("Failed to send reply: " + err.message);
+  }
 });
 </script>
 
 <style>
 #messagesContainer::-webkit-scrollbar {
-width: 8px;
+  width: 8px;
 }
 #messagesContainer::-webkit-scrollbar-thumb {
-background-color: rgba(0,0,0,0.2);
-border-radius: 4px;
+  background-color: rgba(0,0,0,0.2);
+  border-radius: 4px;
 }
 </style>
 </head>
@@ -146,7 +192,7 @@ border-radius: 4px;
 
 <!-- Header showing other side -->
 <div class="bg-white p-4 shadow rounded mb-4 flex items-center">
-<div id="chatHeaderName" class="font-bold text-lg"></div>
+  <div id="chatHeaderName" class="font-bold text-lg"></div>
 </div>
 
 <!-- Chat container -->
@@ -154,11 +200,10 @@ border-radius: 4px;
 
 <!-- Reply form -->
 <form id="replyForm" class="flex space-x-2">
-<input id="replyInput" type="text" placeholder="Type your message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-<button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Send</button>
+  <input id="replyInput" type="text" placeholder="Type your message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+         class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+  <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Send</button>
 </form>
 
 </body>
 </html>
-
