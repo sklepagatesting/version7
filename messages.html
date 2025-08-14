@@ -52,7 +52,11 @@ const adminAvatarColor = "#3498DB";
 const messagesContainer = document.getElementById("messagesContainer");
 const replyForm = document.getElementById("replyForm");
 const replyInput = document.getElementById("replyInput");
+const sendButton = replyForm.querySelector("button");
 const headerName = document.getElementById("chatHeaderName");
+
+// Disable send until conversationId is ready
+sendButton.disabled = true;
 
 // --- Escape HTML ---
 function escapeHtml(text) {
@@ -106,22 +110,18 @@ async function initConversation() {
   );
 
   onSnapshot(convQuery, async snapshot => {
-    console.log("Conversation snapshot received:", snapshot.size, "document(s)");
     messagesContainer.innerHTML = "";
 
     if(snapshot.empty){
       console.log("No conversation found, creating a new one...");
       const newConvRef = doc(collection(db, "conversations"));
       conversationId = newConvRef.id;
-      console.log("New conversation ID:", conversationId);
 
       await setDoc(newConvRef, {
         participants: [userId, adminGeneratedUid],
         timeCreated: new Date(),
         lastUpdated: new Date()
       });
-
-      headerName.textContent = adminName;
 
       // initial admin message
       const msgColRef = collection(db, "conversations", conversationId, "messages");
@@ -132,20 +132,15 @@ async function initConversation() {
         timestamp: new Date()
       };
       await addDoc(msgColRef, adminMsg);
-      console.log("Initial admin message added");
 
       addMessage(adminName, adminMsg.text, adminMsg.timestamp, true, adminAvatarLetter, adminAvatarColor);
-
     } else {
-      const docSnap = snapshot.docs[0];
-      conversationId = docSnap.id;
-      console.log("Existing conversation found, ID:", conversationId);
-      headerName.textContent = adminName;
+      conversationId = snapshot.docs[0].id;
 
+      // Load existing messages
       const msgColRef = collection(db, "conversations", conversationId, "messages");
       const msgQuery = query(msgColRef, orderBy("timestamp", "asc"));
       onSnapshot(msgQuery, msgSnapshot => {
-        console.log("Messages snapshot received:", msgSnapshot.size, "message(s)");
         messagesContainer.innerHTML = "";
         for(const msgDoc of msgSnapshot.docs){
           const msgData = msgDoc.data();
@@ -158,6 +153,10 @@ async function initConversation() {
         }
       });
     }
+
+    // Enable send button now
+    headerName.textContent = adminName;
+    sendButton.disabled = false;
   });
 }
 
