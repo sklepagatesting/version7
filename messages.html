@@ -88,7 +88,7 @@
     .message-time {
       font-size: 0.75rem;
       color: #6b7280;
-      margin-top: 4px; /* Changed from margin-bottom to margin-top for better spacing */
+      margin-top: 4px;
       padding: 0 6px;
     }
     .message-row.sender .message-time {
@@ -205,7 +205,7 @@
     }
     
     function scrollToBottom() {
-      // Use requestAnimationFrame for smoother scrolling
+      // Use requestAnimationFrame for smoother scrolling and to ensure DOM is updated
       requestAnimationFrame(() => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       });
@@ -234,6 +234,7 @@
     }
     
     let conversationId = null;
+    let initialLoad = true;
     
     function addMessage(author, text, time) {
       const isSender = author === userName;
@@ -251,7 +252,6 @@
       timeEl.className = "message-time";
       timeEl.textContent = formatTimestamp(time);
     
-      // Appending elements in correct order
       content.appendChild(bubble);
       content.appendChild(timeEl);
       
@@ -267,51 +267,59 @@
     
       const q = query(messagesCol, where("userEmail", "==", userEmail), limit(1));
       unsubscribe = onSnapshot(q, async (snapshot) => {
-        // Clear messages and set header name only on initial load or if snapshot is empty
-        if (messagesContainer.innerHTML === "" || snapshot.empty) {
-          messagesContainer.innerHTML = "";
-          headerName.textContent = admin.name;
-        }
+        headerName.textContent = admin.name;
     
         if (snapshot.empty) {
-          const newDocRef = doc(messagesCol);
-          const now = new Date().toISOString();
-          const initialMessage = {
-            name: admin.name,
-            email: admin.email,
-            userId: userId,
-            userEmail: userEmail,
-            message: "Hello, how can I help you?",
-            time: now,
-            status: "sent",
-            replies: [],
-            messageid: newDocRef.id
-          };
+          if (initialLoad) {
+            const newDocRef = doc(messagesCol);
+            const now = new Date().toISOString();
+            const initialMessage = {
+              name: admin.name,
+              email: admin.email,
+              userId: userId,
+              userEmail: userEmail,
+              message: "Hello, how can I help you?",
+              time: now,
+              status: "sent",
+              replies: [],
+              messageid: newDocRef.id
+            };
     
-          await setDoc(newDocRef, initialMessage);
-          conversationId = newDocRef.id;
-          // Render only the new initial message
-          addMessage(admin.name, initialMessage.message, initialMessage.time);
-    
-        } else {
-          const docSnap = snapshot.docs[0];
-          conversationId = docSnap.id;
-          const data = docSnap.data();
-    
-          const allMessages = [];
-          if (data.message && data.time) {
-            allMessages.push({ author: data.name, text: data.message, time: data.time });
+            await setDoc(newDocRef, initialMessage);
+            conversationId = newDocRef.id;
+            // The next snapshot update will render this message
           }
-          if (data.replies && Array.isArray(data.replies)) {
-            allMessages.push(...data.replies);
-          }
-          allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-          
-          // Re-render all messages from scratch
+          // On subsequent empty snapshots, do nothing
+          return;
+        }
+    
+        const docSnap = snapshot.docs[0];
+        conversationId = docSnap.id;
+        const data = docSnap.data();
+    
+        const allMessages = [];
+        if (data.message && data.time) {
+          allMessages.push({ author: data.name, text: data.message, time: data.time });
+        }
+        if (data.replies && Array.isArray(data.replies)) {
+          allMessages.push(...data.replies);
+        }
+        allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
+    
+        // Only re-render the entire list on the first load
+        if (initialLoad) {
           messagesContainer.innerHTML = "";
           allMessages.forEach(msg => {
             addMessage(msg.author, msg.text, msg.time);
           });
+          initialLoad = false;
+        } else {
+          // Check if there's a new message
+          const existingMessagesCount = messagesContainer.querySelectorAll('.message-row').length;
+          if (allMessages.length > existingMessagesCount) {
+            const newMsg = allMessages[allMessages.length - 1];
+            addMessage(newMsg.author, newMsg.text, newMsg.time);
+          }
         }
         scrollToBottom();
       });
@@ -328,9 +336,6 @@
       const now = new Date().toISOString();
       const reply = { author: userName, text: text, status: "unread", time: now };
     
-      // We no longer manually add the message here, as the onSnapshot listener will handle it.
-      // This prevents duplicate messages from appearing briefly.
-      
       try {
         await updateDoc(doc(db, "message", conversationId), { replies: arrayUnion(reply) });
         replyInput.value = "";
