@@ -1,95 +1,125 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Google Login (Redirect + Auto Skip)</title>
-  <script src="https://cdn.tailwindcss.com"></script>
 
-  <script type="module">
+<html lang="en"><head>  <meta charset="UTF-8" />  <meta name="viewport" content="width=device-width, initial-scale=1" />  <title>Google Login</title>  <script src="https://cdn.tailwindcss.com"></script>  <script type="module">
+  
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { 
-      getAuth, 
-      GoogleAuthProvider, 
-      signInWithRedirect, 
-      getRedirectResult, 
-      onAuthStateChanged 
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+  
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+  
     import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+  
 
+  
     // --- Firebase Config ---
+  
     const firebaseConfig = {
+  
       apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+  
       authDomain: "sklepaga-8790e.firebaseapp.com",
+  
       projectId: "sklepaga-8790e",
+  
       storageBucket: "sklepaga-8790e.firebasestorage.app",
+  
       messagingSenderId: "815409129057",
+  
       appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+  
       measurementId: "G-9GH707G2WZ"
+  
     };
+  
 
-    // --- Initialize Firebase ---
+  
     const app = initializeApp(firebaseConfig);
+  
     const auth = getAuth(app);
+  
     const provider = new GoogleAuthProvider();
+  
     const db = getFirestore(app);
+  
 
-    // Save user data to Firestore + localStorage
+  
+    // Save user data to Firestore and localStorage
+  
     async function saveUser(user) {
+  
       const token = await user.getIdToken();
+  
       const userData = {
+  
         uid: user.uid,
+  
         name: user.displayName || "",
+  
         email: user.email || "",
+  
         avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
+  
         avatarColor: "#3498DB",
+  
         idToken: token,
+  
         tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString()
+  
       };
+  
 
+  
       await setDoc(doc(db, "accounts", user.uid), userData);
+  
       localStorage.setItem("account", JSON.stringify(userData));
+  
     }
+  
 
-    // Trigger redirect login
-    function login() {
-      signInWithRedirect(auth, provider);
-    }
-
-    // 1️⃣ If user is already signed in → save + redirect
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        await saveUser(user);
+  
+    // Trigger Google Login
+  
+    async function login() {
+  
+      try {
+  
+        const result = await signInWithPopup(auth, provider);
+  
+        await saveUser(result.user);
+  
         window.location.href = "messages.html";
-      }
-    });
-
-    // 2️⃣ After Google redirect, check for result
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (result?.user) {
-          await saveUser(result.user);
-          window.location.href = "messages.html";
-        }
-      })
-      .catch((error) => {
+  
+      } catch (error) {
+  
         console.error("Login failed:", error);
+  
         alert("Login failed: " + error.message);
-      });
+  
+      }
+  
+    }
+  
 
-    // 3️⃣ Setup login button click
-    document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("loginBtn").addEventListener("click", login);
+  
+    // If already signed in, skip login popup
+  
+    onAuthStateChanged(auth, async (user) => {
+  
+      if (user) {
+  
+        await saveUser(user);
+  
+        window.location.href = "messages.html";
+  
+      } else {
+  
+        // Trigger login popup immediately
+  
+        login();
+  
+      }
+  
     });
+  
+  </script></head><body class="flex items-center justify-center min-h-screen bg-gray-100">  <div class="bg-white shadow-lg rounded-lg p-6 text-center"><h1 class="text-xl font-semibold text-gray-700">Signing you in with Google...</h1>
 
-  </script>
-</head>
-<body class="flex items-center justify-center min-h-screen bg-gray-100">
-  <div class="bg-white shadow-lg rounded-lg p-6 text-center">
-    <h1 class="text-xl font-semibold text-gray-700 mb-4">Sign in to Continue</h1>
-    <button id="loginBtn" class="px-6 py-2 bg-blue-500 text-white font-medium rounded hover:bg-blue-600 transition">
-      Sign in with Google
-    </button>
-  </div>
-</body>
-</html>
+  </div></body></html>
