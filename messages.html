@@ -29,7 +29,7 @@ const db = getFirestore(app);
 
 // --- Current User ---
 const account = JSON.parse(localStorage.getItem("account") || "{}");
-alert("Loaded account from localStorage: " + JSON.stringify(account));
+console.log("Loaded account:", account);
 
 const userId = account.uid;
 const userName = account.name;
@@ -98,25 +98,25 @@ let conversationId = null;
 // --- Fetch admin profile dynamically ---
 async function fetchAdminProfile() {
   try {
-    const adminDoc = await getDoc(doc(db, "users", adminUid));
+    const adminDoc = await getDoc(doc(db, "user", adminUid));
     if(adminDoc.exists()) {
       const data = adminDoc.data();
       adminName = data.name || "Admin";
       adminAvatarLetter = data.avatarLetter || adminName[0].toUpperCase();
       adminAvatarColor = data.avatarColor || "#3498DB";
-      alert("Admin profile loaded: " + JSON.stringify(data));
+      console.log("Admin profile loaded:", data);
     } else {
-      alert("Admin account not found in Firestore, using defaults");
+      console.warn("Admin document not found, using defaults");
     }
   } catch(err) {
+    console.error("Error fetching admin profile:", err);
     alert("Error fetching admin profile: " + err.message);
-    console.error(err);
   }
 }
 
 // --- Initialize / find conversation ---
 async function initConversation() {
-  alert("Initializing conversation for user: " + userId);
+  console.log("Initializing conversation for user:", userId);
   await fetchAdminProfile();
 
   const convQuery = query(
@@ -126,14 +126,14 @@ async function initConversation() {
   );
 
   onSnapshot(convQuery, async snapshot => {
-    alert("Conversation snapshot received: " + snapshot.size + " document(s)");
+    console.log("Conversation snapshot received:", snapshot.size, "document(s)");
     messagesContainer.innerHTML = "";
 
     if(snapshot.empty){
-      alert("No conversation found, creating a new one...");
+      console.log("No conversation found, creating a new one...");
       const newConvRef = doc(collection(db, "conversations"));
       conversationId = newConvRef.id;
-      alert("New conversation ID: " + conversationId);
+      console.log("New conversation ID:", conversationId);
 
       await setDoc(newConvRef, {
         participants: [userId, adminUid],
@@ -152,20 +152,20 @@ async function initConversation() {
         timestamp: new Date()
       };
       await addDoc(msgColRef, adminMsg);
-      alert("Initial admin message added");
+      console.log("Initial admin message added");
 
       addMessage(adminName, adminMsg.text, adminMsg.timestamp, true, adminAvatarLetter, adminAvatarColor);
 
     } else {
       const docSnap = snapshot.docs[0];
       conversationId = docSnap.id;
-      alert("Existing conversation found, ID: " + conversationId);
+      console.log("Existing conversation found, ID:", conversationId);
       headerName.textContent = adminName;
 
       const msgColRef = collection(db, "conversations", conversationId, "messages");
       const msgQuery = query(msgColRef, orderBy("timestamp", "asc"));
       onSnapshot(msgQuery, msgSnapshot => {
-        alert("Messages snapshot received: " + msgSnapshot.size + " message(s)");
+        console.log("Messages snapshot received:", msgSnapshot.size, "message(s)");
         messagesContainer.innerHTML = "";
         for(const msgDoc of msgSnapshot.docs){
           const msgData = msgDoc.data();
@@ -209,7 +209,7 @@ replyForm.addEventListener("submit", async e => {
     const convRef = doc(db, "conversations", conversationId);
     await updateDoc(convRef, { lastUpdated: new Date() });
     replyInput.value = "";
-    alert("Message sent successfully");
+    console.log("Message sent successfully");
   } catch(err){
     alert("Failed to send reply: " + err.message);
     console.error(err);
