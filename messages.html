@@ -68,7 +68,10 @@
   <div class="chat-panel">
     <div class="chat-header">
       <button class="back-btn" id="backBtn">&larr;</button>
-      <span id="chatTitle">Select a conversation</span>
+      <div class="flex items-center gap-3">
+        <div id="userAvatar" class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold text-lg" style="background:var(--sender-bg)"></div>
+        <span id="chatTitle" class="font-semibold">Select a conversation</span>
+      </div>
     </div>
     <div class="messages" id="messagesContainer">
         <div class="placeholder">
@@ -90,7 +93,13 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion, setDoc, where } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+// --- Authentication and Redirect ---
+const activeAccount = JSON.parse(localStorage.getItem("activeAccount"));
+if (!activeAccount) {
+    window.location.href = "authentication.html";
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
@@ -105,11 +114,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// User and Admin details (You'll need to get the user's info from your auth system)
-const account = JSON.parse(localStorage.getItem("account") || "{}");
-const userId = account.uid;
-const userName = account.name || "Test User";
-const userEmail = account.email;
+// User and Admin details
+const userId = activeAccount.uid;
+const userName = activeAccount.name;
+const userEmail = activeAccount.email;
 
 const admin = { name: "Dzey Autajay", email: "autajaydzey@gmail.com" };
 
@@ -120,6 +128,11 @@ const replyForm = document.getElementById("replyForm");
 const replyInput = document.getElementById("replyInput");
 const chatTitle = document.getElementById("chatTitle");
 const backBtn = document.getElementById("backBtn");
+const userAvatar = document.getElementById("userAvatar");
+
+userAvatar.textContent = activeAccount.avatarLetter;
+userAvatar.style.backgroundColor = activeAccount.avatarColor;
+chatTitle.textContent = userName;
 
 let currentConversationId = null;
 let unsubscribeConversationListener = null;
@@ -270,7 +283,9 @@ function openConversation(conversationId, otherName) {
 }
 
 async function loadUsers() {
-  const q = query(collection(db, "message"), orderBy("time","desc"));
+  // Query messages where the 'uid' field matches the current user's uid
+  const q = query(collection(db, "message"), where("uid", "==", userId), orderBy("time", "desc"));
+
   onSnapshot(q, snapshot => {
     userList.innerHTML = "";
     if (snapshot.empty) {
@@ -285,14 +300,8 @@ async function loadUsers() {
       const id = docSnap.id;
       
       let otherName;
-      if (data.name !== userName) {
-        otherName = data.name;
-      } else if (data.replies?.length > 0) {
-        const firstUserReply = data.replies.find(r => r.author !== userName);
-        otherName = firstUserReply ? firstUserReply.author : (data.userName || "Unknown User");
-      } else {
-        otherName = data.userName || "Unknown User";
-      }
+      // In this user view, the 'other' user is always the admin
+      otherName = admin.name;
 
       if (!userConversations[otherName]) userConversations[otherName] = [];
       userConversations[otherName].push({ id, ...data });
@@ -328,12 +337,41 @@ async function loadUsers() {
       li.addEventListener("click", () => openConversation(thread.id, otherName));
       userList.appendChild(li);
     });
+
+    // Automatically open the first conversation if there is one
+    if (latestConversations.length > 0 && !currentConversationId) {
+        const firstThread = latestConversations[0];
+        openConversation(firstThread.thread.id, firstThread.otherName);
+    }
   });
 }
 
 replyForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!currentConversationId) return;
+  if (!currentConversationId) {
+    const text = replyInput.value.trim();
+    if (!text) return;
+    const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
+    const newMessage = {
+        message: text,
+        time: now,
+        uid: userId,
+        name: userName,
+        email: userEmail,
+        status: "unread",
+        replies: []
+    };
+    try {
+        await setDoc(doc(db, "message", userId), newMessage); // Use the user's UID as the document ID
+        replyInput.value = "";
+        replyInput.style.height = "42px";
+        scrollToBottom();
+    } catch (err) {
+        alert("Failed to send message: " + err.message);
+    }
+    return;
+  }
+
   const text = replyInput.value.trim();
   if (!text) return;
   const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
