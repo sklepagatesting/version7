@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Messenger</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messenger with Auth</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import {
-  getFirestore, collection, doc, setDoc, onSnapshot,
-  query, where, limit, orderBy, addDoc, updateDoc
+import { 
+  getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, where, limit, orderBy, updateDoc 
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { 
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
 // --- Firebase config ---
 const firebaseConfig = {
@@ -26,22 +28,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-// --- Current User ---
-const account = JSON.parse(localStorage.getItem("account") || "{}");
-
-const userId = account.uid;
-const userName = account.name;
-const userAvatarLetter = account.avatarLetter || (userName ? userName[0].toUpperCase() : "?");
-const userAvatarColor = account.avatarColor || "#3498DB";
-
-if (!userId || !userName) {
-  alert("User not logged in, redirecting...");
-  window.location.href = "authentication.html";
-}
-
-// --- Admin Account ---
-const adminUid = "yX0rfptwb2SKESPuPBzvfkv8gti2";
+const auth = getAuth(app);
 
 // --- DOM Elements ---
 const messagesContainer = document.getElementById("messagesContainer");
@@ -53,6 +40,12 @@ const headerAvatar = document.getElementById("chatHeaderAvatar");
 
 // Disable send until conversation is ready
 sendButton.disabled = true;
+
+// --- Admin info ---
+const adminUid = "yX0rfptwb2SKESPuPBzvfkv8gti2";
+const adminName = "Dzey Autajay";
+const adminAvatarLetter = "D";
+const adminAvatarColor = "#3498DB";
 
 // --- Escape HTML ---
 function escapeHtml(text) {
@@ -82,119 +75,116 @@ function addMessage(senderName, text, timestamp, isAdmin=false, avatarLetter="?"
     </div>
   `;
 
-  if(isAdmin){
-    msgDiv.innerHTML = avatarHtml + messageHtml;
-  } else {
-    msgDiv.innerHTML = messageHtml + avatarHtml;
-  }
-
+  msgDiv.innerHTML = isAdmin ? avatarHtml + messageHtml : messageHtml + avatarHtml;
   messagesContainer.appendChild(msgDiv);
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
 // --- Conversation ---
 let conversationId = null;
+let currentUser = null;
 
-// --- Initialize / find conversation ---
-async function initConversation() {
-  console.log("[DEBUG] Initializing conversation for user:", userId);
-  try {
-    const convQuery = query(
-      collection(db, "conversations"),
-      where("participants", "array-contains", userId),
-      limit(1)
-    );
+// --- Initialize chat ---
+function initChat() {
+  headerAvatar.style.backgroundColor = adminAvatarColor;
+  headerAvatar.textContent = adminAvatarLetter;
+  headerName.textContent = adminName;
 
-    onSnapshot(convQuery, async snapshot => {
-      console.log("[DEBUG] Conversation snapshot received:", snapshot.docs.length);
-      if(snapshot.empty){
-        console.log("[DEBUG] No conversation found, creating a new one...");
-        const newConvRef = doc(collection(db, "conversations"));
-        conversationId = newConvRef.id;
+  console.log("[DEBUG] Initializing chat for:", currentUser.uid);
 
-        await setDoc(newConvRef, {
-          participants: [userId, adminUid],
-          timeCreated: new Date(),
-          lastUpdated: new Date()
-        });
+  const convQuery = query(
+    collection(db, "conversations"),
+    where("participants", "array-contains", currentUser.uid),
+    limit(1)
+  );
 
-        const msgColRef = collection(db, "conversations", conversationId, "messages");
-        const adminMsg = {
-          uidSender: adminUid,
-          text: "Hello, how can I help you?",
-          status: "sent",
-          timestamp: new Date()
-        };
-        await addDoc(msgColRef, adminMsg);
-        console.log("[DEBUG] Initial admin message created.");
-      } else {
-        conversationId = snapshot.docs[0].id;
-        console.log("[DEBUG] Conversation found, ID:", conversationId);
-      }
+  onSnapshot(convQuery, async snapshot => {
+    if(snapshot.empty){
+      console.log("[DEBUG] No conversation found. Creating new one...");
+      const newConvRef = doc(collection(db, "conversations"));
+      conversationId = newConvRef.id;
 
-      // Load messages
-      const msgColRef = collection(db, "conversations", conversationId, "messages");
-      const msgQuery = query(msgColRef, orderBy("timestamp", "asc"));
-      onSnapshot(msgQuery, msgSnapshot => {
-        console.log("[DEBUG] Messages snapshot received:", msgSnapshot.docs.length);
-        messagesContainer.innerHTML = "";
-        msgSnapshot.forEach(msgDoc => {
-          const msgData = msgDoc.data();
-          const isAdmin = msgData.uidSender === adminUid;
-          const senderName = isAdmin ? "Dzey Autajay" : userName;
-          const avatarLetter = isAdmin ? "D" : userAvatarLetter;
-          const avatarColor = isAdmin ? "#3498DB" : userAvatarColor;
-          addMessage(senderName, msgData.text, msgData.timestamp, isAdmin, avatarLetter, avatarColor);
-        });
+      await setDoc(newConvRef, {
+        participants: [currentUser.uid, adminUid],
+        timeCreated: new Date(),
+        lastUpdated: new Date()
       });
 
-      // Header
-      headerAvatar.style.backgroundColor = "#3498DB";
-      headerAvatar.textContent = "D";
-      headerName.textContent = "Dzey Autajay";
+      const msgColRef = collection(db, "conversations", conversationId, "messages");
+      const adminMsg = { uidSender: adminUid, text: "Hello, how can I help you?", status: "sent", timestamp: new Date() };
+      await addDoc(msgColRef, adminMsg);
+      console.log("[DEBUG] Admin initial message created.");
+    } else {
+      conversationId = snapshot.docs[0].id;
+      console.log("[DEBUG] Conversation loaded, ID:", conversationId);
+    }
 
-      sendButton.disabled = false;
-      console.log("[DEBUG] Send button enabled.");
+    // Load messages
+    const msgColRef = collection(db, "conversations", conversationId, "messages");
+    const msgQuery = query(msgColRef, orderBy("timestamp", "asc"));
+    onSnapshot(msgQuery, msgSnapshot => {
+      messagesContainer.innerHTML = "";
+      msgSnapshot.forEach(msgDoc => {
+        const msgData = msgDoc.data();
+        const isAdmin = msgData.uidSender === adminUid;
+        const senderName = isAdmin ? adminName : currentUser.displayName || currentUser.email;
+        const avatarLetter = isAdmin ? adminAvatarLetter : (currentUser.displayName ? currentUser.displayName[0].toUpperCase() : "?");
+        const avatarColor = isAdmin ? adminAvatarColor : "#3498DB";
+        addMessage(senderName, msgData.text, msgData.timestamp, isAdmin, avatarLetter, avatarColor);
+      });
     });
-  } catch(err) {
-    console.error("[DEBUG] initConversation error:", err);
-    alert("Error initializing conversation: " + err.message);
-  }
+
+    sendButton.disabled = false;
+  });
 }
 
-initConversation();
+// --- Listen auth state ---
+onAuthStateChanged(auth, user => {
+  if(user){
+    currentUser = user;
+    console.log("[DEBUG] Authenticated as:", user.uid);
+    initChat();
+  } else {
+    console.log("[DEBUG] Not signed in. Signing in with stored credentials...");
+    const stored = JSON.parse(localStorage.getItem("account") || "{}");
+    if(!stored.email || !stored.password){
+      alert("No stored credentials for testing. Redirecting...");
+      window.location.href = "authentication.html";
+      return;
+    }
+
+    signInWithEmailAndPassword(auth, stored.email, stored.password)
+      .then(cred => {
+        console.log("[DEBUG] Signed in:", cred.user.uid);
+      })
+      .catch(err => {
+        console.error("[DEBUG] Sign-in failed:", err);
+        alert("Sign-in failed: " + err.message);
+      });
+  }
+});
 
 // --- Send message ---
 replyForm.addEventListener("submit", async e => {
   e.preventDefault();
-  console.log("[DEBUG] Submit clicked. conversationId:", conversationId);
-  if(!conversationId) {
-    alert("Cannot send message: conversationId is null");
+  if(!conversationId || !currentUser){
+    alert("Cannot send: conversation not ready");
     return;
   }
   const text = replyInput.value.trim();
-  if(!text) {
-    alert("Cannot send empty message");
-    return;
-  }
+  if(!text) return;
 
   const msgColRef = collection(db, "conversations", conversationId, "messages");
-  const newMsg = {
-    uidSender: userId,
-    text,
-    status: "unread",
-    timestamp: new Date()
-  };
+  const newMsg = { uidSender: currentUser.uid, text, status: "unread", timestamp: new Date() };
 
   try {
     const docRef = await addDoc(msgColRef, newMsg);
-    console.log("[DEBUG] Message sent successfully, ID:", docRef.id);
-    const convRef = doc(db, "conversations", conversationId);
-    await updateDoc(convRef, { lastUpdated: new Date() });
+    console.log("[DEBUG] Message sent, ID:", docRef.id);
+    await updateDoc(doc(db, "conversations", conversationId), { lastUpdated: new Date() });
     replyInput.value = "";
   } catch(err){
-    console.error("[DEBUG] Failed to send message:", err);
-    alert("Failed to send message: " + err.message);
+    console.error("[DEBUG] Send failed:", err);
+    alert("Failed to send: " + err.message);
   }
 });
 </script>
@@ -214,11 +204,7 @@ replyForm.addEventListener("submit", async e => {
 
 <!-- Header -->
 <div class="bg-white p-4 shadow rounded mb-4 flex items-center space-x-3">
-  <div id="chatHeaderAvatar"
-       class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold"
-       style="background-color: #3498DB">
-    D
-  </div>
+  <div id="chatHeaderAvatar" class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold">D</div>
   <div id="chatHeaderName" class="font-bold text-lg">Dzey Autajay</div>
 </div>
 
