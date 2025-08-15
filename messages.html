@@ -3,17 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Messenger with Participants Fix</title>
+<title>Messenger with Server Timestamp</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { 
-  getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, where, limit, orderBy, updateDoc 
+  getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, where, limit, orderBy, updateDoc, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-import { 
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
 // --- Firebase config ---
 const firebaseConfig = {
@@ -103,8 +101,8 @@ function initChat() {
 
       await setDoc(newConvRef, {
         participants: [currentUser.uid, adminUid],
-        timeCreated: new Date(),
-        lastUpdated: new Date()
+        timeCreated: serverTimestamp(),
+        lastUpdated: serverTimestamp()
       });
 
       const msgColRef = collection(db, "conversations", conversationId, "messages");
@@ -112,7 +110,7 @@ function initChat() {
         uidSender: adminUid, 
         text: "Hello, how can I help you?", 
         status: "sent", 
-        timestamp: new Date(),
+        timestamp: serverTimestamp(),
         participants: [currentUser.uid, adminUid]
       };
       await addDoc(msgColRef, adminMsg);
@@ -186,13 +184,13 @@ replyForm.addEventListener("submit", async e => {
     uidSender: currentUser.uid, 
     text, 
     status: "unread", 
-    timestamp: new Date(),
+    timestamp: serverTimestamp(), // <-- use server timestamp
     participants
   };
 
   try {
     await addDoc(msgColRef, newMsg);
-    await updateDoc(doc(db, "conversations", conversationId), { lastUpdated: new Date() });
+    await updateDoc(doc(db, "conversations", conversationId), { lastUpdated: serverTimestamp() });
     replyInput.value = "";
     console.log("[DEBUG] Message sent successfully.");
   } catch(err){
