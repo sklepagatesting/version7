@@ -90,7 +90,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, addDoc, getDoc, serverTimestamp, where, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, addDoc, getDoc, serverTimestamp, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
@@ -104,7 +104,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const admin = { name: "Dzey Autajay", uid: "yX0rfptwb2SKESPuPBzvfkv8gti2" }; // Admin UID is now included.
+const admin = { name: "Dzey Autajay", uid: "yX0rfptwb2SKESPuPBzvfkv8gti2" };
 
 const chatApp = document.getElementById("chatApp");
 const userList = document.getElementById("userList");
@@ -115,59 +115,54 @@ const chatTitle = document.getElementById("chatTitle");
 const backBtn = document.getElementById("backBtn");
 
 let currentConversationId = null;
-let currentOtherUserName = null;
+let currentOtherUserUid = null;
 let unsubscribeConversationListener = null;
-const usersCache = {}; // Cache to store user data { uid: { name: '...', ... } }
+const usersCache = {};
 
-// Helpers
-function escapeHtml(text) { if (typeof text !== 'string') return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+// --- Helper Functions ---
+function escapeHtml(text) { 
+  if (typeof text !== 'string') return ""; 
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); 
+}
+
 function formatTimestamp(date) {
-    if (!date) return '';
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    if (messageDate.getTime() === today.getTime()) return timeString;
-    if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
-    if (messageDate.getTime() > oneWeekAgo.getTime()) {
-        const dayString = date.toLocaleDateString('en-US', { weekday: 'long' });
-        return `${dayString} ${timeString}`;
-    }
-    return `${date.toLocaleDateString('en-US')} ${timeString}`;
+  if (!date) return '';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  if (messageDate.getTime() === today.getTime()) return timeString;
+  if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;
+  const oneWeekAgo = new Date(today);
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
+  if (messageDate.getTime() > oneWeekAgo.getTime()) {
+      const dayString = date.toLocaleDateString('en-US', { weekday: 'long' });
+      return `${dayString} ${timeString}`;
+  }
+  return `${date.toLocaleDateString('en-US')} ${timeString}`;
 }
 
 function formatTimestampForList(date) {
-    if (!date) return '';
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    if (messageDate.getTime() === today.getTime()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    if (messageDate.getTime() === yesterday.getTime()) return 'Yesterday';
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
-    if (messageDate.getTime() > oneWeekAgo.getTime()) return date.toLocaleDateString('en-US', { weekday: 'short' });
-    return date.toLocaleDateString('en-US');
+  if (!date) return '';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  if (messageDate.getTime() === today.getTime()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  if (messageDate.getTime() === yesterday.getTime()) return 'Yesterday';
+  const oneWeekAgo = new Date(today);
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
+  if (messageDate.getTime() > oneWeekAgo.getTime()) return date.toLocaleDateString('en-US', { weekday: 'short' });
+  return date.toLocaleDateString('en-US');
 }
 
 function scrollToBottom() { requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }); }
 let lastMessageTime = null;
 
-async function addMessage(uidSender, text, timestamp) {
-  if (!usersCache[uidSender]) {
-    const userDoc = await getDoc(doc(db, "accounts", uidSender));
-    if (userDoc.exists()) {
-      usersCache[uidSender] = userDoc.data();
-    } else {
-      usersCache[uidSender] = { name: "Unknown User" };
-    }
-  }
-
+function addMessage(uidSender, text, timestamp) {
   const isSender = uidSender === admin.uid;
   const row = document.createElement("div");
   row.className = "message-row " + (isSender ? "sender" : "receiver");
@@ -208,10 +203,8 @@ async function addMessage(uidSender, text, timestamp) {
   messagesContainer.appendChild(row);
 }
 
-// Detect mobile
+// --- Event Listeners ---
 const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-
-// Prevent textarea scroll from bubbling to body
 replyInput.addEventListener("wheel", (e) => {
   const atTop = replyInput.scrollTop === 0;
   const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
@@ -223,8 +216,6 @@ replyInput.addEventListener("touchmove", (e) => {
   const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
   if ((e.touches[0].clientY > 0 && atTop) || (e.touches[0].clientY < 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
 });
-
-// Enter key behavior
 replyInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     if (!isMobile || e.ctrlKey) {
@@ -233,19 +224,18 @@ replyInput.addEventListener("keydown", (e) => {
     }
   }
 });
-
-// Auto-resize textarea
 replyInput.addEventListener("input", () => {
   replyInput.style.height = "42px";
   replyInput.style.height = replyInput.scrollHeight + "px";
   scrollToBottom();
 });
+backBtn.addEventListener("click", () => { chatApp.classList.remove("show-chat"); });
 
-// Open conversation
-async function openConversation(conversationId, otherName) {
+// --- Firestore Interactions ---
+async function openConversation(conversationId, otherUserUid, otherUserName) {
   currentConversationId = conversationId;
-  currentOtherUserName = otherName;
-  chatTitle.textContent = escapeHtml(otherName);
+  currentOtherUserUid = otherUserUid;
+  chatTitle.textContent = escapeHtml(otherUserName);
   chatApp.classList.remove('no-chat-selected');
   document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
   document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
@@ -269,7 +259,6 @@ async function openConversation(conversationId, otherName) {
   if (window.innerWidth <= 768) chatApp.classList.add("show-chat");
 }
 
-// Load users
 async function loadUsers() {
   const q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"));
   onSnapshot(q, async (snapshot) => {
@@ -278,37 +267,43 @@ async function loadUsers() {
       userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
       return;
     }
-    for (const docSnap of snapshot.docs) {
-      const conversationId = docSnap.id;
+
+    const conversationPromises = snapshot.docs.map(async docSnap => {
       const data = docSnap.data();
-      
       const otherParticipantUid = data.participants.find(uid => uid !== admin.uid);
-      
-      let userName = "Unknown User";
-      if (otherParticipantUid) {
-        if (!usersCache[otherParticipantUid]) {
-          const userDoc = await getDoc(doc(db, "accounts", otherParticipantUid));
-          if (userDoc.exists()) {
-            usersCache[otherParticipantUid] = userDoc.data();
-          }
+      const conversationId = docSnap.id;
+
+      // Batch fetch user data
+      if (otherParticipantUid && !usersCache[otherParticipantUid]) {
+        const userDoc = await getDoc(doc(db, "accounts", otherParticipantUid));
+        if (userDoc.exists()) {
+          usersCache[otherParticipantUid] = userDoc.data();
+        } else {
+          usersCache[otherParticipantUid] = { name: "Unknown User" };
         }
-        userName = usersCache[otherParticipantUid]?.name || "Unknown User";
       }
 
-      // Get last message for snippet and time
+      // Fetch last message
       const lastMessageQuery = query(collection(db, "conversations", conversationId, "messages"), orderBy("timestamp", "desc"), limit(1));
       const lastMessageSnap = await getDoc(lastMessageQuery);
-      let lastMessageText = "";
-      let lastMessageTime = null;
-      if (!lastMessageSnap.empty) {
-        const lastMessageData = lastMessageSnap.docs[0].data();
-        lastMessageText = lastMessageData.text;
-        lastMessageTime = lastMessageData.timestamp.toDate();
-      }
+      
+      return {
+        id: conversationId,
+        otherUid: otherParticipantUid,
+        lastMessageData: lastMessageSnap.docs?.[0]?.data()
+      };
+    });
+
+    const conversationData = await Promise.all(conversationPromises);
+
+    conversationData.forEach(thread => {
+      const userName = usersCache[thread.otherUid]?.name || "Unknown User";
+      const lastMessageText = thread.lastMessageData?.text || "";
+      const lastMessageTime = thread.lastMessageData?.timestamp?.toDate() || null;
 
       const li = document.createElement("div");
       li.className = "conversation";
-      li.dataset.id = conversationId;
+      li.dataset.id = thread.id;
       li.innerHTML = `
         <div class="flex justify-between items-center">
           <strong class="font-semibold text-gray-800">${escapeHtml(userName)}</strong>
@@ -316,16 +311,15 @@ async function loadUsers() {
         </div>
         <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessageText)}</p>
       `;
-      li.addEventListener("click", () => openConversation(conversationId, userName));
+      li.addEventListener("click", () => openConversation(thread.id, thread.otherUid, userName));
       userList.appendChild(li);
-    }
+    });
   });
 }
 
-// Send reply
 replyForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!currentConversationId) return;
+  if (!currentConversationId || !currentOtherUserUid) return;
   const text = replyInput.value.trim();
   if (!text) return;
 
@@ -334,7 +328,7 @@ replyForm.addEventListener("submit", async (e) => {
     timestamp: serverTimestamp(),
     uidSender: admin.uid,
     status: "unread",
-    participants: [admin.uid, usersCache[currentOtherUserName]?.uid] // This part might need to be adjusted to get the other user's UID
+    participants: [admin.uid, currentOtherUserUid]
   };
 
   try {
@@ -352,8 +346,6 @@ replyForm.addEventListener("submit", async (e) => {
     alert("Failed to send reply: " + err.message);
   }
 });
-
-backBtn.addEventListener("click", () => { chatApp.classList.remove("show-chat"); });
 
 loadUsers();
 </script>
