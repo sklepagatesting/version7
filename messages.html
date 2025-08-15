@@ -97,60 +97,69 @@ let conversationId = null;
 
 // --- Initialize / find conversation ---
 async function initConversation() {
-  const convQuery = query(
-    collection(db, "conversations"),
-    where("participants", "array-contains", userId),
-    limit(1)
-  );
+  console.log("[DEBUG] Initializing conversation for user:", userId);
+  try {
+    const convQuery = query(
+      collection(db, "conversations"),
+      where("participants", "array-contains", userId),
+      limit(1)
+    );
 
-  onSnapshot(convQuery, async snapshot => {
-    if(snapshot.empty){
-      // No conversation yet, create new
-      const newConvRef = doc(collection(db, "conversations"));
-      conversationId = newConvRef.id;
+    onSnapshot(convQuery, async snapshot => {
+      console.log("[DEBUG] Conversation snapshot received:", snapshot.docs.length);
+      if(snapshot.empty){
+        console.log("[DEBUG] No conversation found, creating a new one...");
+        const newConvRef = doc(collection(db, "conversations"));
+        conversationId = newConvRef.id;
 
-      await setDoc(newConvRef, {
-        participants: [userId, adminUid],
-        timeCreated: new Date(),
-        lastUpdated: new Date()
-      });
+        await setDoc(newConvRef, {
+          participants: [userId, adminUid],
+          timeCreated: new Date(),
+          lastUpdated: new Date()
+        });
 
-      // initial admin message
+        const msgColRef = collection(db, "conversations", conversationId, "messages");
+        const adminMsg = {
+          uidSender: adminUid,
+          text: "Hello, how can I help you?",
+          status: "sent",
+          timestamp: new Date()
+        };
+        await addDoc(msgColRef, adminMsg);
+        console.log("[DEBUG] Initial admin message created.");
+      } else {
+        conversationId = snapshot.docs[0].id;
+        console.log("[DEBUG] Conversation found, ID:", conversationId);
+      }
+
+      // Load messages
       const msgColRef = collection(db, "conversations", conversationId, "messages");
-      const adminMsg = {
-        uidSender: adminUid,
-        text: "Hello, how can I help you?",
-        status: "sent",
-        timestamp: new Date()
-      };
-      await addDoc(msgColRef, adminMsg);
-    } else {
-      conversationId = snapshot.docs[0].id;
-    }
-
-    // Load messages
-    const msgColRef = collection(db, "conversations", conversationId, "messages");
-    const msgQuery = query(msgColRef, orderBy("timestamp", "asc"));
-    onSnapshot(msgQuery, msgSnapshot => {
-      messagesContainer.innerHTML = "";
-      msgSnapshot.forEach(msgDoc => {
-        const msgData = msgDoc.data();
-        const isAdmin = msgData.uidSender === adminUid;
-        const senderName = isAdmin ? "Dzey Autajay" : userName;
-        const avatarLetter = isAdmin ? "D" : userAvatarLetter;
-        const avatarColor = isAdmin ? "#3498DB" : userAvatarColor;
-
-        addMessage(senderName, msgData.text, msgData.timestamp, isAdmin, avatarLetter, avatarColor);
+      const msgQuery = query(msgColRef, orderBy("timestamp", "asc"));
+      onSnapshot(msgQuery, msgSnapshot => {
+        console.log("[DEBUG] Messages snapshot received:", msgSnapshot.docs.length);
+        messagesContainer.innerHTML = "";
+        msgSnapshot.forEach(msgDoc => {
+          const msgData = msgDoc.data();
+          const isAdmin = msgData.uidSender === adminUid;
+          const senderName = isAdmin ? "Dzey Autajay" : userName;
+          const avatarLetter = isAdmin ? "D" : userAvatarLetter;
+          const avatarColor = isAdmin ? "#3498DB" : userAvatarColor;
+          addMessage(senderName, msgData.text, msgData.timestamp, isAdmin, avatarLetter, avatarColor);
+        });
       });
+
+      // Header
+      headerAvatar.style.backgroundColor = "#3498DB";
+      headerAvatar.textContent = "D";
+      headerName.textContent = "Dzey Autajay";
+
+      sendButton.disabled = false;
+      console.log("[DEBUG] Send button enabled.");
     });
-
-    // Show admin in header
-    headerAvatar.style.backgroundColor = "#3498DB";
-    headerAvatar.textContent = "D";
-    headerName.textContent = "Dzey Autajay";
-
-    sendButton.disabled = false;
-  });
+  } catch(err) {
+    console.error("[DEBUG] initConversation error:", err);
+    alert("Error initializing conversation: " + err.message);
+  }
 }
 
 initConversation();
@@ -158,9 +167,16 @@ initConversation();
 // --- Send message ---
 replyForm.addEventListener("submit", async e => {
   e.preventDefault();
-  if(!conversationId) return;
+  console.log("[DEBUG] Submit clicked. conversationId:", conversationId);
+  if(!conversationId) {
+    alert("Cannot send message: conversationId is null");
+    return;
+  }
   const text = replyInput.value.trim();
-  if(!text) return;
+  if(!text) {
+    alert("Cannot send empty message");
+    return;
+  }
 
   const msgColRef = collection(db, "conversations", conversationId, "messages");
   const newMsg = {
@@ -171,13 +187,14 @@ replyForm.addEventListener("submit", async e => {
   };
 
   try {
-    await addDoc(msgColRef, newMsg);
+    const docRef = await addDoc(msgColRef, newMsg);
+    console.log("[DEBUG] Message sent successfully, ID:", docRef.id);
     const convRef = doc(db, "conversations", conversationId);
     await updateDoc(convRef, { lastUpdated: new Date() });
     replyInput.value = "";
   } catch(err){
-    console.error("Failed to send:", err);
-    alert("Failed to send message.");
+    console.error("[DEBUG] Failed to send message:", err);
+    alert("Failed to send message: " + err.message);
   }
 });
 </script>
