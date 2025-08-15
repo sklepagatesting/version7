@@ -90,7 +90,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, addDoc, getDoc, serverTimestamp, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, addDoc, getDoc, serverTimestamp, where, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
@@ -260,7 +260,13 @@ async function openConversation(conversationId, otherUserUid, otherUserName) {
 }
 
 async function loadUsers() {
-  const q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"));
+  // IMPROVEMENT: Filter conversations on the server to only get those involving the admin.
+  const q = query(
+    collection(db, "conversations"),
+    where("participants", "array-contains", admin.uid),
+    orderBy("lastUpdated", "desc")
+  );
+
   onSnapshot(q, async (snapshot) => {
     userList.innerHTML = "";
     if (snapshot.empty) {
