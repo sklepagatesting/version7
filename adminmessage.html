@@ -259,7 +259,6 @@ function openConversation(conversationId, otherName) {
   if (window.innerWidth <= 768) chatApp.classList.add("show-chat");
 }
 
-// Load users
 function loadUsers() {
   const q = query(collection(db, "message"), orderBy("time","desc"));
   onSnapshot(q, snapshot => {
@@ -268,29 +267,47 @@ function loadUsers() {
       userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
       return;
     }
+
     const userConversations = {};
+
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
       const id = docSnap.id;
-      const otherName = data.name === admin.name && data.replies?.length > 0
-        ? data.replies[0].author
-        : (data.name === admin.name ? data.userName || "Unknown User" : data.name);
+
+      // Determine the other participant
+      let otherName;
+      if (data.name !== admin.name) {
+        otherName = data.name; // original message is from user
+      } else if (data.replies?.length > 0) {
+        // find first reply that is NOT from admin
+        const firstUserReply = data.replies.find(r => r.author !== admin.name);
+        otherName = firstUserReply ? firstUserReply.author : (data.userName || "Unknown User");
+      } else {
+        otherName = data.userName || "Unknown User";
+      }
+
       if (!userConversations[otherName]) userConversations[otherName] = [];
       userConversations[otherName].push({ id, ...data });
     });
+
+    // Get latest conversation per user
     const latestConversations = Object.entries(userConversations).map(([userName, threads]) => {
-        threads.sort((a, b) => {
-            const lastTimeA = a.replies?.slice(-1)[0]?.time || a.time;
-            const lastTimeB = b.replies?.slice(-1)[0]?.time || b.time;
-            return new Date(lastTimeB) - new Date(lastTimeA);
-        });
-        return { userName, thread: threads[0] };
-    });
-    latestConversations.sort((a, b) => {
-        const lastTimeA = a.thread.replies?.slice(-1)[0]?.time || a.thread.time;
-        const lastTimeB = b.thread.replies?.slice(-1)[0]?.time || b.thread.time;
+      threads.sort((a, b) => {
+        const lastTimeA = a.replies?.slice(-1)[0]?.time || a.time;
+        const lastTimeB = b.replies?.slice(-1)[0]?.time || b.time;
         return new Date(lastTimeB) - new Date(lastTimeA);
+      });
+      return { userName, thread: threads[0] };
     });
+
+    // Sort all conversations by latest message
+    latestConversations.sort((a, b) => {
+      const lastTimeA = a.thread.replies?.slice(-1)[0]?.time || a.thread.time;
+      const lastTimeB = b.thread.replies?.slice(-1)[0]?.time || b.thread.time;
+      return new Date(lastTimeB) - new Date(lastTimeA);
+    });
+
+    // Render conversations
     latestConversations.forEach(({ userName, thread }) => {
       const lastMessage = thread.replies?.slice(-1)[0] || { text: thread.message, time: thread.time };
       const li = document.createElement("div");
