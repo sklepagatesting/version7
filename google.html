@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Google Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    // --- Firebase Config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+      authDomain: "sklepaga-8790e.firebaseapp.com",
+      projectId: "sklepaga-8790e",
+      storageBucket: "sklepaga-8790e.firebasestorage.app",
+      messagingSenderId: "815409129057",
+      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+      measurementId: "G-9GH707G2WZ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+    const db = getFirestore(app);
+
+    // Check if less than 2 admins exist
+    async function canBeAdmin() {
+      const adminQuery = query(collection(db, "accounts"), where("role", "==", "admin"));
+      const adminDocs = await getDocs(adminQuery);
+      return adminDocs.size < 2;
+    }
+
+    // Save user data to Firestore and localStorage
+    async function saveUser(user) {
+      const token = await user.getIdToken();
+      let role = "user";
+
+      // Only assign admin role if less than 2 admins exist
+      if (await canBeAdmin()) {
+        role = "admin";
+      }
+
+      const userData = {
+        uid: user.uid,
+        name: user.displayName || "",
+        email: user.email || "",
+        avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
+        avatarColor: "#3498DB",
+        idToken: token,
+        tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString(),
+        role
+      };
+
+      await setDoc(doc(db, "accounts", user.uid), userData);
+      localStorage.setItem("account", JSON.stringify(userData));
+    }
+
+    // Trigger Google Login
+    async function login() {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        await saveUser(result.user);
+        window.location.href = "messages.html";
+      } catch (error) {
+        console.error("Login failed:", error);
+        alert("Login failed: " + error.message);
+      }
+    }
+
+    // If already signed in, skip login popup
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        await saveUser(user);
+        window.location.href = "messages.html";
+      } else {
+        login();
+      }
+    });
+  </script>
+</head>
+<body class="flex items-center justify-center min-h-screen bg-gray-100">
+  <div class="bg-white shadow-lg rounded-lg p-6 text-center">
+    <h1 class="text-xl font-semibold text-gray-700">Signing you in with Google...</h1>
+  </div>
+</body>
+</html>
