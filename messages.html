@@ -29,24 +29,19 @@ const db = getFirestore(app);
 
 // --- Current User ---
 const account = JSON.parse(localStorage.getItem("account") || "{}");
-console.log("Loaded account:", account);
 
 const userId = account.uid;
 const userName = account.name;
-const userEmail = account.email;
 const userAvatarLetter = account.avatarLetter || (userName ? userName[0].toUpperCase() : "?");
 const userAvatarColor = account.avatarColor || "#3498DB";
 
 if (!userId || !userName) {
-  alert("User not logged in or invalid account, redirecting...");
+  alert("User not logged in, redirecting...");
   window.location.href = "authentication.html";
 }
 
-// --- Hardcoded Admin Account ---
-const adminGeneratedUid = "yX0rfptwb2SKESPuPBzvfkv8gti2";
-const adminName = "Dzey Autajay";
-const adminAvatarLetter = "D";
-const adminAvatarColor = "#3498DB";
+// --- Admin Account ---
+const adminUid = "yX0rfptwb2SKESPuPBzvfkv8gti2";
 
 // --- DOM Elements ---
 const messagesContainer = document.getElementById("messagesContainer");
@@ -56,7 +51,7 @@ const sendButton = replyForm.querySelector("button");
 const headerName = document.getElementById("chatHeaderName");
 const headerAvatar = document.getElementById("chatHeaderAvatar");
 
-// Disable send until conversationId is ready
+// Disable send until conversation is ready
 sendButton.disabled = true;
 
 // --- Escape HTML ---
@@ -97,13 +92,11 @@ function addMessage(senderName, text, timestamp, isAdmin=false, avatarLetter="?"
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// --- Conversation variables ---
+// --- Conversation ---
 let conversationId = null;
 
 // --- Initialize / find conversation ---
 async function initConversation() {
-  console.log("Initializing conversation for user:", userId);
-
   const convQuery = query(
     collection(db, "conversations"),
     where("participants", "array-contains", userId),
@@ -112,12 +105,12 @@ async function initConversation() {
 
   onSnapshot(convQuery, async snapshot => {
     if(snapshot.empty){
-      console.log("No conversation found, creating a new one...");
+      // No conversation yet, create new
       const newConvRef = doc(collection(db, "conversations"));
       conversationId = newConvRef.id;
 
       await setDoc(newConvRef, {
-        participants: [userId, adminGeneratedUid],
+        participants: [userId, adminUid],
         timeCreated: new Date(),
         lastUpdated: new Date()
       });
@@ -125,13 +118,12 @@ async function initConversation() {
       // initial admin message
       const msgColRef = collection(db, "conversations", conversationId, "messages");
       const adminMsg = {
-        uidSender: adminGeneratedUid,
+        uidSender: adminUid,
         text: "Hello, how can I help you?",
         status: "sent",
         timestamp: new Date()
       };
       await addDoc(msgColRef, adminMsg);
-
     } else {
       conversationId = snapshot.docs[0].id;
     }
@@ -143,36 +135,32 @@ async function initConversation() {
       messagesContainer.innerHTML = "";
       msgSnapshot.forEach(msgDoc => {
         const msgData = msgDoc.data();
-        const isAdmin = msgData.uidSender === adminGeneratedUid;
-        const senderName = isAdmin ? adminName : userName;
-        const avatarLetter = isAdmin ? adminAvatarLetter : userAvatarLetter;
-        const avatarColor = isAdmin ? adminAvatarColor : userAvatarColor;
+        const isAdmin = msgData.uidSender === adminUid;
+        const senderName = isAdmin ? "Dzey Autajay" : userName;
+        const avatarLetter = isAdmin ? "D" : userAvatarLetter;
+        const avatarColor = isAdmin ? "#3498DB" : userAvatarColor;
 
         addMessage(senderName, msgData.text, msgData.timestamp, isAdmin, avatarLetter, avatarColor);
       });
     });
 
-    // Set header info & enable send
-    headerAvatar.style.backgroundColor = adminAvatarColor;
-    headerAvatar.textContent = adminAvatarLetter;
-    headerName.textContent = adminName;
+    // Show admin in header
+    headerAvatar.style.backgroundColor = "#3498DB";
+    headerAvatar.textContent = "D";
+    headerName.textContent = "Dzey Autajay";
+
     sendButton.disabled = false;
   });
 }
 
 initConversation();
 
-// --- Send reply ---
+// --- Send message ---
 replyForm.addEventListener("submit", async e => {
   e.preventDefault();
-  if(!conversationId) {
-    alert("Please wait, chat is still loading...");
-    return;
-  }
+  if(!conversationId) return;
   const text = replyInput.value.trim();
-  if(!text) {
-    return;
-  }
+  if(!text) return;
 
   const msgColRef = collection(db, "conversations", conversationId, "messages");
   const newMsg = {
@@ -187,10 +175,9 @@ replyForm.addEventListener("submit", async e => {
     const convRef = doc(db, "conversations", conversationId);
     await updateDoc(convRef, { lastUpdated: new Date() });
     replyInput.value = "";
-    console.log("Message sent successfully");
   } catch(err){
-    alert("Failed to send reply: " + err.message);
-    console.error(err);
+    console.error("Failed to send:", err);
+    alert("Failed to send message.");
   }
 });
 </script>
@@ -208,17 +195,17 @@ replyForm.addEventListener("submit", async e => {
 
 <body class="bg-gray-50 flex flex-col h-screen p-4 overflow-hidden">
 
-<!-- Header with avatar -->
+<!-- Header -->
 <div class="bg-white p-4 shadow rounded mb-4 flex items-center space-x-3">
   <div id="chatHeaderAvatar"
        class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold"
        style="background-color: #3498DB">
-    ?
+    D
   </div>
-  <div id="chatHeaderName" class="font-bold text-lg"></div>
+  <div id="chatHeaderName" class="font-bold text-lg">Dzey Autajay</div>
 </div>
 
-<!-- Chat container -->
+<!-- Chat -->
 <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-2 bg-white border rounded mb-4 max-h-[75vh]"></div>
 
 <!-- Reply form -->
