@@ -1,92 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin Panel</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-100">
 
-  <div class="max-w-md mx-auto bg-white shadow-lg rounded-lg overflow-hidden mt-10">
-    <div class="p-4 border-b border-gray-200">
-      <h2 class="text-lg font-bold">Admin Conversations</h2>
+    <div class="max-w-md mx-auto bg-white shadow-lg rounded-lg overflow-hidden mt-10">
+        <div class="p-4 border-b border-gray-200">
+            <h2 class="text-lg font-bold">Admin Conversations</h2>
+        </div>
+        <div id="conversation-list" class="divide-y divide-gray-200">
+            </div>
     </div>
-    <div id="conversation-list" class="divide-y divide-gray-200">
-      <!-- Conversations will appear here -->
-    </div>
-  </div>
 
-  <script>
-    // ✅ Your Firebase Config
-    const firebaseConfig = {
-      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-      authDomain: "sklepaga-8790e.firebaseapp.com",
-      projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.appspot.com",
-      messagingSenderId: "815409129057",
-      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-      measurementId: "G-9GH707G2WZ"
-    };
+    <script>
+        // ✅ Your Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+            authDomain: "sklepaga-8790e.firebaseapp.com",
+            projectId: "sklepaga-8790e",
+            storageBucket: "sklepaga-8790e.appspot.com",
+            messagingSenderId: "815409129057",
+            appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+            measurementId: "G-9GH707G2WZ"
+        };
 
-    // Initialize
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-    let adminUID = null;
+        let adminUID = null;
 
-    auth.onAuthStateChanged(user => {
-      if (!user) {
-        // Not logged in → normal users
-        window.location.href = "messages.html";
-        return;
-      }
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                // Not logged in -> redirect to login/messages page
+                window.location.href = "messages.html";
+                return;
+            }
 
-      // Check role in accounts
-      db.collection("accounts").doc(user.uid).get().then(doc => {
-        if (!doc.exists || doc.data().role !== "admin") {
-          window.location.href = "messages.html";
-        } else {
-          adminUID = user.uid;
-          loadConversations();
-        }
-      });
-    });
-
-    function loadConversations() {
-      db.collection("conversations")
-        .where("participants", "array-contains", adminUID)
-        .orderBy("time", "desc") // or lastMessageTime if you use that
-        .onSnapshot(snapshot => {
-          const container = document.getElementById("conversation-list");
-          container.innerHTML = "";
-
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            const otherUser = data.participants.find(p => p !== adminUID);
-            const lastMsg = data.lastMessage || "";
-            const time = data.time || "";
-
-            const div = document.createElement("div");
-            div.className = "p-4 hover:bg-gray-50 cursor-pointer";
-            div.innerHTML = `
-              <div class="flex justify-between">
-                <span class="font-semibold">${otherUser}</span>
-                <span class="text-xs text-gray-500">${time}</span>
-              </div>
-              <p class="text-gray-600 text-sm truncate">${lastMsg}</p>
-            `;
-            div.onclick = () => {
-              window.location.href = `adminchat.html?id=${doc.id}`;
-            };
-            container.appendChild(div);
-          });
+            // Check role in accounts collection
+            db.collection("accounts").doc(user.uid).get().then(doc => {
+                if (!doc.exists || doc.data().role !== "admin") {
+                    window.location.href = "messages.html";
+                } else {
+                    adminUID = user.uid;
+                    loadConversations();
+                }
+            }).catch(error => {
+                console.error("Error checking admin role:", error);
+                window.location.href = "messages.html";
+            });
         });
-    }
-  </script>
+
+        async function loadConversations() {
+            // First, get all accounts to map UIDs to usernames
+            const accountsSnapshot = await db.collection("accounts").get();
+            const users = {};
+            accountsSnapshot.forEach(doc => {
+                users[doc.id] = doc.data().username || "Unknown User";
+            });
+
+            db.collection("conversations")
+                .where("participants", "array-contains", adminUID)
+                .orderBy("time", "desc") // or lastMessageTime if you use that
+                .onSnapshot(snapshot => {
+                    const container = document.getElementById("conversation-list");
+                    container.innerHTML = "";
+
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const otherUserUID = data.participants.find(p => p !== adminUID);
+                        const otherUserName = users[otherUserUID] || otherUserUID; // Use UID as fallback
+
+                        const lastMsg = data.lastMessage || "";
+                        const time = data.time ? new Date(data.time.toDate()).toLocaleTimeString() : ""; // Format timestamp
+
+                        const div = document.createElement("div");
+                        div.className = "p-4 hover:bg-gray-50 cursor-pointer";
+                        div.innerHTML = `
+                            <div class="flex justify-between">
+                                <span class="font-semibold">${otherUserName}</span>
+                                <span class="text-xs text-gray-500">${time}</span>
+                            </div>
+                            <p class="text-gray-600 text-sm truncate">${lastMsg}</p>
+                        `;
+                        div.onclick = () => {
+                            window.location.href = `adminchat.html?id=${doc.id}`;
+                        };
+                        container.appendChild(div);
+                    });
+                });
+        }
+    </script>
 </body>
 </html>
