@@ -54,6 +54,7 @@ const replyForm = document.getElementById("replyForm");
 const replyInput = document.getElementById("replyInput");
 const sendButton = replyForm.querySelector("button");
 const headerName = document.getElementById("chatHeaderName");
+const headerAvatar = document.getElementById("chatHeaderAvatar");
 
 // Disable send until conversationId is ready
 sendButton.disabled = true;
@@ -110,8 +111,6 @@ async function initConversation() {
   );
 
   onSnapshot(convQuery, async snapshot => {
-    messagesContainer.innerHTML = "";
-
     if(snapshot.empty){
       console.log("No conversation found, creating a new one...");
       const newConvRef = doc(collection(db, "conversations"));
@@ -133,28 +132,29 @@ async function initConversation() {
       };
       await addDoc(msgColRef, adminMsg);
 
-      addMessage(adminName, adminMsg.text, adminMsg.timestamp, true, adminAvatarLetter, adminAvatarColor);
     } else {
       conversationId = snapshot.docs[0].id;
-
-      // Load existing messages
-      const msgColRef = collection(db, "conversations", conversationId, "messages");
-      const msgQuery = query(msgColRef, orderBy("timestamp", "asc"));
-      onSnapshot(msgQuery, msgSnapshot => {
-        messagesContainer.innerHTML = "";
-        for(const msgDoc of msgSnapshot.docs){
-          const msgData = msgDoc.data();
-          const isAdmin = msgData.uidSender === adminGeneratedUid;
-          const senderName = isAdmin ? adminName : userName;
-          const avatarLetter = isAdmin ? adminAvatarLetter : userAvatarLetter;
-          const avatarColor = isAdmin ? adminAvatarColor : userAvatarColor;
-
-          addMessage(senderName, msgData.text, msgData.timestamp, isAdmin, avatarLetter, avatarColor);
-        }
-      });
     }
 
-    // Enable send button now
+    // Load messages
+    const msgColRef = collection(db, "conversations", conversationId, "messages");
+    const msgQuery = query(msgColRef, orderBy("timestamp", "asc"));
+    onSnapshot(msgQuery, msgSnapshot => {
+      messagesContainer.innerHTML = "";
+      msgSnapshot.forEach(msgDoc => {
+        const msgData = msgDoc.data();
+        const isAdmin = msgData.uidSender === adminGeneratedUid;
+        const senderName = isAdmin ? adminName : userName;
+        const avatarLetter = isAdmin ? adminAvatarLetter : userAvatarLetter;
+        const avatarColor = isAdmin ? adminAvatarColor : userAvatarColor;
+
+        addMessage(senderName, msgData.text, msgData.timestamp, isAdmin, avatarLetter, avatarColor);
+      });
+    });
+
+    // Set header info & enable send
+    headerAvatar.style.backgroundColor = adminAvatarColor;
+    headerAvatar.textContent = adminAvatarLetter;
     headerName.textContent = adminName;
     sendButton.disabled = false;
   });
@@ -166,12 +166,11 @@ initConversation();
 replyForm.addEventListener("submit", async e => {
   e.preventDefault();
   if(!conversationId) {
-    alert("Cannot send message: conversationId is null");
+    alert("Please wait, chat is still loading...");
     return;
   }
   const text = replyInput.value.trim();
   if(!text) {
-    alert("Cannot send empty message");
     return;
   }
 
@@ -209,8 +208,13 @@ replyForm.addEventListener("submit", async e => {
 
 <body class="bg-gray-50 flex flex-col h-screen p-4 overflow-hidden">
 
-<!-- Header showing other side -->
-<div class="bg-white p-4 shadow rounded mb-4 flex items-center">
+<!-- Header with avatar -->
+<div class="bg-white p-4 shadow rounded mb-4 flex items-center space-x-3">
+  <div id="chatHeaderAvatar"
+       class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold"
+       style="background-color: #3498DB">
+    ?
+  </div>
   <div id="chatHeaderName" class="font-bold text-lg"></div>
 </div>
 
