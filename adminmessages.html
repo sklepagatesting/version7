@@ -90,7 +90,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, addDoc, getDoc, serverTimestamp, where, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
@@ -104,7 +104,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const admin = { name: "Dzey Autajay" };
+const admin = { name: "Dzey Autajay", uid: "yX0rfptwb2SKESPuPBzvfkv8gti2" }; // Admin UID is now included.
 
 const chatApp = document.getElementById("chatApp");
 const userList = document.getElementById("userList");
@@ -115,14 +115,14 @@ const chatTitle = document.getElementById("chatTitle");
 const backBtn = document.getElementById("backBtn");
 
 let currentConversationId = null;
+let currentOtherUserName = null;
 let unsubscribeConversationListener = null;
+const usersCache = {}; // Cache to store user data { uid: { name: '...', ... } }
 
 // Helpers
 function escapeHtml(text) { if (typeof text !== 'string') return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
-function formatTimestamp(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
+function formatTimestamp(date) {
+    if (!date) return '';
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
@@ -139,10 +139,9 @@ function formatTimestamp(dateString) {
     }
     return `${date.toLocaleDateString('en-US')} ${timeString}`;
 }
-function formatTimestampForList(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
+
+function formatTimestampForList(date) {
+    if (!date) return '';
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
@@ -157,10 +156,19 @@ function formatTimestampForList(dateString) {
 }
 
 function scrollToBottom() { requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }); }
-let lastMessageTime = null; // track previous message time
+let lastMessageTime = null;
 
-function addMessage(author, text, time) {
-  const isSender = author === admin.name;
+async function addMessage(uidSender, text, timestamp) {
+  if (!usersCache[uidSender]) {
+    const userDoc = await getDoc(doc(db, "accounts", uidSender));
+    if (userDoc.exists()) {
+      usersCache[uidSender] = userDoc.data();
+    } else {
+      usersCache[uidSender] = { name: "Unknown User" };
+    }
+  }
+
+  const isSender = uidSender === admin.uid;
   const row = document.createElement("div");
   row.className = "message-row " + (isSender ? "sender" : "receiver");
 
@@ -171,7 +179,7 @@ function addMessage(author, text, time) {
   bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
   bubble.textContent = text;
 
-  const messageDate = new Date(time);
+  const messageDate = timestamp.toDate();
   let showTime = true;
 
   if (lastMessageTime) {
@@ -183,23 +191,22 @@ function addMessage(author, text, time) {
       last.getHours() === messageDate.getHours() &&
       last.getMinutes() === messageDate.getMinutes()
     ) {
-      showTime = false; // same minute, skip time
+      showTime = false;
     }
   }
 
   if (showTime) {
     const timeEl = document.createElement("div");
     timeEl.className = "message-time";
-    timeEl.textContent = formatTimestamp(time);
+    timeEl.textContent = formatTimestamp(messageDate);
     content.appendChild(timeEl);
-    lastMessageTime = time;
+    lastMessageTime = messageDate;
   }
 
-  content.insertBefore(bubble, content.firstChild); // bubble before time
+  content.insertBefore(bubble, content.firstChild);
   row.appendChild(content);
   messagesContainer.appendChild(row);
 }
-
 
 // Detect mobile
 const isMobile = /Mobi|Android/i.test(navigator.userAgent);
@@ -235,77 +242,83 @@ replyInput.addEventListener("input", () => {
 });
 
 // Open conversation
-function openConversation(conversationId, otherName) {
+async function openConversation(conversationId, otherName) {
   currentConversationId = conversationId;
+  currentOtherUserName = otherName;
   chatTitle.textContent = escapeHtml(otherName);
   chatApp.classList.remove('no-chat-selected');
   document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
   document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
   replyInput.value = "";
   replyInput.style.height = "42px";
+  messagesContainer.innerHTML = "";
+  lastMessageTime = null;
 
   if (unsubscribeConversationListener) unsubscribeConversationListener();
-  unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
-    if (!docSnap.exists()) return;
+  
+  const messagesQuery = query(collection(db, "conversations", conversationId, "messages"), orderBy("timestamp", "asc"));
+  unsubscribeConversationListener = onSnapshot(messagesQuery, (snapshot) => {
     messagesContainer.innerHTML = "";
-    const data = docSnap.data();
-    const allMessages = [];
-    if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
-    if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
-    allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-    allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      addMessage(data.uidSender, data.text, data.timestamp);
+    });
     scrollToBottom();
   });
+
   if (window.innerWidth <= 768) chatApp.classList.add("show-chat");
 }
 
 // Load users
-function loadUsers() {
-  const q = query(collection(db, "message"), orderBy("time","desc"));
-  onSnapshot(q, snapshot => {
+async function loadUsers() {
+  const q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"));
+  onSnapshot(q, async (snapshot) => {
     userList.innerHTML = "";
     if (snapshot.empty) {
       userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
       return;
     }
-    const userConversations = {};
-    snapshot.forEach(docSnap => {
+    for (const docSnap of snapshot.docs) {
+      const conversationId = docSnap.id;
       const data = docSnap.data();
-      const id = docSnap.id;
-      const otherName = data.name === admin.name && data.replies?.length > 0
-        ? data.replies[0].author
-        : (data.name === admin.name ? data.userName || "Unknown User" : data.name);
-      if (!userConversations[otherName]) userConversations[otherName] = [];
-      userConversations[otherName].push({ id, ...data });
-    });
-    const latestConversations = Object.entries(userConversations).map(([userName, threads]) => {
-        threads.sort((a, b) => {
-            const lastTimeA = a.replies?.slice(-1)[0]?.time || a.time;
-            const lastTimeB = b.replies?.slice(-1)[0]?.time || b.time;
-            return new Date(lastTimeB) - new Date(lastTimeA);
-        });
-        return { userName, thread: threads[0] };
-    });
-    latestConversations.sort((a, b) => {
-        const lastTimeA = a.thread.replies?.slice(-1)[0]?.time || a.thread.time;
-        const lastTimeB = b.thread.replies?.slice(-1)[0]?.time || b.thread.time;
-        return new Date(lastTimeB) - new Date(lastTimeA);
-    });
-    latestConversations.forEach(({ userName, thread }) => {
-      const lastMessage = thread.replies?.slice(-1)[0] || { text: thread.message, time: thread.time };
+      
+      const otherParticipantUid = data.participants.find(uid => uid !== admin.uid);
+      
+      let userName = "Unknown User";
+      if (otherParticipantUid) {
+        if (!usersCache[otherParticipantUid]) {
+          const userDoc = await getDoc(doc(db, "accounts", otherParticipantUid));
+          if (userDoc.exists()) {
+            usersCache[otherParticipantUid] = userDoc.data();
+          }
+        }
+        userName = usersCache[otherParticipantUid]?.name || "Unknown User";
+      }
+
+      // Get last message for snippet and time
+      const lastMessageQuery = query(collection(db, "conversations", conversationId, "messages"), orderBy("timestamp", "desc"), limit(1));
+      const lastMessageSnap = await getDoc(lastMessageQuery);
+      let lastMessageText = "";
+      let lastMessageTime = null;
+      if (!lastMessageSnap.empty) {
+        const lastMessageData = lastMessageSnap.docs[0].data();
+        lastMessageText = lastMessageData.text;
+        lastMessageTime = lastMessageData.timestamp.toDate();
+      }
+
       const li = document.createElement("div");
       li.className = "conversation";
-      li.dataset.id = thread.id;
+      li.dataset.id = conversationId;
       li.innerHTML = `
         <div class="flex justify-between items-center">
-            <strong class="font-semibold text-gray-800">${escapeHtml(userName)}</strong>
-            <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
+          <strong class="font-semibold text-gray-800">${escapeHtml(userName)}</strong>
+          <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessageTime))}</span>
         </div>
-        <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
+        <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessageText)}</p>
       `;
-      li.addEventListener("click", () => openConversation(thread.id, userName));
+      li.addEventListener("click", () => openConversation(conversationId, userName));
       userList.appendChild(li);
-    });
+    }
   });
 }
 
@@ -315,10 +328,23 @@ replyForm.addEventListener("submit", async (e) => {
   if (!currentConversationId) return;
   const text = replyInput.value.trim();
   if (!text) return;
-  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
-  const reply = { author: admin.name, text: text, status: "unread", time: now };
+
+  const newMessage = {
+    text: text,
+    timestamp: serverTimestamp(),
+    uidSender: admin.uid,
+    status: "unread",
+    participants: [admin.uid, usersCache[currentOtherUserName]?.uid] // This part might need to be adjusted to get the other user's UID
+  };
+
   try {
-    await updateDoc(doc(db,"message", currentConversationId), { replies: arrayUnion(reply) });
+    const conversationRef = doc(db, "conversations", currentConversationId);
+    await updateDoc(conversationRef, {
+      lastUpdated: serverTimestamp()
+    });
+    
+    await addDoc(collection(conversationRef, "messages"), newMessage);
+
     replyInput.value = "";
     replyInput.style.height = "42px";
     scrollToBottom();
