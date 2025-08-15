@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Messenger with Participants</title>
+<title>Messenger with Participants Fix</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <script type="module">
@@ -37,9 +37,6 @@ const replyInput = document.getElementById("replyInput");
 const sendButton = replyForm.querySelector("button");
 const headerName = document.getElementById("chatHeaderName");
 const headerAvatar = document.getElementById("chatHeaderAvatar");
-
-// Disable send until conversation is ready
-sendButton.disabled = true;
 
 // --- Admin info ---
 const adminUid = "yX0rfptwb2SKESPuPBzvfkv8gti2";
@@ -116,7 +113,7 @@ function initChat() {
         text: "Hello, how can I help you?", 
         status: "sent", 
         timestamp: new Date(),
-        participants: [currentUser.uid, adminUid] // <-- important
+        participants: [currentUser.uid, adminUid]
       };
       await addDoc(msgColRef, adminMsg);
       console.log("[DEBUG] Admin initial message created.");
@@ -151,16 +148,19 @@ onAuthStateChanged(auth, user => {
     console.log("[DEBUG] Authenticated as:", user.uid);
     initChat();
   } else {
-    console.log("[DEBUG] Not signed in. Signing in with stored credentials...");
     const stored = JSON.parse(localStorage.getItem("account") || "{}");
     if(!stored.email || !stored.password){
-      alert("No stored credentials for testing. Redirecting...");
+      alert("No stored credentials. Redirecting...");
       window.location.href = "authentication.html";
       return;
     }
 
     signInWithEmailAndPassword(auth, stored.email, stored.password)
-      .then(cred => console.log("[DEBUG] Signed in:", cred.user.uid))
+      .then(cred => {
+        currentUser = cred.user;
+        console.log("[DEBUG] Signed in:", currentUser.uid);
+        initChat();
+      })
       .catch(err => {
         console.error("[DEBUG] Sign-in failed:", err);
         alert("Sign-in failed: " + err.message);
@@ -178,20 +178,23 @@ replyForm.addEventListener("submit", async e => {
   const text = replyInput.value.trim();
   if(!text) return;
 
+  const participants = [currentUser.uid, adminUid]; // both UIDs
+  console.log("[DEBUG] Sending message with participants:", participants);
+
   const msgColRef = collection(db, "conversations", conversationId, "messages");
   const newMsg = { 
     uidSender: currentUser.uid, 
     text, 
     status: "unread", 
     timestamp: new Date(),
-    participants: [currentUser.uid, adminUid] // <-- important for rules
+    participants
   };
 
   try {
-    const docRef = await addDoc(msgColRef, newMsg);
-    console.log("[DEBUG] Message sent, ID:", docRef.id);
+    await addDoc(msgColRef, newMsg);
     await updateDoc(doc(db, "conversations", conversationId), { lastUpdated: new Date() });
     replyInput.value = "";
+    console.log("[DEBUG] Message sent successfully.");
   } catch(err){
     console.error("[DEBUG] Send failed:", err);
     alert("Failed to send: " + err.message);
