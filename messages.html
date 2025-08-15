@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Messenger with Auth</title>
+<title>Messenger with Participants</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <script type="module">
@@ -111,7 +111,13 @@ function initChat() {
       });
 
       const msgColRef = collection(db, "conversations", conversationId, "messages");
-      const adminMsg = { uidSender: adminUid, text: "Hello, how can I help you?", status: "sent", timestamp: new Date() };
+      const adminMsg = { 
+        uidSender: adminUid, 
+        text: "Hello, how can I help you?", 
+        status: "sent", 
+        timestamp: new Date(),
+        participants: [currentUser.uid, adminUid] // <-- important
+      };
       await addDoc(msgColRef, adminMsg);
       console.log("[DEBUG] Admin initial message created.");
     } else {
@@ -127,7 +133,7 @@ function initChat() {
       msgSnapshot.forEach(msgDoc => {
         const msgData = msgDoc.data();
         const isAdmin = msgData.uidSender === adminUid;
-        const senderName = isAdmin ? adminName : currentUser.displayName || currentUser.email;
+        const senderName = isAdmin ? adminName : (currentUser.displayName || currentUser.email);
         const avatarLetter = isAdmin ? adminAvatarLetter : (currentUser.displayName ? currentUser.displayName[0].toUpperCase() : "?");
         const avatarColor = isAdmin ? adminAvatarColor : "#3498DB";
         addMessage(senderName, msgData.text, msgData.timestamp, isAdmin, avatarLetter, avatarColor);
@@ -154,9 +160,7 @@ onAuthStateChanged(auth, user => {
     }
 
     signInWithEmailAndPassword(auth, stored.email, stored.password)
-      .then(cred => {
-        console.log("[DEBUG] Signed in:", cred.user.uid);
-      })
+      .then(cred => console.log("[DEBUG] Signed in:", cred.user.uid))
       .catch(err => {
         console.error("[DEBUG] Sign-in failed:", err);
         alert("Sign-in failed: " + err.message);
@@ -175,7 +179,13 @@ replyForm.addEventListener("submit", async e => {
   if(!text) return;
 
   const msgColRef = collection(db, "conversations", conversationId, "messages");
-  const newMsg = { uidSender: currentUser.uid, text, status: "unread", timestamp: new Date() };
+  const newMsg = { 
+    uidSender: currentUser.uid, 
+    text, 
+    status: "unread", 
+    timestamp: new Date(),
+    participants: [currentUser.uid, adminUid] // <-- important for rules
+  };
 
   try {
     const docRef = await addDoc(msgColRef, newMsg);
