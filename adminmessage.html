@@ -9,18 +9,20 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 font-sans">
 
     <div class="max-w-md mx-auto bg-white shadow-lg rounded-lg overflow-hidden mt-10">
         <div class="p-4 border-b border-gray-200">
-            <h2 class="text-lg font-bold">Admin Conversations</h2>
+            <h2 class="text-lg font-bold text-gray-800">Admin Conversations</h2>
         </div>
-        <div id="conversation-list" class="divide-y divide-gray-200">
-            </div>
+        <div id="conversation-list" class="divide-y divide-gray-200 min-h-[100px]">
+            <p id="loading-message" class="p-4 text-center text-gray-500">Loading conversations...</p>
+        </div>
     </div>
 
     <script>
         // ✅ Your Firebase Config
+        // Make sure these credentials are correct and match your Firebase project
         const firebaseConfig = {
             apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
             authDomain: "sklepaga-8790e.firebaseapp.com",
@@ -31,27 +33,31 @@
             measurementId: "G-9GH707G2WZ"
         };
 
-        // Initialize Firebase
+        // Initialize Firebase services
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
         let adminUID = null;
 
+        // Listen for authentication state changes
         auth.onAuthStateChanged(user => {
             if (!user) {
-                // Not logged in -> redirect to login/messages page
+                console.log("No user is logged in. Redirecting to messages.html.");
                 window.location.href = "messages.html";
                 return;
             }
 
-            // Check role in accounts collection
+            // Check if the authenticated user has the "admin" role
             db.collection("accounts").doc(user.uid).get().then(doc => {
-                if (!doc.exists || doc.data().role !== "admin") {
-                    window.location.href = "messages.html";
-                } else {
+                const userData = doc.data();
+                if (doc.exists && userData.role === "admin") {
+                    console.log("Admin user confirmed. UID:", user.uid);
                     adminUID = user.uid;
                     loadConversations();
+                } else {
+                    console.log("User is not an admin or document does not exist. Redirecting.");
+                    window.location.href = "messages.html";
                 }
             }).catch(error => {
                 console.error("Error checking admin role:", error);
@@ -59,44 +65,69 @@
             });
         });
 
+        // Async function to load conversations
         async function loadConversations() {
-            // First, get all accounts to map UIDs to usernames
-            const accountsSnapshot = await db.collection("accounts").get();
-            const users = {};
-            accountsSnapshot.forEach(doc => {
-                users[doc.id] = doc.data().username || "Unknown User";
-            });
+            const container = document.getElementById("conversation-list");
+            const loadingMessage = document.getElementById("loading-message");
+            loadingMessage.style.display = "block"; // Show loading message
 
-            db.collection("conversations")
-                .where("participants", "array-contains", adminUID)
-                .orderBy("time", "desc") // or lastMessageTime if you use that
-                .onSnapshot(snapshot => {
-                    const container = document.getElementById("conversation-list");
-                    container.innerHTML = "";
-
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const otherUserUID = data.participants.find(p => p !== adminUID);
-                        const otherUserName = users[otherUserUID] || otherUserUID; // Use UID as fallback
-
-                        const lastMsg = data.lastMessage || "";
-                        const time = data.time ? new Date(data.time.toDate()).toLocaleTimeString() : ""; // Format timestamp
-
-                        const div = document.createElement("div");
-                        div.className = "p-4 hover:bg-gray-50 cursor-pointer";
-                        div.innerHTML = `
-                            <div class="flex justify-between">
-                                <span class="font-semibold">${otherUserName}</span>
-                                <span class="text-xs text-gray-500">${time}</span>
-                            </div>
-                            <p class="text-gray-600 text-sm truncate">${lastMsg}</p>
-                        `;
-                        div.onclick = () => {
-                            window.location.href = `adminchat.html?id=${doc.id}`;
-                        };
-                        container.appendChild(div);
-                    });
+            try {
+                // Fetch all user accounts once to create a UID -> Username map
+                const accountsSnapshot = await db.collection("accounts").get();
+                const usersMap = {};
+                accountsSnapshot.forEach(doc => {
+                    const username = doc.data().username || "Unknown User";
+                    usersMap[doc.id] = username;
                 });
+
+                // Set up a real-time listener for conversations involving the admin
+                db.collection("conversations")
+                    .where("participants", "array-contains", adminUID)
+                    .orderBy("time", "desc") // Assuming 'time' is a timestamp field
+                    .onSnapshot(snapshot => {
+                        loadingMessage.style.display = "none"; // Hide loading message
+                        container.innerHTML = ""; // Clear old conversations
+
+                        if (snapshot.empty) {
+                            container.innerHTML = `<p id="empty-message" class="p-4 text-center text-gray-500">No conversations found.</p>`;
+                            return;
+                        }
+
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            const conversationId = doc.id;
+                            // Find the other user's UID in the participants array
+                            const otherUserUID = data.participants.find(uid => uid !== adminUID);
+                            const otherUserName = usersMap[otherUserUID] || otherUserUID; // Use UID as a fallback
+
+                            const lastMessage = data.lastMessage || "No messages yet.";
+                            const timestamp = data.time ? new Date(data.time.toDate()).toLocaleTimeString() : "";
+
+                            const conversationDiv = document.createElement("div");
+                            conversationDiv.className = "p-4 hover:bg-gray-50 cursor-pointer transition-colors duration-200";
+                            conversationDiv.innerHTML = `
+                                <div class="flex justify-between items-center">
+                                    <span class="font-semibold text-gray-900">${otherUserName}</span>
+                                    <span class="text-xs text-gray-500">${timestamp}</span>
+                                </div>
+                                <p class="text-gray-600 text-sm truncate mt-1">${lastMessage}</p>
+                            `;
+                            conversationDiv.onclick = () => {
+                                window.location.href = `adminchat.html?id=${conversationId}`;
+                            };
+                            container.appendChild(conversationDiv);
+                        });
+                    }, error => {
+                        // Handle errors from the real-time listener
+                        console.error("Error loading conversations:", error);
+                        container.innerHTML = `<p class="p-4 text-center text-red-500">Error loading conversations. Please check the console.</p>`;
+                    });
+            } catch (error) {
+                // Handle errors from fetching accounts
+                console.error("Error fetching user data:", error);
+                loadingMessage.style.display = "none";
+                container.innerHTML = `<p class="p-4 text-center text-red-500">Error fetching user data.</p>`;
+            }
         }
     </script>
 </body>
