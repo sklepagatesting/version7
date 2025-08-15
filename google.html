@@ -3,12 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Google Login</title>
+  <title>Google Login with Admin Option</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { 
+      getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { 
+      getFirestore, doc, setDoc, getDocs, collection, query, where, updateDoc 
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-functions.js";
 
     // --- Firebase Config ---
     const firebaseConfig = {
@@ -25,24 +30,19 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
     const db = getFirestore(app);
+    const functions = getFunctions(app);
 
-    // Check if less than 2 admins exist
-    async function canBeAdmin() {
-      const adminQuery = query(collection(db, "accounts"), where("role", "==", "admin"));
-      const adminDocs = await getDocs(adminQuery);
-      return adminDocs.size < 2;
-    }
+    const loginBtn = document.getElementById("login-btn");
+    const adminBtn = document.getElementById("admin-btn");
+    const otpModal = document.getElementById("otp-modal");
+    const otpInput = document.getElementById("otp-code");
+    const verifyOtpBtn = document.getElementById("verify-otp-btn");
 
-    // Save user data to Firestore and localStorage
-    async function saveUser(user) {
+    let currentUser = null;
+    let pendingAdminUid = null;
+
+    async function saveUser(user, role = "user") {
       const token = await user.getIdToken();
-      let role = "user";
-
-      // Only assign admin role if less than 2 admins exist
-      if (await canBeAdmin()) {
-        role = "admin";
-      }
-
       const userData = {
         uid: user.uid,
         name: user.displayName || "",
@@ -50,40 +50,94 @@
         avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
         avatarColor: "#3498DB",
         idToken: token,
-        tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString(),
-        role
+        role: role,
+        tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString()
       };
-
-      await setDoc(doc(db, "accounts", user.uid), userData);
+      await setDoc(doc(db, "accounts", user.uid), userData, { merge: true });
       localStorage.setItem("account", JSON.stringify(userData));
     }
 
-    // Trigger Google Login
-    async function login() {
+    // Normal login
+    loginBtn.addEventListener("click", async () => {
       try {
         const result = await signInWithPopup(auth, provider);
-        await saveUser(result.user);
+        await saveUser(result.user, "user");
         window.location.href = "messages.html";
-      } catch (error) {
-        console.error("Login failed:", error);
-        alert("Login failed: " + error.message);
+      } catch (err) {
+        alert("Login failed: " + err.message);
+      }
+    });
+
+    // Admin login request
+    adminBtn.addEventListener("click", async () => {
+      try {
+        // Sign in first
+        const result = await signInWithPopup(auth, provider);
+        pendingAdminUid = result.user.uid;
+
+        // Call Cloud Function to send OTP
+        const sendOtp = httpsCallable(functions, "sendAdminOtp");
+        await sendOtp({});
+        
+        // Show modal
+        otpModal.classList.remove("hidden");
+      } catch (err) {
+        alert("Admin login failed: " + err.message);
+      }
+    });
+
+    // Verify OTP
+    verifyOtpBtn.addEventListener("click", async () => {
+      try {
+        const verifyOtp = httpsCallable(functions, "verifyAdminOtp");
+        const res = await verifyOtp({ code: otpInput.value });
+
+        if (res.data.success) {
+          // Set role to admin
+          await updateDoc(doc(db, "accounts", pendingAdminUid), { role: "admin" });
+          const user = auth.currentUser;
+          await saveUser(user, "admin");
+          window.location.href = "admin.html";
+        } else {
+          alert("Invalid or expired OTP.");
+        }
+      } catch (err) {
+        alert("OTP verification failed: " + err.message);
+      }
+    });
+
+    // Show/hide Admin button based on admin count
+    async function checkAdminAvailability() {
+      const q = query(collection(db, "accounts"), where("role", "==", "admin"));
+      const snapshot = await getDocs(q);
+      if (snapshot.size >= 2) {
+        adminBtn.classList.add("hidden");
       }
     }
 
-    // If already signed in, skip login popup
+    checkAdminAvailability();
+
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        await saveUser(user);
-        window.location.href = "messages.html";
-      } else {
-        login();
+        currentUser = user;
       }
     });
   </script>
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
-  <div class="bg-white shadow-lg rounded-lg p-6 text-center">
-    <h1 class="text-xl font-semibold text-gray-700">Signing you in with Google...</h1>
+  <div class="bg-white shadow-lg rounded-lg p-6 text-center space-y-4">
+    <h1 class="text-xl font-semibold text-gray-700">Sign in</h1>
+    <button id="login-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Login with Google</button>
+    <button id="admin-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Continue as Admin</button>
+  </div>
+
+  <!-- OTP Modal -->
+  <div id="otp-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 w-80">
+      <h2 class="text-lg font-bold mb-4">Enter Admin Code</h2>
+      <input id="otp-code" type="text" maxlength="4" class="border border-gray-300 rounded-lg w-full p-2 text-center mb-4" placeholder="4-digit code" />
+      <button id="verify-otp-btn" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Verify Code</button>
+    </div>
   </div>
 </body>
 </html>
