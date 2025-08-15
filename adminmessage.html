@@ -1,335 +1,126 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Admin Messages</title>
-<link rel="stylesheet" href="font/font.css">
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  :root {
-    --sender-bg: #0084ff;
-    --receiver-bg: #e5e5ea;
-    --body-bg: #f5f5f5;
-  }
-  html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  body { margin: 0; overflow: hidden; }
-
-  .chat-app { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; overflow: hidden; }
-  .sidebar { width: 320px; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: transform 0.3s ease; z-index: 2; }
-  .sidebar-header { padding: 1rem; border-bottom: 1px solid #ddd; font-size: 1.25rem; font-weight: bold; flex-shrink: 0; }
-  .conversation-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .conversation { padding: 1rem; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
-  .conversation:hover { background: #f9f9f9; }
-  .conversation.active { background-color: #eef5ff; }
-
-  .chat-panel { flex: 1; display: flex; flex-direction: column; background: white; transition: transform 0.3s ease; z-index: 1; min-width: 0; }
-  .chat-header { padding: 1rem; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; flex-shrink: 0; font-weight: 600; }
-  .back-btn { display: none; margin-right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
-
-  .messages { flex: 1; min-height: 0; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; word-break: break-word; background-color: white; }
-  .message-row { display: flex; margin-bottom: 0.25rem; }
-  .message-row.sender { justify-content: flex-end; }
-  .message-row.receiver { justify-content: flex-start; }
-  .message-content { display: flex; flex-direction: column; max-width: 80%; }
-  .chat-bubble { padding: 10px 14px; border-radius: 18px; word-wrap: break-word; white-space: pre-wrap; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
-  .chat-bubble.sender { background-color: var(--sender-bg); color: white; }
-  .chat-bubble.receiver { background-color: var(--receiver-bg); color: black; }
-  .message-time { font-size: 0.75rem; color: #6b7280; margin-top: 4px; padding: 0 6px; }
-  .message-row.sender .message-time { align-self: flex-end; }
-  .message-row.receiver .message-time { align-self: flex-start; }
-
-  .chat-input-wrapper { border-top: 1px solid #ddd; background: var(--body-bg); padding: 0.75rem 1rem; display: flex; align-items: flex-end; gap: 0.75rem; }
-  .chat-input-wrapper textarea { box-sizing: border-box; flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 20px; background: white; outline: none; resize: none; min-height: 42px; max-height: 30vh; overflow-y: auto; font-size: 1rem; line-height: 1.4rem; height: 42px; }
-  .chat-input-wrapper textarea.context::-webkit-scrollbar { display: none; }
-  .chat-input-wrapper button { height: auto; min-height: 42px; padding: 0 12px; border: none; background: var(--sender-bg); color: white; border-radius: 50%; cursor: pointer; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; }
-
-  .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
-  .chat-app.no-chat-selected .placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #6b7280; text-align: center; font-size: 1.1rem; }
-  .placeholder { display: none; }
-
-  @media (max-width: 768px) {
-    .sidebar, .chat-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-    .sidebar { transform: translateX(0); }
-    .chat-panel { transform: translateX(100%); }
-    .chat-app.show-chat .sidebar { transform: translateX(-100%); }
-    .chat-app.show-chat .chat-panel { transform: translateX(0); }
-    .back-btn { display: inline-block; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Messages</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #f5f5f5;
+    }
+    .truncate-single {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  </style>
 </head>
-<body>
-<div class="chat-app no-chat-selected" id="chatApp">
-  <div class="sidebar">
-    <div class="sidebar-header">Admin Messages</div>
-    <div class="conversation-list" id="userList"></div>
+<body class="font-sans antialiased">
+  <!-- Header -->
+  <div class="bg-blue-600 text-white p-4 flex justify-between items-center">
+    <h1 class="text-lg font-semibold">Admin Messages</h1>
+    <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button>
   </div>
 
-  <div class="chat-panel">
-    <div class="chat-header">
-      <button class="back-btn" id="backBtn">&larr;</button>
-      <span id="chatTitle">Select a conversation</span>
-    </div>
-    <div class="messages" id="messagesContainer">
-        <div class="placeholder">
-            <div>
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No conversation selected</h3>
-                <p class="mt-1 text-sm text-gray-500">Select a conversation from the list to start chatting.</p>
-            </div>
-        </div>
-    </div>
-    <form id="replyForm" class="chat-input-wrapper">
-      <textarea id="replyInput" placeholder="Type a message..." autocomplete="off" class="context"></textarea>
-      <button type="submit" aria-label="Send Message">&#10148;</button>
-    </form>
+  <!-- Accounts List -->
+  <div class="p-4">
+    <h2 class="text-md font-semibold mb-2">Admin Accounts</h2>
+    <ul id="accountsList" class="bg-white rounded shadow divide-y"></ul>
   </div>
-</div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+  <!-- Conversations List -->
+  <div class="p-4">
+    <h2 class="text-md font-semibold mb-2">Conversations</h2>
+    <ul id="conversationsList" class="bg-white rounded shadow divide-y"></ul>
+  </div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-  authDomain: "sklepaga-8790e.firebaseapp.com",
-  projectId: "sklepaga-8790e",
-  storageBucket: "sklepaga-8790e.appspot.com",
-  messagingSenderId: "815409129057",
-  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-  measurementId: "G-9GH707G2WZ"
-};
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const admin = { name: "Dzey Autajay" };
+  <script>
+    // --- Firebase Config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+      authDomain: "sklepaga-8790e.firebaseapp.com",
+      projectId: "sklepaga-8790e",
+      storageBucket: "sklepaga-8790e.appspot.com",
+      messagingSenderId: "815409129057",
+      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+      measurementId: "G-9GH707G2WZ"
+    };
 
-const chatApp = document.getElementById("chatApp");
-const userList = document.getElementById("userList");
-const messagesContainer = document.getElementById("messagesContainer");
-const replyForm = document.getElementById("replyForm");
-const replyInput = document.getElementById("replyInput");
-const chatTitle = document.getElementById("chatTitle");
-const backBtn = document.getElementById("backBtn");
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-let currentConversationId = null;
-let unsubscribeConversationListener = null;
+    const accountsList = document.getElementById("accountsList");
+    const conversationsList = document.getElementById("conversationsList");
 
-// Helpers
-function escapeHtml(text) { if (typeof text !== 'string') return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
-function formatTimestamp(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    if (messageDate.getTime() === today.getTime()) return timeString;
-    if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
-    if (messageDate.getTime() > oneWeekAgo.getTime()) {
-        const dayString = date.toLocaleDateString('en-US', { weekday: 'long' });
-        return `${dayString} ${timeString}`;
-    }
-    return `${date.toLocaleDateString('en-US')} ${timeString}`;
-}
-function formatTimestampForList(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    if (messageDate.getTime() === today.getTime()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    if (messageDate.getTime() === yesterday.getTime()) return 'Yesterday';
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
-    if (messageDate.getTime() > oneWeekAgo.getTime()) return date.toLocaleDateString('en-US', { weekday: 'short' });
-    return date.toLocaleDateString('en-US');
-}
+    // --- Check if logged in and role is admin ---
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
 
-function scrollToBottom() { requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }); }
-let lastMessageTime = null; // track previous message time
+      const accountRef = await db.collection("accounts").doc(user.uid).get();
+      if (!accountRef.exists || accountRef.data().role !== "admin") {
+        alert("Access denied. Admins only.");
+        window.location.href = "messages.html";
+        return;
+      }
 
-function addMessage(author, text, time) {
-  const isSender = author === admin.name;
-  const row = document.createElement("div");
-  row.className = "message-row " + (isSender ? "sender" : "receiver");
-
-  const content = document.createElement("div");
-  content.className = "message-content";
-
-  const bubble = document.createElement("div");
-  bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
-  bubble.textContent = text;
-
-  const messageDate = new Date(time);
-  let showTime = true;
-
-  if (lastMessageTime) {
-    const last = new Date(lastMessageTime);
-    if (
-      last.getFullYear() === messageDate.getFullYear() &&
-      last.getMonth() === messageDate.getMonth() &&
-      last.getDate() === messageDate.getDate() &&
-      last.getHours() === messageDate.getHours() &&
-      last.getMinutes() === messageDate.getMinutes()
-    ) {
-      showTime = false; // same minute, skip time
-    }
-  }
-
-  if (showTime) {
-    const timeEl = document.createElement("div");
-    timeEl.className = "message-time";
-    timeEl.textContent = formatTimestamp(time);
-    content.appendChild(timeEl);
-    lastMessageTime = time;
-  }
-
-  content.insertBefore(bubble, content.firstChild); // bubble before time
-  row.appendChild(content);
-  messagesContainer.appendChild(row);
-}
-
-
-// Detect mobile
-const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-
-// Prevent textarea scroll from bubbling to body
-replyInput.addEventListener("wheel", (e) => {
-  const atTop = replyInput.scrollTop === 0;
-  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
-  if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
-});
-replyInput.addEventListener("touchstart", e => e.stopPropagation());
-replyInput.addEventListener("touchmove", (e) => {
-  const atTop = replyInput.scrollTop === 0;
-  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
-  if ((e.touches[0].clientY > 0 && atTop) || (e.touches[0].clientY < 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
-});
-
-// Enter key behavior
-replyInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    if (!isMobile || e.ctrlKey) {
-      e.preventDefault();
-      replyForm.requestSubmit();
-    }
-  }
-});
-
-// Auto-resize textarea
-replyInput.addEventListener("input", () => {
-  replyInput.style.height = "42px";
-  replyInput.style.height = replyInput.scrollHeight + "px";
-  scrollToBottom();
-});
-
-// Open conversation
-function openConversation(conversationId, otherName) {
-  currentConversationId = conversationId;
-  chatTitle.textContent = escapeHtml(otherName);
-  chatApp.classList.remove('no-chat-selected');
-  document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
-  document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
-  replyInput.value = "";
-  replyInput.style.height = "42px";
-
-  if (unsubscribeConversationListener) unsubscribeConversationListener();
-  unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
-    if (!docSnap.exists()) return;
-    messagesContainer.innerHTML = "";
-    const data = docSnap.data();
-    const allMessages = [];
-    if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
-    if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
-    allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-    allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
-    scrollToBottom();
-  });
-  if (window.innerWidth <= 768) chatApp.classList.add("show-chat");
-}
-
-// Load users
-function loadUsers() {
-  const q = query(collection(db, "message"), orderBy("time","desc"));
-  onSnapshot(q, snapshot => {
-    userList.innerHTML = "";
-    if (snapshot.empty) {
-      userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
-      return;
-    }
-    const userConversations = {};
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      const id = docSnap.id;
-      const otherName = data.name === admin.name && data.replies?.length > 0
-        ? data.replies[0].author
-        : (data.name === admin.name ? data.userName || "Unknown User" : data.name);
-      if (!userConversations[otherName]) userConversations[otherName] = [];
-      userConversations[otherName].push({ id, ...data });
+      loadAdminAccounts();
+      loadConversations();
     });
-    const latestConversations = Object.entries(userConversations).map(([userName, threads]) => {
-        threads.sort((a, b) => {
-            const lastTimeA = a.replies?.slice(-1)[0]?.time || a.time;
-            const lastTimeB = b.replies?.slice(-1)[0]?.time || b.time;
-            return new Date(lastTimeB) - new Date(lastTimeA);
+
+    // --- Load Admin Accounts ---
+    function loadAdminAccounts() {
+      db.collection("accounts")
+        .where("role", "==", "admin")
+        .onSnapshot((snapshot) => {
+          accountsList.innerHTML = "";
+          snapshot.forEach((doc) => {
+            const acc = doc.data();
+            const li = document.createElement("li");
+            li.className = "p-3 hover:bg-gray-100 cursor-pointer";
+            li.innerHTML = `
+              <div class="truncate-single font-medium">${acc.name || "Unnamed"}</div>
+              <div class="text-sm text-gray-500">${acc.email || ""}</div>
+            `;
+            accountsList.appendChild(li);
+          });
         });
-        return { userName, thread: threads[0] };
-    });
-    latestConversations.sort((a, b) => {
-        const lastTimeA = a.thread.replies?.slice(-1)[0]?.time || a.thread.time;
-        const lastTimeB = b.thread.replies?.slice(-1)[0]?.time || b.thread.time;
-        return new Date(lastTimeB) - new Date(lastTimeA);
-    });
-    latestConversations.forEach(({ userName, thread }) => {
-      const lastMessage = thread.replies?.slice(-1)[0] || { text: thread.message, time: thread.time };
-      const li = document.createElement("div");
-      li.className = "conversation";
-      li.dataset.id = thread.id;
-      li.innerHTML = `
-        <div class="flex justify-between items-center">
-            <strong class="font-semibold text-gray-800">${escapeHtml(userName)}</strong>
-            <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
-        </div>
-        <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
-      `;
-      li.addEventListener("click", () => openConversation(thread.id, userName));
-      userList.appendChild(li);
-    });
-  });
-}
+    }
 
-// Send reply
-replyForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!currentConversationId) return;
-  const text = replyInput.value.trim();
-  if (!text) return;
-  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
-  const reply = { author: admin.name, text: text, status: "unread", time: now };
-  try {
-    await updateDoc(doc(db,"message", currentConversationId), { replies: arrayUnion(reply) });
-    replyInput.value = "";
-    replyInput.style.height = "42px";
-    scrollToBottom();
-  } catch (err) {
-    alert("Failed to send reply: " + err.message);
-  }
-});
+    // --- Load Conversations ---
+    function loadConversations() {
+      db.collection("conversations")
+        .orderBy("timestamp", "desc")
+        .onSnapshot((snapshot) => {
+          conversationsList.innerHTML = "";
+          snapshot.forEach((doc) => {
+            const convo = doc.data();
+            const li = document.createElement("li");
+            li.className = "p-3 hover:bg-gray-100 cursor-pointer";
+            li.innerHTML = `
+              <div class="truncate-single font-medium">${convo.text || "(No message)"}</div>
+              <div class="text-sm text-gray-500">${convo.status || ""} • ${convo.timestamp?.toDate().toLocaleString() || ""}</div>
+            `;
+            conversationsList.appendChild(li);
+          });
+        });
+    }
 
-backBtn.addEventListener("click", () => { chatApp.classList.remove("show-chat"); });
-
-loadUsers();
-</script>
+    // --- Logout ---
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      auth.signOut().then(() => {
+        window.location.href = "index.html";
+      });
+    });
+  </script>
 </body>
 </html>
