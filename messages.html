@@ -1,233 +1,164 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Messenger with Server Timestamp</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Messenger</title>
 <script src="https://cdn.tailwindcss.com"></script>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { 
-  getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, where, limit, orderBy, updateDoc, serverTimestamp 
+import {
+getFirestore, collection, doc, setDoc, onSnapshot,
+query, where, limit, updateDoc, arrayUnion
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
 // --- Firebase config ---
 const firebaseConfig = {
-  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-  authDomain: "sklepaga-8790e.firebaseapp.com",
-  projectId: "sklepaga-8790e",
-  storageBucket: "sklepaga-8790e.firebasestorage.app",
-  messagingSenderId: "815409129057",
-  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-  measurementId: "G-9GH707G2WZ"
+apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+authDomain: "sklepaga-8790e.firebaseapp.com",
+projectId: "sklepaga-8790e",
+storageBucket: "sklepaga-8790e.firebasestorage.app",
+messagingSenderId: "815409129057",
+appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+measurementId: "G-9GH707G2WZ"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app);
+
+// --- User & Admin ---
+const account = JSON.parse(localStorage.getItem("account") || "{}");
+const userId = account.uid;
+const userName = account.name;
+const userEmail = account.email;
+
+const admin = {
+name: "Dzey Autajay",
+email: "autajaydzey@gmail.com",
+avatarColor: "#3498DB",
+avatarLetter: "D",
+uid: "yX0rfptwb2SKESPuPBzvfkv8gti2"
+};
+
+if (!userId || !userName || !userEmail) {
+window.location.href = "authentication.html";
+}
+
+// --- Escape HTML ---
+function escapeHtml(text) {
+if (!text) return "";
+return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+.replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+.replace(/'/g, "&#39;");
+}
 
 // --- DOM Elements ---
 const messagesContainer = document.getElementById("messagesContainer");
 const replyForm = document.getElementById("replyForm");
 const replyInput = document.getElementById("replyInput");
-const sendButton = replyForm.querySelector("button");
 const headerName = document.getElementById("chatHeaderName");
-const headerAvatar = document.getElementById("chatHeaderAvatar");
-
-// --- Admin info ---
-const adminUid = "yX0rfptwb2SKESPuPBzvfkv8gti2";
-const adminName = "Dzey Autajay";
-const adminAvatarLetter = "D";
-const adminAvatarColor = "#3498DB";
-
-// --- Escape HTML ---
-function escapeHtml(text) {
-  if (!text) return "";
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
-             .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-             .replace(/'/g, "&#39;");
-}
 
 // --- Render message ---
-function addMessage(senderName, text, timestamp, isAdmin=false, avatarLetter="?", avatarColor="#3498DB") {
-  const msgDiv = document.createElement("div");
-  msgDiv.className = `flex ${isAdmin ? "justify-start" : "justify-end"} items-end`;
-
-  const avatarHtml = `
-    <div class="w-8 h-8 flex items-center justify-center rounded-full text-white font-bold mr-2"
-         style="background-color: ${avatarColor}">
-      ${escapeHtml(avatarLetter)}
-    </div>
-  `;
-
-  const messageHtml = `
-    <div class="p-3 rounded-2xl mb-2 max-w-[70%] ${isAdmin ? "bg-indigo-50 text-left rounded-tl-none" : "bg-indigo-600 text-white text-right rounded-tr-none"}">
-      <div class="font-semibold">${escapeHtml(senderName)}</div>
-      <div>${escapeHtml(text)}</div>
-      <div class="text-xs text-gray-400 mt-1">${timestamp ? new Date(timestamp.seconds*1000).toLocaleString("en-PH") : ""}</div>
-    </div>
-  `;
-
-  msgDiv.innerHTML = isAdmin ? avatarHtml + messageHtml : messageHtml + avatarHtml;
-  messagesContainer.appendChild(msgDiv);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+function addMessage(author, text, time, isAdmin=false) {
+const msgDiv = document.createElement("div");
+msgDiv.className = `flex ${isAdmin ? "justify-start" : "justify-end"}`;
+msgDiv.innerHTML = `
+<div class="p-3 rounded-2xl mb-2 max-w-[70%] ${isAdmin ? "bg-indigo-50 text-left rounded-tl-none" : "bg-indigo-600 text-white text-right rounded-tr-none"}">
+<div class="font-semibold">${escapeHtml(author)}</div>
+<div>${escapeHtml(text)}</div>
+<div class="text-xs text-gray-400 mt-1">${escapeHtml(time)}</div>
+</div>
+`;
+messagesContainer.appendChild(msgDiv);
+messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// --- Conversation ---
+// --- Initialize conversation ---
+const messagesCol = collection(db, "message");
 let conversationId = null;
-let currentUser = null;
 
-// --- Initialize chat ---
-function initChat() {
-  headerAvatar.style.backgroundColor = adminAvatarColor;
-  headerAvatar.textContent = adminAvatarLetter;
-  headerName.textContent = adminName;
-
-  console.log("[DEBUG] Initializing chat for:", currentUser.uid);
-
-  const convQuery = query(
-    collection(db, "conversations"),
-    where("participants", "array-contains", currentUser.uid),
-    limit(1)
-  );
-
-  onSnapshot(convQuery, async snapshot => {
-    if(snapshot.empty){
-      console.log("[DEBUG] No conversation found. Creating new one...");
-      const newConvRef = doc(collection(db, "conversations"));
-      conversationId = newConvRef.id;
-
-      await setDoc(newConvRef, {
-        participants: [currentUser.uid, adminUid],
-        timeCreated: serverTimestamp(),
-        lastUpdated: serverTimestamp()
-      });
-
-      const msgColRef = collection(db, "conversations", conversationId, "messages");
-      const adminMsg = { 
-        uidSender: adminUid, 
-        text: "Hello, how can I help you?", 
-        status: "sent", 
-        timestamp: serverTimestamp(),
-        participants: [currentUser.uid, adminUid]
-      };
-      await addDoc(msgColRef, adminMsg);
-      console.log("[DEBUG] Admin initial message created.");
-    } else {
-      conversationId = snapshot.docs[0].id;
-      console.log("[DEBUG] Conversation loaded, ID:", conversationId);
-    }
-
-    // Load messages
-    const msgColRef = collection(db, "conversations", conversationId, "messages");
-    const msgQuery = query(msgColRef, orderBy("timestamp", "asc"));
-    onSnapshot(msgQuery, msgSnapshot => {
-      messagesContainer.innerHTML = "";
-      msgSnapshot.forEach(msgDoc => {
-        const msgData = msgDoc.data();
-        const isAdmin = msgData.uidSender === adminUid;
-        const senderName = isAdmin ? adminName : (currentUser.displayName || currentUser.email);
-        const avatarLetter = isAdmin ? adminAvatarLetter : (currentUser.displayName ? currentUser.displayName[0].toUpperCase() : "?");
-        const avatarColor = isAdmin ? adminAvatarColor : "#3498DB";
-        addMessage(senderName, msgData.text, msgData.timestamp, isAdmin, avatarLetter, avatarColor);
-      });
-    });
-
-    sendButton.disabled = false;
-  });
+async function initConversation() {
+const q = query(messagesCol, where("userEmail","==",userEmail), limit(1));
+onSnapshot(q, async snapshot => {
+messagesContainer.innerHTML = "";
+if(snapshot.empty) {
+// Create initial Admin message
+const now = new Date().toLocaleString("en-PH", { timeZone:"Asia/Manila" }).replace(",", "");
+const newDocRef = doc(messagesCol);
+await setDoc(newDocRef, {
+name: admin.name,
+email: admin.email,
+userId,
+userEmail,
+message: "Hello, how can I help you?",
+time: now,
+status: "sent",
+replies: [],
+messageid: newDocRef.id
+});
+conversationId = newDocRef.id;
+headerName.textContent = admin.name;
+addMessage(admin.name, "Hello, how can I help you?", now, true);
+} else {
+const docSnap = snapshot.docs[0];
+conversationId = docSnap.id;
+const data = docSnap.data();
+headerName.textContent = admin.name; // always show admin as the header
+addMessage(data.name, data.message, data.time, data.name===admin.name);
+(data.replies || []).sort((a,b)=> new Date(a.time)-new Date(b.time)).forEach(r=>{
+addMessage(r.author, r.text, r.time, r.author===admin.name);
+});
+}
+});
 }
 
-// --- Listen auth state ---
-onAuthStateChanged(auth, user => {
-  if(user){
-    currentUser = user;
-    console.log("[DEBUG] Authenticated as:", user.uid);
-    initChat();
-  } else {
-    const stored = JSON.parse(localStorage.getItem("account") || "{}");
-    if(!stored.email || !stored.password){
-      alert("No stored credentials. Redirecting...");
-      window.location.href = "authentication.html";
-      return;
-    }
+initConversation();
 
-    signInWithEmailAndPassword(auth, stored.email, stored.password)
-      .then(cred => {
-        currentUser = cred.user;
-        console.log("[DEBUG] Signed in:", currentUser.uid);
-        initChat();
-      })
-      .catch(err => {
-        console.error("[DEBUG] Sign-in failed:", err);
-        alert("Sign-in failed: " + err.message);
-      });
-  }
-});
-
-// --- Send message ---
-replyForm.addEventListener("submit", async e => {
-  e.preventDefault();
-  if(!conversationId || !currentUser){
-    alert("Cannot send: conversation not ready");
-    return;
-  }
-  const text = replyInput.value.trim();
-  if(!text) return;
-
-  const participants = [currentUser.uid, adminUid]; // both UIDs
-  console.log("[DEBUG] Sending message with participants:", participants);
-
-  const msgColRef = collection(db, "conversations", conversationId, "messages");
-  const newMsg = { 
-    uidSender: currentUser.uid, 
-    text, 
-    status: "unread", 
-    timestamp: serverTimestamp(), // <-- use server timestamp
-    participants
-  };
-
-  try {
-    await addDoc(msgColRef, newMsg);
-    await updateDoc(doc(db, "conversations", conversationId), { lastUpdated: serverTimestamp() });
-    replyInput.value = "";
-    console.log("[DEBUG] Message sent successfully.");
-  } catch(err){
-    console.error("[DEBUG] Send failed:", err);
-    alert("Failed to send: " + err.message);
-  }
+// --- Send reply ---
+replyForm.addEventListener("submit", async e=>{
+e.preventDefault();
+if(!conversationId) return;
+const text = replyInput.value.trim();
+if(!text) return;
+const now = new Date().toLocaleString("en-PH", { timeZone:"Asia/Manila" }).replace(",", "");
+const reply = { author:userName, text, status:"unread", time: now };
+try {
+await updateDoc(doc(db, "message", conversationId), { replies: arrayUnion(reply) });
+replyInput.value = "";
+} catch(err) {
+alert("Failed to send reply: "+err.message);
+}
 });
 </script>
 
 <style>
 #messagesContainer::-webkit-scrollbar {
-  width: 8px;
+width: 8px;
 }
 #messagesContainer::-webkit-scrollbar-thumb {
-  background-color: rgba(0,0,0,0.2);
-  border-radius: 4px;
+background-color: rgba(0,0,0,0.2);
+border-radius: 4px;
 }
 </style>
 </head>
 
 <body class="bg-gray-50 flex flex-col h-screen p-4 overflow-hidden">
 
-<!-- Header -->
-<div class="bg-white p-4 shadow rounded mb-4 flex items-center space-x-3">
-  <div id="chatHeaderAvatar" class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold">D</div>
-  <div id="chatHeaderName" class="font-bold text-lg">Dzey Autajay</div>
+<!-- Header showing other side -->
+<div class="bg-white p-4 shadow rounded mb-4 flex items-center">
+<div id="chatHeaderName" class="font-bold text-lg"></div>
 </div>
 
-<!-- Chat -->
+<!-- Chat container -->
 <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-2 bg-white border rounded mb-4 max-h-[75vh]"></div>
 
 <!-- Reply form -->
 <form id="replyForm" class="flex space-x-2">
-  <input id="replyInput" type="text" placeholder="Type your message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-         class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-  <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Send</button>
+<input id="replyInput" type="text" placeholder="Type your message..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+class="flex-grow border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+<button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Send</button>
 </form>
 
 </body>
 </html>
+
