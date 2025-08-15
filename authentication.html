@@ -26,14 +26,26 @@
     const provider = new GoogleAuthProvider();
     const db = getFirestore(app);
 
+    // Load saved accounts
+    function getSavedAccounts() {
+      return JSON.parse(localStorage.getItem("accounts") || "[]");
+    }
+
+    function saveAccount(account) {
+      let accounts = getSavedAccounts();
+      // Prevent duplicates by UID
+      accounts = accounts.filter(acc => acc.uid !== account.uid);
+      accounts.push(account);
+      localStorage.setItem("accounts", JSON.stringify(accounts));
+    }
+
     async function login() {
       try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
         const token = await user.getIdToken();
 
-        // Save to Firestore
-        await setDoc(doc(db, "accounts", user.uid), {
+        const account = {
           uid: user.uid,
           name: user.displayName || "",
           email: user.email || "",
@@ -41,35 +53,80 @@
           avatarColor: "#3498DB",
           idToken: token,
           tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString()
-        });
+        };
+
+        // Save to Firestore
+        await setDoc(doc(db, "accounts", user.uid), account);
 
         // Save locally
-        localStorage.setItem("account", JSON.stringify({
-          uid: user.uid,
-          name: user.displayName || "",
-          email: user.email || "",
-          avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
-          avatarColor: "#3498DB",
-          idToken: token,
-          tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString()
-        }));
+        saveAccount(account);
 
-        window.location.href = "index.html";
+        // Redirect
+        window.location.href = "messages.html";
       } catch (error) {
         console.error("Login failed:", error);
         alert("Login failed: " + error.message);
       }
     }
 
+    function selectAccount(uid) {
+      const accounts = getSavedAccounts();
+      const account = accounts.find(acc => acc.uid === uid);
+      if (account) {
+        // Set this account as the active one for session
+        localStorage.setItem("activeAccount", JSON.stringify(account));
+        window.location.href = "messages.html";
+      }
+    }
+
+    // On load: check saved accounts
+    window.addEventListener("DOMContentLoaded", () => {
+      const accounts = getSavedAccounts();
+      if (accounts.length === 1) {
+        // Only one account saved → auto-redirect
+        localStorage.setItem("activeAccount", JSON.stringify(accounts[0]));
+        window.location.href = "messages.html";
+      } else if (accounts.length > 1) {
+        // Multiple accounts → show selection
+        const list = document.getElementById("accountList");
+        document.getElementById("loginSection").classList.add("hidden");
+        document.getElementById("accountSection").classList.remove("hidden");
+
+        accounts.forEach(acc => {
+          const btn = document.createElement("button");
+          btn.className = "flex items-center gap-3 w-full px-4 py-2 border rounded-lg hover:bg-gray-50";
+          btn.innerHTML = `
+            <div class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold" style="background:${acc.avatarColor}">${acc.avatarLetter}</div>
+            <div>
+              <div class="font-semibold">${acc.name}</div>
+              <div class="text-sm text-gray-500">${acc.email}</div>
+            </div>
+          `;
+          btn.onclick = () => selectAccount(acc.uid);
+          list.appendChild(btn);
+        });
+      }
+    });
+
     window.login = login;
   </script>
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
-  <div class="bg-white shadow-lg rounded-lg p-6 text-center">
+  <!-- Login Section -->
+  <div id="loginSection" class="bg-white shadow-lg rounded-lg p-6 text-center">
     <h1 class="text-2xl font-bold mb-4">Welcome</h1>
     <button onclick="login()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
       Login with Google
     </button>
+  </div>
+
+  <!-- Account Selection Section -->
+  <div id="accountSection" class="hidden bg-white shadow-lg rounded-lg p-6 w-80">
+    <h1 class="text-xl font-bold mb-4">Choose an account</h1>
+    <div id="accountList" class="flex flex-col gap-3"></div>
+    <div class="mt-4 text-center">
+      <button onclick="login()" class="text-blue-500 hover:underline">Use another account</button>
+    </div>
   </div>
 </body>
 </html>
