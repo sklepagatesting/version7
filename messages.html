@@ -90,7 +90,7 @@
       <button class="back-btn" id="backBtn">&larr;</button>
       <div class="flex items-center gap-3">
         <div id="chatHeaderAvatar" class="w-8 h-8 flex items-center justify-center rounded-full text-white font-bold text-base"></div>
-        <span id="chatTitle" class="font-semibold">Select a conversation</span>
+        <span id="chatTitle" class="font-semibold">Loading...</span>
       </div>
     </div>
     <div class="messages" id="messagesContainer">
@@ -156,7 +156,6 @@ const userProfile = {
   avatarColor: activeAccount.avatarColor
 };
 
-// Admin's UID
 const adminUID = "sCj9I1lQ5nLg5nI5n9Fz1g9I9qB2";
 let adminProfile = null;
 
@@ -420,13 +419,19 @@ backBtn.addEventListener("click", () => {
   chatApp.classList.remove("show-chat");
 });
 
+// Main initialization function
 async function initializeChat() {
-    const adminFound = await getAdminProfile();
-    if (adminFound) {
-      openConversation(userId);
-      loadConversationSidebar();
-    } else {
-      chatTitle.textContent = "Error loading admin profile";
+    try {
+        const adminFound = await getAdminProfile();
+        if (adminFound) {
+            openConversation(userId);
+            loadConversationSidebar();
+        } else {
+            chatTitle.textContent = "Error: Admin profile not found.";
+        }
+    } catch (err) {
+        chatTitle.textContent = "Error: Failed to connect to database.";
+        console.error("Initialization failed:", err);
     }
 }
 
