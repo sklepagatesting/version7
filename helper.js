@@ -1,4 +1,4 @@
-// cloud_functions/index.js (File to deploy to Firebase Functions)
+// cloud_functions/index.js (File to deploy)
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
@@ -6,8 +6,11 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
+/**
+ * Checks if the authenticated user is an admin.
+ * @return {Object} An object containing a boolean `isAdmin`.
+ */
 exports.checkAdminStatus = functions.https.onCall(async (data, context) => {
-    // Ensure the request is authenticated
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
     }
@@ -17,8 +20,12 @@ exports.checkAdminStatus = functions.https.onCall(async (data, context) => {
     return { isAdmin: adminDoc.exists };
 });
 
+/**
+ * Adds an admin role to a specified user.
+ * @param {Object} data - Contains the user's `uid` and `name`.
+ * @return {Object} An object indicating success.
+ */
 exports.addAdminRole = functions.https.onCall(async (data, context) => {
-    // Ensure the caller is authenticated and is an admin
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
     }
@@ -34,7 +41,6 @@ exports.addAdminRole = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a user UID.');
     }
 
-    // Add the user to the admins collection
     await db.collection('admins').doc(targetUid).set({
         name: targetName,
         addedByUid: callerUid,
@@ -43,8 +49,12 @@ exports.addAdminRole = functions.https.onCall(async (data, context) => {
     return { success: true };
 });
 
+/**
+ * Removes an admin role from a specified user.
+ * @param {Object} data - Contains the user's `uid`.
+ * @return {Object} An object indicating success.
+ */
 exports.removeAdminRole = functions.https.onCall(async (data, context) => {
-    // Ensure the caller is authenticated and is an admin
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
     }
@@ -59,12 +69,10 @@ exports.removeAdminRole = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a user UID.');
     }
 
-    // A user cannot remove their own admin role
     if (callerUid === targetUid) {
         throw new functions.https.HttpsError('permission-denied', 'You cannot remove your own admin privileges.');
     }
 
-    // Delete the document from the admins collection
     await db.collection('admins').doc(targetUid).delete();
     return { success: true };
 });
