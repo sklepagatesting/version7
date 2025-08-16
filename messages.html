@@ -93,7 +93,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, doc, onSnapshot, updateDoc, arrayUnion, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion, setDoc, where, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 // --- Authentication and Redirect ---
 const activeAccount = JSON.parse(localStorage.getItem("activeAccount"));
@@ -114,10 +114,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// User details
+// User and Admin details
 const userId = activeAccount.uid;
 const userName = activeAccount.name;
 const userEmail = activeAccount.email;
+
+const admin = { name: "Dzey Autajay", email: "autajaydzey@gmail.com" };
 
 const chatApp = document.getElementById("chatApp");
 const userList = document.getElementById("userList");
@@ -131,10 +133,8 @@ const userAvatar = document.getElementById("userAvatar");
 userAvatar.textContent = activeAccount.avatarLetter;
 userAvatar.style.backgroundColor = activeAccount.avatarColor;
 
-let currentConversationId = null;
+let currentConversationId = userId; // Set the conversation ID immediately
 let unsubscribeConversationListener = null;
-let adminUid = null;
-let adminName = "Admin";
 
 function escapeHtml(text) {
   if (typeof text !== 'string') return "";
@@ -145,13 +145,45 @@ function formatTimestamp(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    return timeString;
+    if (messageDate.getTime() === today.getTime()) return timeString;
+    if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;
+    const oneWeekAgo = new Date(today);
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
+    if (messageDate.getTime() > oneWeekAgo.getTime()) {
+        const dayString = date.toLocaleDateString('en-US', { weekday: 'long' });
+        return `${dayString} ${timeString}`;
+    }
+    return `${date.toLocaleDateString('en-US')} ${timeString}`;
+}
+
+function formatTimestampForList(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    if (messageDate.getTime() === today.getTime()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    if (messageDate.getTime() === yesterday.getTime()) return 'Yesterday';
+    const oneWeekAgo = new Date(today);
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
+    if (messageDate.getTime() > oneWeekAgo.getTime()) return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return date.toLocaleDateString('en-US');
 }
 
 function scrollToBottom() {
   requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; });
 }
+
+let lastMessageTime = null;
 
 function addMessage(author, text, time) {
   const isSender = author === userName;
@@ -165,32 +197,97 @@ function addMessage(author, text, time) {
   bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
   bubble.textContent = text;
 
-  const timeEl = document.createElement("div");
-  timeEl.className = "message-time";
-  timeEl.textContent = formatTimestamp(time);
+  const messageDate = new Date(time);
+  let showTime = true;
 
-  content.appendChild(bubble);
-  content.appendChild(timeEl);
+  if (lastMessageTime) {
+    const last = new Date(lastMessageTime);
+    if (
+      last.getFullYear() === messageDate.getFullYear() &&
+      last.getMonth() === messageDate.getMonth() &&
+      last.getDate() === messageDate.getDate() &&
+      last.getHours() === messageDate.getHours() &&
+      last.getMinutes() === messageDate.getMinutes()
+    ) {
+      showTime = false;
+    }
+  }
+
+  if (showTime) {
+    const timeEl = document.createElement("div");
+    timeEl.className = "message-time";
+    timeEl.textContent = formatTimestamp(time);
+    content.appendChild(timeEl);
+    lastMessageTime = time;
+  }
+
+  content.insertBefore(bubble, content.firstChild);
   row.appendChild(content);
   messagesContainer.appendChild(row);
 }
 
+const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+replyInput.addEventListener("wheel", (e) => {
+  const atTop = replyInput.scrollTop === 0;
+  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
+  if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
+});
+
+replyInput.addEventListener("touchstart", e => e.stopPropagation());
+replyInput.addEventListener("touchmove", (e) => {
+  const atTop = replyInput.scrollTop === 0;
+  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
+  if ((e.touches[0].clientY > 0 && atTop) || (e.touches[0].clientY < 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
+});
+
+replyInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    if (!isMobile || e.ctrlKey) {
+      e.preventDefault();
+      replyForm.requestSubmit();
+    }
+  }
+});
+
+replyInput.addEventListener("input", () => {
+  replyInput.style.height = "42px";
+  replyInput.style.height = replyInput.scrollHeight + "px";
+  scrollToBottom();
+});
+
 function openConversation(conversationId) {
     currentConversationId = conversationId;
-    chatTitle.textContent = adminName;
+    chatTitle.textContent = admin.name;
     chatApp.classList.remove('no-chat-selected');
     
+    // Clear previous listener if it exists
     if (unsubscribeConversationListener) unsubscribeConversationListener();
     
+    // Listen to the document for real-time updates
     unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
         messagesContainer.innerHTML = "";
+        
+        // If the document exists, display its messages
         if (docSnap.exists()) {
             const data = docSnap.data();
             const allMessages = [];
+            // Handle initial message and replies
             if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
             if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
             allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
             allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
+        } else {
+            // Document doesn't exist, show the placeholder
+            messagesContainer.innerHTML = `<div class="placeholder">
+                <div>
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">Start a new conversation</h3>
+                    <p class="mt-1 text-sm text-gray-500">Type a message below to begin.</p>
+                </div>
+            </div>`;
         }
         scrollToBottom();
     });
@@ -198,25 +295,37 @@ function openConversation(conversationId) {
     if (window.innerWidth <= 1200) chatApp.classList.add("show-chat");
 }
 
-function loadConversationSidebar(conversationId) {
-    const docRef = doc(db, "message", conversationId);
+function loadConversationSidebar() {
+    const docRef = doc(db, "message", userId);
     onSnapshot(docRef, docSnap => {
-        userList.innerHTML = "";
+        userList.innerHTML = ""; // Clear list
         if (docSnap.exists()) {
             const data = docSnap.data();
             const lastMessage = data.replies?.slice(-1)[0] || { text: data.message, time: data.time };
+            
+            // Create and add the conversation list item
             const li = document.createElement("div");
             li.className = "conversation active";
-            li.dataset.id = conversationId;
+            li.dataset.id = userId;
             li.innerHTML = `
                 <div class="flex justify-between items-center">
-                    <strong class="font-semibold text-gray-800">${escapeHtml(adminName)}</strong>
-                    <span class="text-xs text-gray-500">${escapeHtml(formatTimestamp(lastMessage.time))}</span>
+                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
+                    <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
                 </div>
                 <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
             `;
-            li.addEventListener("click", () => openConversation(conversationId));
+            li.addEventListener("click", () => openConversation(userId));
             userList.appendChild(li);
+        } else {
+            // No existing conversation, show "Start new chat"
+            userList.innerHTML = `<div class="conversation active" data-id="${userId}">
+                <div class="flex justify-between items-center">
+                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
+                    <span class="text-xs text-gray-500"></span>
+                </div>
+                <p class="text-sm text-gray-600 truncate">Start a new conversation...</p>
+            </div>`;
+            document.querySelector('.conversation').addEventListener('click', () => openConversation(userId));
         }
     });
 }
@@ -224,14 +333,16 @@ function loadConversationSidebar(conversationId) {
 replyForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = replyInput.value.trim();
-  if (!text || !currentConversationId) return;
+  if (!text) return;
   const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
   
-  const docRef = doc(db, "message", currentConversationId);
+  const docRef = doc(db, "message", userId);
 
   try {
     const docSnap = await getDoc(docRef);
+
     if (!docSnap.exists()) {
+      // First message from a new user, create the document
       const newMessage = {
           message: text,
           time: now,
@@ -243,6 +354,7 @@ replyForm.addEventListener("submit", async (e) => {
       };
       await setDoc(docRef, newMessage);
     } else {
+      // Not the first message, update the existing document
       const reply = { author: userName, text: text, status: "unread", time: now };
       await updateDoc(docRef, { replies: arrayUnion(reply) });
     }
@@ -259,33 +371,10 @@ backBtn.addEventListener("click", () => {
   chatApp.classList.remove("show-chat");
 });
 
-// --- Fetch admin UID and init ---
-async function fetchAdmin() {
-  try {
-    const adminDocRef = doc(db, "admin", "admins");
-    const adminSnap = await getDoc(adminDocRef);
+// Initialize the chat view on page load
+openConversation(userId);
+loadConversationSidebar();
 
-    if (adminSnap.exists()) {
-      adminUid = adminSnap.data().adminuid;
-      adminName = adminSnap.data().name || "Admin";
-
-      // --- If current user is admin, redirect ---
-      if (userId === adminUid) {
-        window.location.href = "adminmessage.html";
-        return;
-      }
-
-      const conversationId = `${userId}_${adminUid}`;
-      openConversation(conversationId);
-      loadConversationSidebar(conversationId);
-    }
-  } catch (err) {
-    console.error("Error fetching admin UID:", err);
-  }
-}
-
-// Start
-fetchAdmin();
 </script>
 </body>
 </html>
