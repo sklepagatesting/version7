@@ -16,16 +16,8 @@
   body { margin: 0; overflow: hidden; }
   
   .chat-app { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; overflow: hidden; }
-  .sidebar { width: 40%; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: transform 0.3s ease; z-index: 2; }
-  .sidebar-header { padding: 1rem; border-bottom: 1px solid #ddd; font-size: 1.25rem; font-weight: bold; flex-shrink: 0; }
-  .conversation-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .conversation { padding: 1rem; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
-  .conversation:hover { background: #f9f9f9; }
-  .conversation.active { background-color: #eef5ff; }
-  
   .chat-panel { flex: 1; display: flex; flex-direction: column; background: white; transition: transform 0.3s ease; z-index: 1; min-width: 0; }
   .chat-header { padding: 1rem; background: #fff; border-bottom: 1px solid #ddd; font-size: 1.25rem; font-weight: bold; flex-shrink: 0; display: flex; align-items: center; }
-  .back-btn { display: none; margin-right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
   
   .messages { flex: 1; min-height: 0; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; word-break: break-word; background-color: white; }
   .message-row { display: flex; margin-bottom: 0.25rem; }
@@ -44,33 +36,17 @@
   .chat-input-wrapper textarea.context::-webkit-scrollbar { display: none; }
   .chat-input-wrapper button { height: auto; min-height: 42px; padding: 0 12px; border: none; background: var(--sender-bg); color: white; border-radius: 50%; cursor: pointer; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; }
   
+  .placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #6b7280; text-align: center; font-size: 1.1rem; }
   .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
-  .chat-app.no-chat-selected .placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #6b7280; text-align: center; font-size: 1.1rem; }
-  .placeholder { display: none; }
-  
-  @media (max-width: 1200px) {
-    .sidebar, .chat-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-    .sidebar { transform: translateX(0); }
-    .chat-panel { transform: translateX(100%); }
-    .chat-app.show-chat .sidebar { transform: translateX(-100%); }
-    .chat-app.show-chat .chat-panel { transform: translateX(0); }
-    .back-btn { display: inline-block; }
-  }
 </style>
 </head>
 <body>
-<div class="chat-app no-chat-selected" id="chatApp">
-  <div class="sidebar">
-    <div class="sidebar-header">Admin Messages</div>
-    <div class="conversation-list" id="userList"></div>
-  </div>
-  
+<div class="chat-app" id="chatApp">
   <div class="chat-panel">
     <div class="chat-header">
-      <button class="back-btn" id="backBtn">&larr;</button>
       <div class="flex items-center gap-3">
-        <div id="userAvatar" class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold text-lg" style="background:var(--sender-bg)"></div>
-        <span id="chatTitle" class="font-semibold">Select a conversation</span>
+        <div class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold text-lg" style="background:#0084ff">A</div>
+        <span class="font-semibold">Admin Team</span>
       </div>
     </div>
     <div class="messages" id="messagesContainer">
@@ -79,8 +55,8 @@
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No conversation selected</h3>
-                <p class="mt-1 text-sm text-gray-500">Select a conversation from the list to start chatting.</p>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">Start a new conversation</h3>
+                <p class="mt-1 text-sm text-gray-500">Type a message below to begin.</p>
             </div>
         </div>
     </div>
@@ -93,287 +69,157 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion, setDoc, where, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, doc, onSnapshot, updateDoc, arrayUnion, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// --- Authentication and Redirect ---
+// --- Authentication Check ---
 const activeAccount = JSON.parse(localStorage.getItem("activeAccount"));
-if (!activeAccount) {
+if (!activeAccount || !activeAccount.uid) {
     window.location.href = "authentication.html";
 }
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-  authDomain: "sklepaga-8790e.firebaseapp.com",
-  projectId: "sklepaga-8790e",
-  storageBucket: "sklepaga-8790e.appspot.com",
-  messagingSenderId: "815409129057",
-  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-  measurementId: "G-9GH707G2WZ"
+    apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+    authDomain: "sklepaga-8790e.firebaseapp.com",
+    projectId: "sklepaga-8790e",
+    storageBucket: "sklepaga-8790e.appspot.com",
+    messagingSenderId: "815409129057",
+    appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+    measurementId: "G-9GH707G2WZ"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// User and Admin details
-const userId = activeAccount.uid;
-const userName = activeAccount.name;
-const userEmail = activeAccount.email;
-
-const admin = { name: "Dzey Autajay", email: "autajaydzey@gmail.com" };
-
-const chatApp = document.getElementById("chatApp");
-const userList = document.getElementById("userList");
+// --- DOM Elements ---
 const messagesContainer = document.getElementById("messagesContainer");
 const replyForm = document.getElementById("replyForm");
 const replyInput = document.getElementById("replyInput");
-const chatTitle = document.getElementById("chatTitle");
-const backBtn = document.getElementById("backBtn");
-const userAvatar = document.getElementById("userAvatar");
 
-userAvatar.textContent = activeAccount.avatarLetter;
-userAvatar.style.backgroundColor = activeAccount.avatarColor;
-
-let currentConversationId = userId; // Set the conversation ID immediately
-let unsubscribeConversationListener = null;
-
-function escapeHtml(text) {
-  if (typeof text !== 'string') return "";
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
+// --- Helper Functions ---
 function formatTimestamp(dateString) {
-    if (!dateString) return '';
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
+    if (isNaN(date.getTime())) return '';
+    
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
+    const yesterday = new Date(today.getTime());
     yesterday.setDate(yesterday.getDate() - 1);
+    
     const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    if (messageDate.getTime() === today.getTime()) return timeString;
+
+    if (messageDate.getTime() === today.getTime()) return `Today ${timeString}`;
     if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
-    if (messageDate.getTime() > oneWeekAgo.getTime()) {
-        const dayString = date.toLocaleDateString('en-US', { weekday: 'long' });
-        return `${dayString} ${timeString}`;
-    }
+    
     return `${date.toLocaleDateString('en-US')} ${timeString}`;
 }
 
-function formatTimestampForList(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    if (messageDate.getTime() === today.getTime()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    if (messageDate.getTime() === yesterday.getTime()) return 'Yesterday';
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
-    if (messageDate.getTime() > oneWeekAgo.getTime()) return date.toLocaleDateString('en-US', { weekday: 'short' });
-    return date.toLocaleDateString('en-US');
-}
-
 function scrollToBottom() {
-  requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; });
+    requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; });
 }
 
-let lastMessageTime = null;
+function addMessage(senderName, text, time, isCurrentUser) {
+    const row = document.createElement("div");
+    row.className = `message-row ${isCurrentUser ? "sender" : "receiver"}`;
 
-function addMessage(author, text, time) {
-  const isSender = author === userName;
-  const row = document.createElement("div");
-  row.className = "message-row " + (isSender ? "sender" : "receiver");
+    const content = document.createElement("div");
+    content.className = "message-content";
 
-  const content = document.createElement("div");
-  content.className = "message-content";
+    const bubble = document.createElement("div");
+    bubble.className = `chat-bubble ${isCurrentUser ? "sender" : "receiver"}`;
+    bubble.textContent = text;
 
-  const bubble = document.createElement("div");
-  bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
-  bubble.textContent = text;
-
-  const messageDate = new Date(time);
-  let showTime = true;
-
-  if (lastMessageTime) {
-    const last = new Date(lastMessageTime);
-    if (
-      last.getFullYear() === messageDate.getFullYear() &&
-      last.getMonth() === messageDate.getMonth() &&
-      last.getDate() === messageDate.getDate() &&
-      last.getHours() === messageDate.getHours() &&
-      last.getMinutes() === messageDate.getMinutes()
-    ) {
-      showTime = false;
-    }
-  }
-
-  if (showTime) {
     const timeEl = document.createElement("div");
     timeEl.className = "message-time";
     timeEl.textContent = formatTimestamp(time);
-    content.appendChild(timeEl);
-    lastMessageTime = time;
-  }
 
-  content.insertBefore(bubble, content.firstChild);
-  row.appendChild(content);
-  messagesContainer.appendChild(row);
+    content.appendChild(bubble);
+    content.appendChild(timeEl);
+    row.appendChild(content);
+    messagesContainer.appendChild(row);
 }
 
-const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+// --- Main Chat Logic ---
+const conversationId = activeAccount.uid;
+const conversationDocRef = doc(db, "conversations", conversationId);
 
-replyInput.addEventListener("wheel", (e) => {
-  const atTop = replyInput.scrollTop === 0;
-  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
-  if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
-});
-
-replyInput.addEventListener("touchstart", e => e.stopPropagation());
-replyInput.addEventListener("touchmove", (e) => {
-  const atTop = replyInput.scrollTop === 0;
-  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
-  if ((e.touches[0].clientY > 0 && atTop) || (e.touches[0].clientY < 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
-});
-
-replyInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    if (!isMobile || e.ctrlKey) {
-      e.preventDefault();
-      replyForm.requestSubmit();
+// Listen for real-time updates to the conversation
+onSnapshot(conversationDocRef, (docSnap) => {
+    messagesContainer.innerHTML = "";
+    const data = docSnap.data();
+    if (data && data.messages) {
+        data.messages.forEach(msg => {
+            const isCurrentUser = msg.sender_uid === activeAccount.uid;
+            addMessage(msg.sender_name, msg.text, msg.time, isCurrentUser);
+        });
+    } else {
+        // Show placeholder for new conversation
+        messagesContainer.innerHTML = `<div class="placeholder">
+            <div>
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">Start a new conversation</h3>
+                <p class="mt-1 text-sm text-gray-500">Type a message below to begin.</p>
+            </div>
+        </div>`;
     }
-  }
+    scrollToBottom();
+});
+
+// --- Form Submission ---
+replyForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = replyInput.value.trim();
+    if (!text) return;
+
+    const now = new Date().toISOString();
+    
+    const newMessage = {
+        sender_uid: activeAccount.uid,
+        sender_name: activeAccount.name,
+        text: text,
+        time: now,
+        status: "unread_by_admin"
+    };
+
+    try {
+        const docSnap = await getDoc(conversationDocRef);
+        if (!docSnap.exists()) {
+            // First message from a new user, create the document
+            await setDoc(conversationDocRef, {
+                user_info: { uid: activeAccount.uid, name: activeAccount.name, email: activeAccount.email },
+                messages: [newMessage],
+                last_updated: now
+            });
+        } else {
+            // Not the first message, update the existing document
+            await updateDoc(conversationDocRef, {
+                messages: arrayUnion(newMessage),
+                last_updated: now
+            });
+        }
+    } catch (err) {
+        alert("Failed to send message: " + err.message);
+    }
+    
+    replyInput.value = "";
+    replyInput.style.height = "42px";
+    scrollToBottom();
+});
+
+// --- UI Enhancements ---
+replyInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        replyForm.requestSubmit();
+    }
 });
 
 replyInput.addEventListener("input", () => {
-  replyInput.style.height = "42px";
-  replyInput.style.height = replyInput.scrollHeight + "px";
-  scrollToBottom();
+    replyInput.style.height = "auto";
+    replyInput.style.height = replyInput.scrollHeight + "px";
 });
-
-function openConversation(conversationId) {
-    currentConversationId = conversationId;
-    chatTitle.textContent = admin.name;
-    chatApp.classList.remove('no-chat-selected');
-    
-    // Clear previous listener if it exists
-    if (unsubscribeConversationListener) unsubscribeConversationListener();
-    
-    // Listen to the document for real-time updates
-    unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
-        messagesContainer.innerHTML = "";
-        
-        // If the document exists, display its messages
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            const allMessages = [];
-            // Handle initial message and replies
-            if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
-            if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
-            allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-            allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
-        } else {
-            // Document doesn't exist, show the placeholder
-            messagesContainer.innerHTML = `<div class="placeholder">
-                <div>
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
-                    </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">Start a new conversation</h3>
-                    <p class="mt-1 text-sm text-gray-500">Type a message below to begin.</p>
-                </div>
-            </div>`;
-        }
-        scrollToBottom();
-    });
-
-    if (window.innerWidth <= 1200) chatApp.classList.add("show-chat");
-}
-
-function loadConversationSidebar() {
-    const docRef = doc(db, "message", userId);
-    onSnapshot(docRef, docSnap => {
-        userList.innerHTML = ""; // Clear list
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            const lastMessage = data.replies?.slice(-1)[0] || { text: data.message, time: data.time };
-            
-            // Create and add the conversation list item
-            const li = document.createElement("div");
-            li.className = "conversation active";
-            li.dataset.id = userId;
-            li.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
-                    <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
-                </div>
-                <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
-            `;
-            li.addEventListener("click", () => openConversation(userId));
-            userList.appendChild(li);
-        } else {
-            // No existing conversation, show "Start new chat"
-            userList.innerHTML = `<div class="conversation active" data-id="${userId}">
-                <div class="flex justify-between items-center">
-                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
-                    <span class="text-xs text-gray-500"></span>
-                </div>
-                <p class="text-sm text-gray-600 truncate">Start a new conversation...</p>
-            </div>`;
-            document.querySelector('.conversation').addEventListener('click', () => openConversation(userId));
-        }
-    });
-}
-
-replyForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const text = replyInput.value.trim();
-  if (!text) return;
-  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
-  
-  const docRef = doc(db, "message", userId);
-
-  try {
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      // First message from a new user, create the document
-      const newMessage = {
-          message: text,
-          time: now,
-          uid: userId,
-          name: userName,
-          email: userEmail,
-          status: "unread",
-          replies: []
-      };
-      await setDoc(docRef, newMessage);
-    } else {
-      // Not the first message, update the existing document
-      const reply = { author: userName, text: text, status: "unread", time: now };
-      await updateDoc(docRef, { replies: arrayUnion(reply) });
-    }
-  } catch (err) {
-    alert("Failed to send message: " + err.message);
-  }
-
-  replyInput.value = "";
-  replyInput.style.height = "42px";
-  scrollToBottom();
-});
-
-backBtn.addEventListener("click", () => {
-  chatApp.classList.remove("show-chat");
-});
-
-// Initialize the chat view on page load
-openConversation(userId);
-loadConversationSidebar();
 
 </script>
 </body>
