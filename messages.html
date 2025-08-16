@@ -93,7 +93,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion, setDoc, where } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion, setDoc, where, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 // --- Authentication and Redirect ---
 const activeAccount = JSON.parse(localStorage.getItem("activeAccount"));
@@ -133,7 +133,7 @@ const userAvatar = document.getElementById("userAvatar");
 userAvatar.textContent = activeAccount.avatarLetter;
 userAvatar.style.backgroundColor = activeAccount.avatarColor;
 
-let currentConversationId = null;
+let currentConversationId = userId; // Set the conversation ID immediately
 let unsubscribeConversationListener = null;
 
 function escapeHtml(text) {
@@ -261,53 +261,73 @@ function openConversation(conversationId) {
     chatTitle.textContent = admin.name;
     chatApp.classList.remove('no-chat-selected');
     
+    // Clear previous listener if it exists
     if (unsubscribeConversationListener) unsubscribeConversationListener();
-
+    
+    // Listen to the document for real-time updates
     unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
         messagesContainer.innerHTML = "";
-        if (!docSnap.exists()) {
-            return; 
+        
+        // If the document exists, display its messages
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const allMessages = [];
+            // Handle initial message and replies
+            if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
+            if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
+            allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
+            allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
+        } else {
+            // Document doesn't exist, show the placeholder
+            messagesContainer.innerHTML = `<div class="placeholder">
+                <div>
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">Start a new conversation</h3>
+                    <p class="mt-1 text-sm text-gray-500">Type a message below to begin.</p>
+                </div>
+            </div>`;
         }
-
-        const data = docSnap.data();
-        const allMessages = [];
-        if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
-        if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
-        allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-        allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
         scrollToBottom();
     });
 
     if (window.innerWidth <= 1200) chatApp.classList.add("show-chat");
 }
 
-async function loadConversationAndListen() {
+function loadConversationSidebar() {
     const docRef = doc(db, "message", userId);
-    openConversation(userId);
-    
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) {
-        userList.innerHTML = `<div class="conversation" data-id="${userId}">
-            <div class="flex justify-between items-center">
-                <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
-                <span class="text-xs text-gray-500"></span>
-            </div>
-            <p class="text-sm text-gray-600 truncate">Start a new conversation...</p>
-        </div>`;
-        document.querySelector('.conversation').addEventListener('click', () => openConversation(userId));
-    } else {
-        const data = docSnap.data();
-        const lastMessage = data.replies?.slice(-1)[0] || { text: data.message, time: data.time };
-        userList.innerHTML = `<div class="conversation" data-id="${userId}">
-            <div class="flex justify-between items-center">
-                <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
-                <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
-            </div>
-            <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
-        </div>`;
-        document.querySelector('.conversation').addEventListener('click', () => openConversation(userId));
-    }
-    document.querySelector(`[data-id="${userId}"]`)?.classList.add('active');
+    onSnapshot(docRef, docSnap => {
+        userList.innerHTML = ""; // Clear list
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const lastMessage = data.replies?.slice(-1)[0] || { text: data.message, time: data.time };
+            
+            // Create and add the conversation list item
+            const li = document.createElement("div");
+            li.className = "conversation active";
+            li.dataset.id = userId;
+            li.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
+                    <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
+                </div>
+                <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
+            `;
+            li.addEventListener("click", () => openConversation(userId));
+            userList.appendChild(li);
+        } else {
+            // No existing conversation, show "Start new chat"
+            userList.innerHTML = `<div class="conversation active" data-id="${userId}">
+                <div class="flex justify-between items-center">
+                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
+                    <span class="text-xs text-gray-500"></span>
+                </div>
+                <p class="text-sm text-gray-600 truncate">Start a new conversation...</p>
+            </div>`;
+            document.querySelector('.conversation').addEventListener('click', () => openConversation(userId));
+        }
+    });
 }
 
 replyForm.addEventListener("submit", async (e) => {
@@ -318,30 +338,28 @@ replyForm.addEventListener("submit", async (e) => {
   
   const docRef = doc(db, "message", userId);
 
-  const docSnap = await getDoc(docRef);
+  try {
+    const docSnap = await getDoc(docRef);
 
-  if (!docSnap.exists()) {
-    const newMessage = {
-        message: text,
-        time: now,
-        uid: userId,
-        name: userName,
-        email: userEmail,
-        status: "unread",
-        replies: []
-    };
-    try {
-        await setDoc(docRef, newMessage);
-    } catch (err) {
-        alert("Failed to send message: " + err.message);
+    if (!docSnap.exists()) {
+      // First message from a new user, create the document
+      const newMessage = {
+          message: text,
+          time: now,
+          uid: userId,
+          name: userName,
+          email: userEmail,
+          status: "unread",
+          replies: []
+      };
+      await setDoc(docRef, newMessage);
+    } else {
+      // Not the first message, update the existing document
+      const reply = { author: userName, text: text, status: "unread", time: now };
+      await updateDoc(docRef, { replies: arrayUnion(reply) });
     }
-  } else {
-    const reply = { author: userName, text: text, status: "unread", time: now };
-    try {
-        await updateDoc(docRef, { replies: arrayUnion(reply) });
-    } catch (err) {
-        alert("Failed to send reply: " + err.message);
-    }
+  } catch (err) {
+    alert("Failed to send message: " + err.message);
   }
 
   replyInput.value = "";
@@ -349,7 +367,14 @@ replyForm.addEventListener("submit", async (e) => {
   scrollToBottom();
 });
 
-loadConversationAndListen();
+backBtn.addEventListener("click", () => {
+  chatApp.classList.remove("show-chat");
+});
+
+// Initialize the chat view on page load
+openConversation(userId);
+loadConversationSidebar();
+
 </script>
 </body>
 </html>
