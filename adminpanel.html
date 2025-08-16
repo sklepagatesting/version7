@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://helper.js"></script>
+<script src="helper.js"></script>
     <style>
         /* Simple spinner for loading state */
         .spinner {
@@ -30,10 +30,14 @@
     </div>
 
     <div id="adminPanel" class="hidden max-w-2xl mx-auto p-4 md:p-6">
-        <header class="mb-6 pb-4 border-b border-gray-300">
-            <h1 class="text-3xl font-bold text-gray-800">Admin Panel</h1>
-            <p class="text-gray-600">Manage user admin privileges.</p>
+        <header class="mb-6 pb-4 border-b border-gray-300 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Admin Panel</h1>
+                <p class="text-gray-600">Manage user admin privileges.</p>
+            </div>
+            <button id="logoutButton" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm">Log Out</button>
         </header>
+
         <main>
             <div id="userList" class="space-y-3"></div>
         </main>
@@ -42,10 +46,10 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, setDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-functions.js";
 
-        // Firebase Configuration
+        // --- Firebase Configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
             authDomain: "sklepaga-8790e.firebaseapp.com",
@@ -65,27 +69,29 @@
         const loader = document.getElementById('loader');
         const adminPanel = document.getElementById('adminPanel');
         const userListContainer = document.getElementById('userList');
+        const logoutButton = document.getElementById('logoutButton');
 
-        // --- Main Logic ---
+        // --- Firebase Cloud Function Calls ---
+        const checkAdminStatus = httpsCallable(functions, 'checkAdminStatus');
+        const addAdminRole = httpsCallable(functions, 'addAdminRole');
+        const removeAdminRole = httpsCallable(functions, 'removeAdminRole');
+
+        // --- Authentication State Listener ---
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // User is signed in, check if they are an admin
-                const checkAdminStatus = httpsCallable(functions, 'checkAdminStatus');
                 try {
                     const result = await checkAdminStatus();
                     if (result.data.isAdmin) {
-                        // User is a verified admin, proceed
                         loader.classList.add('hidden');
                         adminPanel.classList.remove('hidden');
                         listenForUpdates(user.uid);
                     } else {
-                        // Not an admin, deny access
                         alert("Access Denied. You are not an administrator.");
                         await signOut(auth); // Sign out unauthorized user
                         window.location.href = "authentication.html";
                     }
                 } catch (error) {
-                    console.error("Error checking admin status:", error);
+                    console.error("Error verifying admin status:", error);
                     alert("An error occurred. Please try again.");
                     loader.innerHTML = "<p class='text-red-500'>Failed to verify access.</p>";
                 }
@@ -94,34 +100,28 @@
                 window.location.href = "authentication.html";
             }
         });
-
+        
+        // --- Real-time Firestore Listeners ---
         function listenForUpdates(currentAdminUid) {
             let allUsers = [];
             let adminUids = new Set();
         
             // Listen for changes in the 'admins' collection
-            const unsubscribeAdmins = onSnapshot(collection(db, "admins"), (snapshot) => {
+            onSnapshot(collection(db, "admins"), (snapshot) => {
                 adminUids = new Set(snapshot.docs.map(doc => doc.id));
                 renderUserList(allUsers, adminUids, currentAdminUid);
             });
             
-            // Listen for changes in the 'accounts' collection (since that's where user data is saved)
-            const unsubscribeAccounts = onSnapshot(collection(db, "accounts"), (snapshot) => {
+            // Listen for changes in the 'accounts' collection
+            onSnapshot(collection(db, "accounts"), (snapshot) => {
                 allUsers = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
                 renderUserList(allUsers, adminUids, currentAdminUid);
             });
-        
-            // It's good practice to handle unsubscribing, e.g., on a page close event.
-            // window.addEventListener('beforeunload', () => {
-            //     unsubscribeAdmins();
-            //     unsubscribeAccounts();
-            // });
         }
 
+        // --- UI Rendering ---
         function renderUserList(users, admins, currentAdminUid) {
-            // ... (The rest of the renderUserList function is unchanged)
-            userListContainer.innerHTML = ''; // Clear previous list
-
+            userListContainer.innerHTML = '';
             if (users.length === 0) {
                 userListContainer.innerHTML = '<p class="text-gray-500">No users found.</p>';
                 return;
@@ -141,8 +141,7 @@
                         <p class="font-semibold text-gray-900">${user.name || 'Unnamed User'} ${isCurrentUser ? '(You)' : ''} ${adminBadge}</p>
                         <p class="text-sm text-gray-500">${user.email || 'No email'}</p>
                     </div>
-                    <div class="flex-shrink-0">
-                        </div>
+                    <div class="flex-shrink-0"></div>
                 `;
 
                 const actionContainer = userCard.querySelector('.flex-shrink-0');
@@ -151,8 +150,8 @@
                     actionContainer.innerHTML = '';
                 } else {
                     const button = document.createElement('button');
-                    button.textContent = isUserAdmin ? 'Remove' : 'Add Admin';
-                    button.className = `px-3 py-1 text-sm font-medium rounded-md ${isUserAdmin ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`;
+                    button.textContent = isUserAdmin ? 'Remove Admin' : 'Make Admin';
+                    button.className = `px-3 py-1 text-sm font-medium rounded-md text-white ${isUserAdmin ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`;
                     
                     button.onclick = () => {
                         if (isUserAdmin) {
@@ -166,32 +165,42 @@
                 userListContainer.appendChild(userCard);
             });
         }
-        
-        // Use Cloud Functions to handle admin actions securely
-        const addAdminCallable = httpsCallable(functions, 'addAdminRole');
-        const removeAdminCallable = httpsCallable(functions, 'removeAdminRole');
 
+        // --- Action Functions ---
         async function addAdmin(uid, name) {
             try {
-                await addAdminCallable({ uid, name });
+                await addAdminRole({ uid, name });
                 console.log(`Successfully added ${name} as an admin.`);
             } catch (error) {
                 console.error("Error adding admin:", error);
-                alert("Failed to add admin.");
+                alert("Failed to add admin: " + error.message);
             }
         }
 
         async function removeAdmin(uid) {
             if (confirm("Are you sure you want to remove this user's admin privileges?")) {
                 try {
-                    await removeAdminCallable({ uid });
+                    await removeAdminRole({ uid });
                     console.log(`Successfully removed admin with UID: ${uid}`);
                 } catch (error) {
                     console.error("Error removing admin:", error);
-                    alert("Failed to remove admin.");
+                    alert("Failed to remove admin: " + error.message);
                 }
             }
         }
+        
+        // --- Logout Handler ---
+        logoutButton.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                localStorage.removeItem("activeAccount"); // Clear local state
+                window.location.href = "authentication.html";
+            } catch (error) {
+                console.error("Error logging out:", error);
+                alert("An error occurred during logout.");
+            }
+        });
+
     </script>
 </body>
 </html>
