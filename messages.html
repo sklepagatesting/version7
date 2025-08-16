@@ -28,10 +28,33 @@
   .back-btn { display: none; margin-right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
   
   .messages { flex: 1; min-height: 0; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; word-break: break-word; background-color: white; }
+  
+  /* Message row flexbox to align elements */
   .message-row { display: flex; margin-bottom: 0.25rem; align-items: flex-end; }
   .message-row.sender { justify-content: flex-end; }
   .message-row.receiver { justify-content: flex-start; }
-  .message-content { display: flex; flex-direction: column; max-width: 80%; }
+
+  /* New avatar styles */
+  .message-row .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.875rem;
+    color: white;
+    flex-shrink: 0;
+  }
+  .message-row.sender .avatar { margin-left: 8px; order: 2; }
+  .message-row.receiver .avatar { margin-right: 8px; order: 1; }
+
+  /* Flex order for bubble and time */
+  .message-row .message-content { display: flex; flex-direction: column; max-width: 80%; }
+  .message-row.sender .message-content { order: 1; }
+  .message-row.receiver .message-content { order: 2; }
+
   .chat-bubble { padding: 10px 14px; border-radius: 18px; word-wrap: break-word; white-space: pre-wrap; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
   .chat-bubble.sender { background-color: var(--sender-bg); color: white; }
   .chat-bubble.receiver { background-color: var(--receiver-bg); color: black; }
@@ -47,25 +70,6 @@
   .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
   .chat-app.no-chat-selected .placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #6b7280; text-align: center; font-size: 1.1rem; }
   .placeholder { display: none; }
-
-  /* Avatar styles */
-  .message-row .avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 0.875rem;
-    color: white;
-    margin: 0 8px;
-    flex-shrink: 0;
-  }
-  .message-row.sender .avatar { order: 2; }
-  .message-row.receiver .avatar { order: 1; }
-  .message-row .message-content { order: 3; }
-  .message-row.receiver .message-content { order: 2; }
   
   @media (max-width: 1200px) {
     .sidebar, .chat-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
@@ -133,13 +137,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// User and Admin details, with avatar information
+// User and Admin details
 const userId = activeAccount.uid;
 const userName = activeAccount.name;
 const userEmail = activeAccount.email;
-const userAvatarData = { letter: activeAccount.avatarLetter, color: activeAccount.avatarColor };
-
-const admin = { name: "Dzey Autajay", email: "autajaydzey@gmail.com", avatarLetter: "A", avatarColor: "#f0b323" };
 
 const chatApp = document.getElementById("chatApp");
 const userList = document.getElementById("userList");
@@ -150,11 +151,36 @@ const chatTitle = document.getElementById("chatTitle");
 const backBtn = document.getElementById("backBtn");
 const userAvatar = document.getElementById("userAvatar");
 
-userAvatar.textContent = userAvatarData.letter;
-userAvatar.style.backgroundColor = userAvatarData.color;
-
 let currentConversationId = userId;
 let unsubscribeConversationListener = null;
+
+let userProfile = {
+  name: userName,
+  email: userEmail,
+  uid: userId,
+  avatarLetter: activeAccount.avatarLetter,
+  avatarColor: activeAccount.avatarColor
+};
+let adminProfile = null;
+
+async function getAdminProfile() {
+  // Assuming the admin's UID is static and known
+  const adminUID = "sCj9I1lQ5nLg5nI5n9Fz1g9I9qB2"; // Replace with the actual admin UID
+  const adminDocRef = doc(db, "accounts", adminUID);
+  try {
+    const docSnap = await getDoc(adminDocRef);
+    if (docSnap.exists()) {
+      adminProfile = docSnap.data();
+      return true;
+    } else {
+      console.error("Admin profile not found!");
+      return false;
+    }
+  } catch (err) {
+    console.error("Error fetching admin profile:", err);
+    return false;
+  }
+}
 
 function escapeHtml(text) {
   if (typeof text !== 'string') return "";
@@ -206,19 +232,20 @@ function scrollToBottom() {
 let lastMessageTime = null;
 
 function addMessage(author, text, time) {
-  const isSender = author === userName;
+  const isSender = author === userProfile.name;
   const row = document.createElement("div");
   row.className = "message-row " + (isSender ? "sender" : "receiver");
 
   // Create avatar element
   const avatar = document.createElement("div");
   avatar.className = "avatar";
+
   if (isSender) {
-    avatar.textContent = userAvatarData.letter;
-    avatar.style.backgroundColor = userAvatarData.color;
+    avatar.textContent = userProfile.avatarLetter;
+    avatar.style.backgroundColor = userProfile.avatarColor;
   } else {
-    avatar.textContent = admin.avatarLetter;
-    avatar.style.backgroundColor = admin.avatarColor;
+    avatar.textContent = adminProfile.avatarLetter;
+    avatar.style.backgroundColor = adminProfile.avatarColor;
   }
   row.appendChild(avatar);
 
@@ -238,8 +265,7 @@ function addMessage(author, text, time) {
       last.getFullYear() === messageDate.getFullYear() &&
       last.getMonth() === messageDate.getMonth() &&
       last.getDate() === messageDate.getDate() &&
-      last.getHours() === messageDate.getHours() &&
-      last.getMinutes() === messageDate.getMinutes()
+      last.getHours() === last.getHours()
     ) {
       showTime = false;
     }
@@ -290,28 +316,27 @@ replyInput.addEventListener("input", () => {
 
 function openConversation(conversationId) {
     currentConversationId = conversationId;
-    chatTitle.textContent = admin.name;
+    if (adminProfile) {
+        chatTitle.textContent = adminProfile.name;
+    } else {
+        chatTitle.textContent = "Loading...";
+    }
     chatApp.classList.remove('no-chat-selected');
     
-    // Clear previous listener if it exists
     if (unsubscribeConversationListener) unsubscribeConversationListener();
     
-    // Listen to the document for real-time updates
     unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
         messagesContainer.innerHTML = "";
         lastMessageTime = null;
         
-        // If the document exists, display its messages
         if (docSnap.exists()) {
             const data = docSnap.data();
             const allMessages = [];
-            // Handle initial message and replies
             if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
             if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
             allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
             allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
         } else {
-            // Document doesn't exist, show the placeholder
             messagesContainer.innerHTML = `<div class="placeholder">
                 <div>
                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -331,18 +356,19 @@ function openConversation(conversationId) {
 function loadConversationSidebar() {
     const docRef = doc(db, "message", userId);
     onSnapshot(docRef, docSnap => {
-        userList.innerHTML = ""; // Clear list
+        userList.innerHTML = "";
+        const otherName = adminProfile ? adminProfile.name : "Admin";
+        
         if (docSnap.exists()) {
             const data = docSnap.data();
             const lastMessage = data.replies?.slice(-1)[0] || { text: data.message, time: data.time };
             
-            // Create and add the conversation list item
             const li = document.createElement("div");
             li.className = "conversation active";
             li.dataset.id = userId;
             li.innerHTML = `
                 <div class="flex justify-between items-center">
-                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
+                    <strong class="font-semibold text-gray-800">${escapeHtml(otherName)}</strong>
                     <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
                 </div>
                 <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
@@ -350,10 +376,9 @@ function loadConversationSidebar() {
             li.addEventListener("click", () => openConversation(userId));
             userList.appendChild(li);
         } else {
-            // No existing conversation, show "Start new chat"
             userList.innerHTML = `<div class="conversation active" data-id="${userId}">
                 <div class="flex justify-between items-center">
-                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
+                    <strong class="font-semibold text-gray-800">${escapeHtml(otherName)}</strong>
                     <span class="text-xs text-gray-500"></span>
                 </div>
                 <p class="text-sm text-gray-600 truncate">Start a new conversation...</p>
@@ -375,20 +400,18 @@ replyForm.addEventListener("submit", async (e) => {
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
-      // First message from a new user, create the document
       const newMessage = {
           message: text,
           time: now,
           uid: userId,
-          name: userName,
-          email: userEmail,
+          name: userProfile.name,
+          email: userProfile.email,
           status: "unread",
           replies: []
       };
       await setDoc(docRef, newMessage);
     } else {
-      // Not the first message, update the existing document
-      const reply = { author: userName, text: text, status: "unread", time: now };
+      const reply = { author: userProfile.name, text: text, status: "unread", time: now };
       await updateDoc(docRef, { replies: arrayUnion(reply) });
     }
   } catch (err) {
@@ -404,8 +427,17 @@ backBtn.addEventListener("click", () => {
   chatApp.classList.remove("show-chat");
 });
 
-openConversation(userId);
-loadConversationSidebar();
+// Main initialization function
+async function initializeChat() {
+    await getAdminProfile();
+    userAvatar.textContent = userProfile.avatarLetter;
+    userAvatar.style.backgroundColor = userProfile.avatarColor;
+    openConversation(userId);
+    loadConversationSidebar();
+}
+
+initializeChat();
+
 </script>
 </body>
 </html>
