@@ -89,8 +89,8 @@
     <div class="chat-header">
       <button class="back-btn" id="backBtn">&larr;</button>
       <div class="flex items-center gap-3">
-        <div id="chatHeaderAvatar" class="w-8 h-8 flex items-center justify-center rounded-full text-white font-bold text-base"></div>
-        <span id="chatTitle" class="font-semibold">Loading...</span>
+        <div id="userAvatar" class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold text-lg" style="background:var(--sender-bg)"></div>
+        <span id="chatTitle" class="font-semibold">Select a conversation</span>
       </div>
     </div>
     <div class="messages" id="messagesContainer">
@@ -113,7 +113,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, doc, onSnapshot, updateDoc, arrayUnion, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion, setDoc, where, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const activeAccount = JSON.parse(localStorage.getItem("activeAccount"));
 if (!activeAccount) {
@@ -144,18 +144,20 @@ const replyForm = document.getElementById("replyForm");
 const replyInput = document.getElementById("replyInput");
 const chatTitle = document.getElementById("chatTitle");
 const backBtn = document.getElementById("backBtn");
-const chatHeaderAvatar = document.getElementById("chatHeaderAvatar");
+const userAvatar = document.getElementById("userAvatar");
 
 let currentConversationId = userId;
 let unsubscribeConversationListener = null;
 
-const userProfile = {
+let userProfile = {
   name: userName,
+  email: userEmail,
   uid: userId,
   avatarLetter: activeAccount.avatarLetter,
   avatarColor: activeAccount.avatarColor
 };
 
+// Admin's UID from the Firestore accounts collection
 const adminUID = "sCj9I1lQ5nLg5nI5n9Fz1g9I9qB2";
 let adminProfile = null;
 
@@ -308,11 +310,8 @@ function openConversation(conversationId) {
     currentConversationId = conversationId;
     if (adminProfile) {
         chatTitle.textContent = adminProfile.name;
-        chatHeaderAvatar.textContent = adminProfile.avatarLetter;
-        chatHeaderAvatar.style.backgroundColor = adminProfile.avatarColor;
     } else {
         chatTitle.textContent = "Loading...";
-        chatHeaderAvatar.textContent = "";
     }
     chatApp.classList.remove('no-chat-selected');
     
@@ -397,7 +396,7 @@ replyForm.addEventListener("submit", async (e) => {
           time: now,
           uid: userId,
           name: userProfile.name,
-          email: activeAccount.email,
+          email: userProfile.email,
           status: "unread",
           replies: []
       };
@@ -419,20 +418,12 @@ backBtn.addEventListener("click", () => {
   chatApp.classList.remove("show-chat");
 });
 
-// Main initialization function
 async function initializeChat() {
-    try {
-        const adminFound = await getAdminProfile();
-        if (adminFound) {
-            openConversation(userId);
-            loadConversationSidebar();
-        } else {
-            chatTitle.textContent = "Error: Admin profile not found.";
-        }
-    } catch (err) {
-        chatTitle.textContent = "Error: Failed to connect to database.";
-        console.error("Initialization failed:", err);
-    }
+    userAvatar.textContent = userProfile.avatarLetter;
+    userAvatar.style.backgroundColor = userProfile.avatarColor;
+    await getAdminProfile();
+    openConversation(userId);
+    loadConversationSidebar();
 }
 
 initializeChat();
