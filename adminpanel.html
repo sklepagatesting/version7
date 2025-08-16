@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Simple spinner for loading state */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div id="loader" class="flex flex-col items-center justify-center min-h-screen">
+        <div class="spinner"></div>
+        <p class="mt-4 text-gray-600">Verifying access...</p>
+    </div>
+
+    <div id="adminPanel" class="hidden max-w-2xl mx-auto p-4 md:p-6">
+        <header class="mb-6 pb-4 border-b border-gray-300">
+            <h1 class="text-3xl font-bold text-gray-800">Admin Panel</h1>
+            <p class="text-gray-600">Manage user admin privileges.</p>
+        </header>
+
+        <main>
+            <div id="userList" class="space-y-3">
+                </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getFirestore, collection, doc, getDoc, onSnapshot, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+            authDomain: "sklepaga-8790e.firebaseapp.com",
+            projectId: "sklepaga-8790e",
+            storageBucket: "sklepaga-8790e.appspot.com",
+            messagingSenderId: "815409129057",
+            appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+            measurementId: "G-9GH707G2WZ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- DOM Elements ---
+        const loader = document.getElementById('loader');
+        const adminPanel = document.getElementById('adminPanel');
+        const userListContainer = document.getElementById('userList');
+
+        // --- Main Logic ---
+        async function initializeAdminPanel() {
+            // 1. Check for active user in localStorage
+            const activeAccount = JSON.parse(localStorage.getItem("activeAccount"));
+            if (!activeAccount || !activeAccount.uid) {
+                window.location.href = "authentication.html";
+                return;
+            }
+
+            // 2. Verify if the active user is an admin
+            try {
+                const adminRef = doc(db, "admins", activeAccount.uid);
+                const adminSnap = await getDoc(adminRef);
+
+                if (!adminSnap.exists()) {
+                    // Not an admin, redirect
+                    alert("Access Denied. You are not an administrator.");
+                    window.location.href = "authentication.html";
+                    return;
+                }
+
+                // User is an admin, show the panel
+                loader.classList.add('hidden');
+                adminPanel.classList.remove('hidden');
+
+                // 3. Start listening for real-time updates on users and admins
+                listenForUpdates(activeAccount.uid);
+
+            } catch (error) {
+                console.error("Error verifying admin status:", error);
+                alert("An error occurred. Please try again.");
+                loader.innerHTML = "<p class='text-red-500'>Failed to verify access.</p>";
+            }
+        }
+
+        function listenForUpdates(currentAdminUid) {
+            let allUsers = [];
+            let adminUids = new Set();
+
+            // Listen for changes in the 'admins' collection
+            onSnapshot(collection(db, "admins"), (snapshot) => {
+                adminUids = new Set(snapshot.docs.map(doc => doc.id));
+                renderUserList(allUsers, adminUids, currentAdminUid);
+            });
+            
+            // Listen for changes in the 'users' collection
+            onSnapshot(collection(db, "users"), (snapshot) => {
+                allUsers = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+                renderUserList(allUsers, adminUids, currentAdminUid);
+            });
+        }
+
+        function renderUserList(users, admins, currentAdminUid) {
+            userListContainer.innerHTML = ''; // Clear previous list
+
+            if (users.length === 0) {
+                userListContainer.innerHTML = '<p class="text-gray-500">No users found.</p>';
+                return;
+            }
+
+            users.forEach(user => {
+                const isUserAdmin = admins.has(user.uid);
+                const isCurrentUser = user.uid === currentAdminUid;
+
+                const userCard = document.createElement('div');
+                userCard.className = 'flex items-center justify-between bg-white p-4 rounded-lg shadow-sm';
+                
+                let adminBadge = isUserAdmin ? `<span class="ml-2 text-xs font-semibold text-blue-800 bg-blue-200 px-2 py-0.5 rounded-full">Admin</span>` : '';
+                
+                userCard.innerHTML = `
+                    <div class="flex-grow">
+                        <p class="font-semibold text-gray-900">${user.name || 'Unnamed User'} ${isCurrentUser ? '(You)' : ''} ${adminBadge}</p>
+                        <p class="text-sm text-gray-500">${user.email || 'No email'}</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        </div>
+                `;
+
+                const actionContainer = userCard.querySelector('.flex-shrink-0');
+                
+                // An admin cannot remove themselves
+                if (isCurrentUser) {
+                    actionContainer.innerHTML = ''; // No action button for self
+                } else {
+                    const button = document.createElement('button');
+                    button.textContent = isUserAdmin ? 'Remove' : 'Add Admin';
+                    button.className = `px-3 py-1 text-sm font-medium rounded-md ${isUserAdmin ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`;
+                    
+                    button.onclick = () => {
+                        if (isUserAdmin) {
+                            removeAdmin(user.uid);
+                        } else {
+                            addAdmin(user.uid, user.name);
+                        }
+                    };
+                    actionContainer.appendChild(button);
+                }
+                userListContainer.appendChild(userCard);
+            });
+        }
+
+        // --- Action Functions ---
+        async function addAdmin(uid, name) {
+            try {
+                const adminRef = doc(db, "admins", uid);
+                await setDoc(adminRef, {
+                    name: name || 'N/A',
+                    addedAt: new Date().toISOString()
+                });
+                console.log(`Successfully added ${name} as an admin.`);
+            } catch (error) {
+                console.error("Error adding admin:", error);
+                alert("Failed to add admin.");
+            }
+        }
+
+        async function removeAdmin(uid) {
+            if (confirm("Are you sure you want to remove this user's admin privileges?")) {
+                try {
+                    const adminRef = doc(db, "admins", uid);
+                    await deleteDoc(adminRef);
+                    console.log(`Successfully removed admin with UID: ${uid}`);
+                } catch (error) {
+                    console.error("Error removing admin:", error);
+                    alert("Failed to remove admin.");
+                }
+            }
+        }
+
+        // Start the process when the script loads
+        initializeAdminPanel();
+    </script>
+</body>
+</html>
