@@ -132,7 +132,6 @@ const userAvatar = document.getElementById("userAvatar");
 
 userAvatar.textContent = activeAccount.avatarLetter;
 userAvatar.style.backgroundColor = activeAccount.avatarColor;
-chatTitle.textContent = userName;
 
 let currentConversationId = null;
 let unsubscribeConversationListener = null;
@@ -257,101 +256,71 @@ replyInput.addEventListener("input", () => {
   scrollToBottom();
 });
 
-function openConversation(conversationId, otherName) {
-  currentConversationId = conversationId;
-  chatTitle.textContent = escapeHtml(otherName);
-  chatApp.classList.remove('no-chat-selected');
-  document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
-  document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
-  replyInput.value = "";
-  replyInput.style.height = "42px";
+function openConversation(conversationId) {
+    currentConversationId = conversationId;
+    chatTitle.textContent = admin.name;
+    chatApp.classList.remove('no-chat-selected');
+    
+    if (unsubscribeConversationListener) unsubscribeConversationListener();
 
-  if (unsubscribeConversationListener) unsubscribeConversationListener();
-  unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
-    if (!docSnap.exists()) return;
-    messagesContainer.innerHTML = "";
-    const data = docSnap.data();
-    const allMessages = [];
-    if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
-    if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
-    allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-    allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
-    scrollToBottom();
-  });
+    unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
+        messagesContainer.innerHTML = "";
+        if (!docSnap.exists()) {
+            return; 
+        }
 
-  if (window.innerWidth <= 1200) chatApp.classList.add("show-chat");
+        const data = docSnap.data();
+        const allMessages = [];
+        if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
+        if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
+        allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
+        allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
+        scrollToBottom();
+    });
+
+    if (window.innerWidth <= 1200) chatApp.classList.add("show-chat");
 }
 
-async function loadUsers() {
-  // Query messages where the 'uid' field matches the current user's uid
-  const q = query(collection(db, "message"), where("uid", "==", userId), orderBy("time", "desc"));
-
-  onSnapshot(q, snapshot => {
-    userList.innerHTML = "";
-    if (snapshot.empty) {
-      userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
-      return;
-    }
-
-    const userConversations = {};
-
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      const id = docSnap.id;
-      
-      let otherName;
-      // In this user view, the 'other' user is always the admin
-      otherName = admin.name;
-
-      if (!userConversations[otherName]) userConversations[otherName] = [];
-      userConversations[otherName].push({ id, ...data });
-    });
-
-    const latestConversations = Object.entries(userConversations).map(([otherName, threads]) => {
-      threads.sort((a, b) => {
-        const lastTimeA = a.replies?.slice(-1)[0]?.time || a.time;
-        const lastTimeB = b.replies?.slice(-1)[0]?.time || b.time;
-        return new Date(lastTimeB) - new Date(lastTimeA);
-      });
-      return { otherName, thread: threads[0] };
-    });
+async function loadConversationAndListen() {
+    const docRef = doc(db, "message", userId);
+    openConversation(userId);
     
-    latestConversations.sort((a, b) => {
-      const lastTimeA = a.thread.replies?.slice(-1)[0]?.time || a.thread.time;
-      const lastTimeB = b.thread.replies?.slice(-1)[0]?.time || b.thread.time;
-      return new Date(lastTimeB) - new Date(lastTimeA);
-    });
-
-    latestConversations.forEach(({ otherName, thread }) => {
-      const lastMessage = thread.replies?.slice(-1)[0] || { text: thread.message, time: thread.time };
-      const li = document.createElement("div");
-      li.className = "conversation";
-      li.dataset.id = thread.id;
-      li.innerHTML = `
-        <div class="flex justify-between items-center">
-            <strong class="font-semibold text-gray-800">${escapeHtml(otherName)}</strong>
-            <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
-        </div>
-        <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
-      `;
-      li.addEventListener("click", () => openConversation(thread.id, otherName));
-      userList.appendChild(li);
-    });
-
-    // Automatically open the first conversation if there is one
-    if (latestConversations.length > 0 && !currentConversationId) {
-        const firstThread = latestConversations[0];
-        openConversation(firstThread.thread.id, firstThread.otherName);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+        userList.innerHTML = `<div class="conversation" data-id="${userId}">
+            <div class="flex justify-between items-center">
+                <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
+                <span class="text-xs text-gray-500"></span>
+            </div>
+            <p class="text-sm text-gray-600 truncate">Start a new conversation...</p>
+        </div>`;
+        document.querySelector('.conversation').addEventListener('click', () => openConversation(userId));
+    } else {
+        const data = docSnap.data();
+        const lastMessage = data.replies?.slice(-1)[0] || { text: data.message, time: data.time };
+        userList.innerHTML = `<div class="conversation" data-id="${userId}">
+            <div class="flex justify-between items-center">
+                <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
+                <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
+            </div>
+            <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
+        </div>`;
+        document.querySelector('.conversation').addEventListener('click', () => openConversation(userId));
     }
-  });
+    document.querySelector(`[data-id="${userId}"]`)?.classList.add('active');
 }
 
 replyForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!currentConversationId) {
-    const text = replyInput.value.trim();
-    if (!text) return;
-    const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
+  const text = replyInput.value.trim();
+  if (!text) return;
+  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
+  
+  const docRef = doc(db, "message", userId);
+
+  const docSnap = await getDoc(docRef);
+
+  if (!docSnap.exists()) {
     const newMessage = {
         message: text,
         time: now,
@@ -362,35 +331,25 @@ replyForm.addEventListener("submit", async (e) => {
         replies: []
     };
     try {
-        await setDoc(doc(db, "message", userId), newMessage); // Use the user's UID as the document ID
-        replyInput.value = "";
-        replyInput.style.height = "42px";
-        scrollToBottom();
+        await setDoc(docRef, newMessage);
     } catch (err) {
         alert("Failed to send message: " + err.message);
     }
-    return;
+  } else {
+    const reply = { author: userName, text: text, status: "unread", time: now };
+    try {
+        await updateDoc(docRef, { replies: arrayUnion(reply) });
+    } catch (err) {
+        alert("Failed to send reply: " + err.message);
+    }
   }
 
-  const text = replyInput.value.trim();
-  if (!text) return;
-  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
-  const reply = { author: userName, text: text, status: "unread", time: now };
-  try {
-    await updateDoc(doc(db,"message", currentConversationId), { replies: arrayUnion(reply) });
-    replyInput.value = "";
-    replyInput.style.height = "42px";
-    scrollToBottom();
-  } catch (err) {
-    alert("Failed to send reply: " + err.message);
-  }
+  replyInput.value = "";
+  replyInput.style.height = "42px";
+  scrollToBottom();
 });
 
-backBtn.addEventListener("click", () => {
-  chatApp.classList.remove("show-chat");
-});
-
-loadUsers();
+loadConversationAndListen();
 </script>
 </body>
 </html>
