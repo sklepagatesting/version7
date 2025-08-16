@@ -29,12 +29,10 @@
   
   .messages { flex: 1; min-height: 0; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; word-break: break-word; background-color: white; }
   
-  /* Message row flexbox to align elements */
   .message-row { display: flex; margin-bottom: 0.25rem; align-items: flex-end; }
   .message-row.sender { justify-content: flex-end; }
   .message-row.receiver { justify-content: flex-start; }
 
-  /* New avatar styles */
   .message-row .avatar {
     width: 32px;
     height: 32px;
@@ -50,7 +48,6 @@
   .message-row.sender .avatar { margin-left: 8px; order: 2; }
   .message-row.receiver .avatar { margin-right: 8px; order: 1; }
 
-  /* Flex order for bubble and time */
   .message-row .message-content { display: flex; flex-direction: column; max-width: 80%; }
   .message-row.sender .message-content { order: 1; }
   .message-row.receiver .message-content { order: 2; }
@@ -116,7 +113,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion, setDoc, where, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, updateDoc, arrayUnion, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const activeAccount = JSON.parse(localStorage.getItem("activeAccount"));
 if (!activeAccount) {
@@ -159,6 +156,7 @@ const userProfile = {
   avatarColor: activeAccount.avatarColor
 };
 
+// Admin's UID
 const adminUID = "sCj9I1lQ5nLg5nI5n9Fz1g9I9qB2";
 let adminProfile = null;
 
@@ -429,7 +427,6 @@ async function initializeChat() {
       loadConversationSidebar();
     } else {
       chatTitle.textContent = "Error loading admin profile";
-      // Handle the error state appropriately, e.g., show a message to the user.
     }
 }
 
