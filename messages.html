@@ -28,30 +28,10 @@
   .back-btn { display: none; margin-right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
   
   .messages { flex: 1; min-height: 0; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; word-break: break-word; background-color: white; }
-  
-  .message-row { display: flex; margin-bottom: 0.25rem; align-items: flex-end; }
+  .message-row { display: flex; margin-bottom: 0.25rem; }
   .message-row.sender { justify-content: flex-end; }
   .message-row.receiver { justify-content: flex-start; }
-
-  .message-row .avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 0.875rem;
-    color: white;
-    flex-shrink: 0;
-  }
-  .message-row.sender .avatar { margin-left: 8px; order: 2; }
-  .message-row.receiver .avatar { margin-right: 8px; order: 1; }
-
-  .message-row .message-content { display: flex; flex-direction: column; max-width: 80%; }
-  .message-row.sender .message-content { order: 1; }
-  .message-row.receiver .message-content { order: 2; }
-
+  .message-content { display: flex; flex-direction: column; max-width: 80%; }
   .chat-bubble { padding: 10px 14px; border-radius: 18px; word-wrap: break-word; white-space: pre-wrap; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
   .chat-bubble.sender { background-color: var(--sender-bg); color: white; }
   .chat-bubble.receiver { background-color: var(--receiver-bg); color: black; }
@@ -99,8 +79,8 @@
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">Start a new conversation</h3>
-                <p class="mt-1 text-sm text-gray-500">Type a message below to begin.</p>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No conversation selected</h3>
+                <p class="mt-1 text-sm text-gray-500">Select a conversation from the list to start chatting.</p>
             </div>
         </div>
     </div>
@@ -115,6 +95,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion, setDoc, where, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
+// --- Authentication and Redirect ---
 const activeAccount = JSON.parse(localStorage.getItem("activeAccount"));
 if (!activeAccount) {
     window.location.href = "authentication.html";
@@ -133,9 +114,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// User and Admin details
 const userId = activeAccount.uid;
 const userName = activeAccount.name;
 const userEmail = activeAccount.email;
+
+const admin = { name: "Dzey Autajay", email: "autajaydzey@gmail.com" };
 
 const chatApp = document.getElementById("chatApp");
 const userList = document.getElementById("userList");
@@ -146,37 +130,11 @@ const chatTitle = document.getElementById("chatTitle");
 const backBtn = document.getElementById("backBtn");
 const userAvatar = document.getElementById("userAvatar");
 
-let currentConversationId = userId;
+userAvatar.textContent = activeAccount.avatarLetter;
+userAvatar.style.backgroundColor = activeAccount.avatarColor;
+
+let currentConversationId = userId; // Set the conversation ID immediately
 let unsubscribeConversationListener = null;
-
-let userProfile = {
-  name: userName,
-  email: userEmail,
-  uid: userId,
-  avatarLetter: activeAccount.avatarLetter,
-  avatarColor: activeAccount.avatarColor
-};
-
-// Admin's UID from the Firestore accounts collection
-const adminUID = "sCj9I1lQ5nLg5nI5n9Fz1g9I9qB2";
-let adminProfile = null;
-
-async function getAdminProfile() {
-  const adminDocRef = doc(db, "accounts", adminUID);
-  try {
-    const docSnap = await getDoc(adminDocRef);
-    if (docSnap.exists()) {
-      adminProfile = docSnap.data();
-      return true;
-    } else {
-      console.error("Admin profile not found!");
-      return false;
-    }
-  } catch (err) {
-    console.error("Error fetching admin profile:", err);
-    return false;
-  }
-}
 
 function escapeHtml(text) {
   if (typeof text !== 'string') return "";
@@ -228,20 +186,9 @@ function scrollToBottom() {
 let lastMessageTime = null;
 
 function addMessage(author, text, time) {
-  const isSender = author === userProfile.name;
+  const isSender = author === userName;
   const row = document.createElement("div");
   row.className = "message-row " + (isSender ? "sender" : "receiver");
-
-  const avatar = document.createElement("div");
-  avatar.className = "avatar";
-  if (isSender) {
-    avatar.textContent = userProfile.avatarLetter;
-    avatar.style.backgroundColor = userProfile.avatarColor;
-  } else {
-    avatar.textContent = adminProfile.avatarLetter;
-    avatar.style.backgroundColor = adminProfile.avatarColor;
-  }
-  row.appendChild(avatar);
 
   const content = document.createElement("div");
   content.className = "message-content";
@@ -252,13 +199,16 @@ function addMessage(author, text, time) {
 
   const messageDate = new Date(time);
   let showTime = true;
+
   if (lastMessageTime) {
     const last = new Date(lastMessageTime);
-    if (last.getFullYear() === messageDate.getFullYear() &&
-        last.getMonth() === messageDate.getMonth() &&
-        last.getDate() === messageDate.getDate() &&
-        last.getHours() === messageDate.getHours() &&
-        last.getMinutes() === messageDate.getMinutes()) {
+    if (
+      last.getFullYear() === messageDate.getFullYear() &&
+      last.getMonth() === messageDate.getMonth() &&
+      last.getDate() === messageDate.getDate() &&
+      last.getHours() === messageDate.getHours() &&
+      last.getMinutes() === messageDate.getMinutes()
+    ) {
       showTime = false;
     }
   }
@@ -308,27 +258,27 @@ replyInput.addEventListener("input", () => {
 
 function openConversation(conversationId) {
     currentConversationId = conversationId;
-    if (adminProfile) {
-        chatTitle.textContent = adminProfile.name;
-    } else {
-        chatTitle.textContent = "Loading...";
-    }
+    chatTitle.textContent = admin.name;
     chatApp.classList.remove('no-chat-selected');
     
+    // Clear previous listener if it exists
     if (unsubscribeConversationListener) unsubscribeConversationListener();
     
+    // Listen to the document for real-time updates
     unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
         messagesContainer.innerHTML = "";
-        lastMessageTime = null;
         
+        // If the document exists, display its messages
         if (docSnap.exists()) {
             const data = docSnap.data();
             const allMessages = [];
+            // Handle initial message and replies
             if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
             if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
             allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
             allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
         } else {
+            // Document doesn't exist, show the placeholder
             messagesContainer.innerHTML = `<div class="placeholder">
                 <div>
                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -348,19 +298,18 @@ function openConversation(conversationId) {
 function loadConversationSidebar() {
     const docRef = doc(db, "message", userId);
     onSnapshot(docRef, docSnap => {
-        userList.innerHTML = "";
-        const otherName = adminProfile ? adminProfile.name : "Admin";
-        
+        userList.innerHTML = ""; // Clear list
         if (docSnap.exists()) {
             const data = docSnap.data();
             const lastMessage = data.replies?.slice(-1)[0] || { text: data.message, time: data.time };
             
+            // Create and add the conversation list item
             const li = document.createElement("div");
             li.className = "conversation active";
             li.dataset.id = userId;
             li.innerHTML = `
                 <div class="flex justify-between items-center">
-                    <strong class="font-semibold text-gray-800">${escapeHtml(otherName)}</strong>
+                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
                     <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
                 </div>
                 <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
@@ -368,9 +317,10 @@ function loadConversationSidebar() {
             li.addEventListener("click", () => openConversation(userId));
             userList.appendChild(li);
         } else {
+            // No existing conversation, show "Start new chat"
             userList.innerHTML = `<div class="conversation active" data-id="${userId}">
                 <div class="flex justify-between items-center">
-                    <strong class="font-semibold text-gray-800">${escapeHtml(otherName)}</strong>
+                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
                     <span class="text-xs text-gray-500"></span>
                 </div>
                 <p class="text-sm text-gray-600 truncate">Start a new conversation...</p>
@@ -390,19 +340,22 @@ replyForm.addEventListener("submit", async (e) => {
 
   try {
     const docSnap = await getDoc(docRef);
+
     if (!docSnap.exists()) {
+      // First message from a new user, create the document
       const newMessage = {
           message: text,
           time: now,
           uid: userId,
-          name: userProfile.name,
-          email: userProfile.email,
+          name: userName,
+          email: userEmail,
           status: "unread",
           replies: []
       };
       await setDoc(docRef, newMessage);
     } else {
-      const reply = { author: userProfile.name, text: text, status: "unread", time: now };
+      // Not the first message, update the existing document
+      const reply = { author: userName, text: text, status: "unread", time: now };
       await updateDoc(docRef, { replies: arrayUnion(reply) });
     }
   } catch (err) {
@@ -418,15 +371,9 @@ backBtn.addEventListener("click", () => {
   chatApp.classList.remove("show-chat");
 });
 
-async function initializeChat() {
-    userAvatar.textContent = userProfile.avatarLetter;
-    userAvatar.style.backgroundColor = userProfile.avatarColor;
-    await getAdminProfile();
-    openConversation(userId);
-    loadConversationSidebar();
-}
-
-initializeChat();
+// Initialize the chat view on page load
+openConversation(userId);
+loadConversationSidebar();
 
 </script>
 </body>
