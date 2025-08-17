@@ -1,206 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Panel</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-<script src="helper.js"></script>
-    <style>
-        /* Simple spinner for loading state */
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #09f;
-            animation: spin 1s ease infinite;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    // --- Firebase Config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+      authDomain: "sklepaga-8790e.firebaseapp.com",
+      projectId: "sklepaga-8790e",
+      storageBucket: "sklepaga-8790e.firebasestorage.app",
+      messagingSenderId: "815409129057",
+      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+      measurementId: "G-9GH707G2WZ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let activeAdmin = JSON.parse(localStorage.getItem("activeAdmin") || "{}");
+
+    async function loadAdmins() {
+      const adminList = document.getElementById("adminList");
+      adminList.innerHTML = "";
+      const snapshot = await getDocs(collection(db, "admin"));
+      snapshot.forEach(docSnap => {
+        const admin = docSnap.data();
+        const div = document.createElement("div");
+        div.className = "flex justify-between items-center border-b py-2";
+        div.innerHTML = `
+          <div>
+            <div class="font-semibold">${admin.name}</div>
+            <div class="text-sm text-gray-500">${admin.email}</div>
+          </div>
+          <button onclick="promptUpdatePassword('${admin.uid}')" class="text-blue-500 hover:underline">Update Password</button>
+        `;
+        adminList.appendChild(div);
+      });
+    }
+
+    async function loadUsers() {
+      const userList = document.getElementById("userList");
+      userList.innerHTML = "";
+      const snapshot = await getDocs(collection(db, "accounts"));
+      snapshot.forEach(docSnap => {
+        const user = docSnap.data();
+        const div = document.createElement("div");
+        div.className = "flex justify-between items-center border-b py-2";
+        div.innerHTML = `
+          <div>
+            <div class="font-semibold">${user.name}</div>
+            <div class="text-sm text-gray-500">${user.email}</div>
+          </div>
+          <div class="flex gap-3">
+            <button onclick="promoteUser('${user.uid}')" class="text-green-600 hover:underline">Add as Admin</button>
+            <button onclick="deleteUser('${user.uid}')" class="text-red-600 hover:underline">Delete</button>
+          </div>
+        `;
+        userList.appendChild(div);
+      });
+    }
+
+    // --- Admin actions ---
+    async function promptUpdatePassword(uid) {
+      const newPass = prompt("Enter new password:");
+      if (!newPass) return;
+      try {
+        await updateDoc(doc(db, "admin", uid), { password: newPass });
+        alert("Password updated.");
+      } catch (e) {
+        alert("Failed to update password: " + e.message);
+      }
+    }
+
+    async function deleteUser(uid) {
+      if (!confirm("Are you sure you want to delete this user?")) return;
+      try {
+        await deleteDoc(doc(db, "accounts", uid));
+        loadUsers();
+        alert("User deleted.");
+      } catch (e) {
+        alert("Failed to delete user: " + e.message);
+      }
+    }
+
+    async function promoteUser(uid) {
+      const pass = prompt("Enter initial password for this new admin:");
+      if (!pass) return;
+
+      try {
+        const snapshot = await getDocs(collection(db, "accounts"));
+        let targetUser = null;
+        snapshot.forEach(docSnap => {
+          if (docSnap.id === uid) targetUser = docSnap.data();
+        });
+
+        if (!targetUser) {
+          alert("User not found.");
+          return;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body class="bg-gray-100 font-sans">
 
-    <div id="loader" class="flex flex-col items-center justify-center min-h-screen">
-        <div class="spinner"></div>
-        <p class="mt-4 text-gray-600">Verifying access...</p>
-    </div>
-
-    <div id="adminPanel" class="hidden max-w-2xl mx-auto p-4 md:p-6">
-        <header class="mb-6 pb-4 border-b border-gray-300 flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-800">Admin Panel</h1>
-                <p class="text-gray-600">Manage user admin privileges.</p>
-            </div>
-            <button id="logoutButton" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm">Log Out</button>
-        </header>
-
-        <main>
-            <div id="userList" class="space-y-3"></div>
-        </main>
-    </div>
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, setDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-functions.js";
-
-        // --- Firebase Configuration ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-            authDomain: "sklepaga-8790e.firebaseapp.com",
-            projectId: "sklepaga-8790e",
-            storageBucket: "sklepaga-8790e.appspot.com",
-            messagingSenderId: "815409129057",
-            appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-            measurementId: "G-9GH707G2WZ"
+        const newAdmin = {
+          ...targetUser,
+          password: pass
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const functions = getFunctions(app);
+        await setDoc(doc(db, "admin", uid), newAdmin);
+        alert("User promoted to admin.");
+        loadAdmins();
+      } catch (e) {
+        alert("Failed to promote user: " + e.message);
+      }
+    }
 
-        // --- DOM Elements ---
-        const loader = document.getElementById('loader');
-        const adminPanel = document.getElementById('adminPanel');
-        const userListContainer = document.getElementById('userList');
-        const logoutButton = document.getElementById('logoutButton');
+    window.promptUpdatePassword = promptUpdatePassword;
+    window.deleteUser = deleteUser;
+    window.promoteUser = promoteUser;
 
-        // --- Firebase Cloud Function Calls ---
-        const checkAdminStatus = httpsCallable(functions, 'checkAdminStatus');
-        const addAdminRole = httpsCallable(functions, 'addAdminRole');
-        const removeAdminRole = httpsCallable(functions, 'removeAdminRole');
+    // Init
+    window.addEventListener("DOMContentLoaded", () => {
+      if (!activeAdmin.uid) {
+        alert("You must be logged in as admin.");
+        window.location.href = "index.html";
+        return;
+      }
+      loadAdmins();
+      loadUsers();
+    });
+  </script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+  <div class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6">
+    <h1 class="text-2xl font-bold mb-6">Admin Panel</h1>
 
-        // --- Authentication State Listener ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                try {
-                    const result = await checkAdminStatus();
-                    if (result.data.isAdmin) {
-                        loader.classList.add('hidden');
-                        adminPanel.classList.remove('hidden');
-                        listenForUpdates(user.uid);
-                    } else {
-                        alert("Access Denied. You are not an administrator.");
-                        await signOut(auth); // Sign out unauthorized user
-                        window.location.href = "authentication.html";
-                    }
-                } catch (error) {
-                    console.error("Error verifying admin status:", error);
-                    alert("An error occurred. Please try again.");
-                    loader.innerHTML = "<p class='text-red-500'>Failed to verify access.</p>";
-                }
-            } else {
-                // No user is signed in, redirect
-                window.location.href = "authentication.html";
-            }
-        });
-        
-        // --- Real-time Firestore Listeners ---
-        function listenForUpdates(currentAdminUid) {
-            let allUsers = [];
-            let adminUids = new Set();
-        
-            // Listen for changes in the 'admins' collection
-            onSnapshot(collection(db, "admins"), (snapshot) => {
-                adminUids = new Set(snapshot.docs.map(doc => doc.id));
-                renderUserList(allUsers, adminUids, currentAdminUid);
-            });
-            
-            // Listen for changes in the 'accounts' collection
-            onSnapshot(collection(db, "accounts"), (snapshot) => {
-                allUsers = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
-                renderUserList(allUsers, adminUids, currentAdminUid);
-            });
-        }
+    <h2 class="text-xl font-semibold mb-2">Admins</h2>
+    <div id="adminList" class="mb-6 border rounded-lg p-3 bg-gray-50"></div>
 
-        // --- UI Rendering ---
-        function renderUserList(users, admins, currentAdminUid) {
-            userListContainer.innerHTML = '';
-            if (users.length === 0) {
-                userListContainer.innerHTML = '<p class="text-gray-500">No users found.</p>';
-                return;
-            }
-
-            users.forEach(user => {
-                const isUserAdmin = admins.has(user.uid);
-                const isCurrentUser = user.uid === currentAdminUid;
-
-                const userCard = document.createElement('div');
-                userCard.className = 'flex items-center justify-between bg-white p-4 rounded-lg shadow-sm';
-                
-                let adminBadge = isUserAdmin ? `<span class="ml-2 text-xs font-semibold text-blue-800 bg-blue-200 px-2 py-0.5 rounded-full">Admin</span>` : '';
-                
-                userCard.innerHTML = `
-                    <div class="flex-grow">
-                        <p class="font-semibold text-gray-900">${user.name || 'Unnamed User'} ${isCurrentUser ? '(You)' : ''} ${adminBadge}</p>
-                        <p class="text-sm text-gray-500">${user.email || 'No email'}</p>
-                    </div>
-                    <div class="flex-shrink-0"></div>
-                `;
-
-                const actionContainer = userCard.querySelector('.flex-shrink-0');
-                
-                if (isCurrentUser) {
-                    actionContainer.innerHTML = '';
-                } else {
-                    const button = document.createElement('button');
-                    button.textContent = isUserAdmin ? 'Remove Admin' : 'Make Admin';
-                    button.className = `px-3 py-1 text-sm font-medium rounded-md text-white ${isUserAdmin ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`;
-                    
-                    button.onclick = () => {
-                        if (isUserAdmin) {
-                            removeAdmin(user.uid);
-                        } else {
-                            addAdmin(user.uid, user.name);
-                        }
-                    };
-                    actionContainer.appendChild(button);
-                }
-                userListContainer.appendChild(userCard);
-            });
-        }
-
-        // --- Action Functions ---
-        async function addAdmin(uid, name) {
-            try {
-                await addAdminRole({ uid, name });
-                console.log(`Successfully added ${name} as an admin.`);
-            } catch (error) {
-                console.error("Error adding admin:", error);
-                alert("Failed to add admin: " + error.message);
-            }
-        }
-
-        async function removeAdmin(uid) {
-            if (confirm("Are you sure you want to remove this user's admin privileges?")) {
-                try {
-                    await removeAdminRole({ uid });
-                    console.log(`Successfully removed admin with UID: ${uid}`);
-                } catch (error) {
-                    console.error("Error removing admin:", error);
-                    alert("Failed to remove admin: " + error.message);
-                }
-            }
-        }
-        
-        // --- Logout Handler ---
-        logoutButton.addEventListener('click', async () => {
-            try {
-                await signOut(auth);
-                localStorage.removeItem("activeAccount"); // Clear local state
-                window.location.href = "authentication.html";
-            } catch (error) {
-                console.error("Error logging out:", error);
-                alert("An error occurred during logout.");
-            }
-        });
-
-    </script>
+    <h2 class="text-xl font-semibold mb-2">User Accounts</h2>
+    <div id="userList" class="border rounded-lg p-3 bg-gray-50"></div>
+  </div>
 </body>
 </html>
