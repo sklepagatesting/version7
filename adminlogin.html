@@ -26,7 +26,9 @@
     const provider = new GoogleAuthProvider();
     const db = getFirestore(app);
 
-    // Load saved accounts
+    let pendingAccount = null; // Store temporarily until password entered
+
+    // --- Local storage helpers ---
     function getSavedAccounts() {
       return JSON.parse(localStorage.getItem("adminAccounts") || "[]");
     }
@@ -38,33 +40,53 @@
       localStorage.setItem("adminAccounts", JSON.stringify(accounts));
     }
 
+    // --- Login Flow ---
     async function login() {
       try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
         const token = await user.getIdToken();
 
-        const account = {
+        pendingAccount = {
           uid: user.uid,
           name: user.displayName || "",
           email: user.email || "",
           avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
           avatarColor: "#3498DB",
           idToken: token,
-          tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString()
+          tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString(),
         };
 
-        // --- Save to Firestore (in `admin` collection instead of `accounts`) ---
-        await setDoc(doc(db, "admin", user.uid), account);
-
-        // Save locally
-        saveAccount(account);
-
-        // Redirect
-        window.location.href = "messages.html";
+        // Show password form
+        document.getElementById("loginSection").classList.add("hidden");
+        document.getElementById("passwordSection").classList.remove("hidden");
+        document.getElementById("adminName").textContent = pendingAccount.name;
+        document.getElementById("adminEmail").textContent = pendingAccount.email;
       } catch (error) {
         console.error("Login failed:", error);
         alert("Login failed: " + error.message);
+      }
+    }
+
+    async function saveAdmin() {
+      const passwordInput = document.getElementById("adminPassword").value.trim();
+      if (!passwordInput) {
+        alert("Please enter a password.");
+        return;
+      }
+
+      // attach password before saving
+      pendingAccount.password = passwordInput;
+
+      try {
+        await setDoc(doc(db, "admin", pendingAccount.uid), pendingAccount);
+        saveAccount(pendingAccount);
+
+        localStorage.setItem("activeAdmin", JSON.stringify(pendingAccount));
+        window.location.href = "messages.html";
+      } catch (error) {
+        console.error("Saving admin failed:", error);
+        alert("Error saving admin: " + error.message);
       }
     }
 
@@ -77,7 +99,7 @@
       }
     }
 
-    // On load: check saved accounts
+    // On load
     window.addEventListener("DOMContentLoaded", () => {
       const accounts = getSavedAccounts();
       if (accounts.length === 1) {
@@ -105,6 +127,7 @@
     });
 
     window.login = login;
+    window.saveAdmin = saveAdmin;
   </script>
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
@@ -113,6 +136,16 @@
     <h1 class="text-2xl font-bold mb-4">Admin Login</h1>
     <button onclick="login()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
       Login with Google
+    </button>
+  </div>
+
+  <!-- Password Section -->
+  <div id="passwordSection" class="hidden bg-white shadow-lg rounded-lg p-6 w-96 text-center">
+    <h1 class="text-xl font-bold mb-2">Set Admin Password</h1>
+    <p class="text-gray-600 mb-4">For <span id="adminName" class="font-semibold"></span> (<span id="adminEmail"></span>)</p>
+    <input id="adminPassword" type="password" placeholder="Enter password" class="w-full px-3 py-2 border rounded-lg mb-4" />
+    <button onclick="saveAdmin()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg w-full">
+      Save Admin
     </button>
   </div>
 
