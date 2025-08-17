@@ -23,17 +23,17 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    let activeAccount = JSON.parse(localStorage.getItem("activeAdmin") || "{}");
+    let activeAdmin = JSON.parse(localStorage.getItem("activeAdmin") || "{}");
 
     async function verifyAccess() {
       // --- Case 1: No account at all ---
-      if (!activeAccount.uid) {
+      if (!activeAdmin.uid) {
         window.location.href = "authentication.html";
         return;
       }
 
       // --- Case 2: Check if account exists in admin collection ---
-      const adminDoc = await getDoc(doc(db, "admin", activeAccount.uid));
+      const adminDoc = await getDoc(doc(db, "admin", activeAdmin.uid));
       if (!adminDoc.exists()) {
         // Not an admin → redirect to messages
         window.location.href = "messages.html";
@@ -51,27 +51,24 @@
       }
 
       // If password correct → load panel
-      loadAdmins();
+      loadMyAdmin(adminData);
       loadUsers();
     }
 
-    async function loadAdmins() {
+    async function loadMyAdmin(adminData) {
       const adminList = document.getElementById("adminList");
       adminList.innerHTML = "";
-      const snapshot = await getDocs(collection(db, "admin"));
-      snapshot.forEach(docSnap => {
-        const admin = docSnap.data();
-        const div = document.createElement("div");
-        div.className = "flex justify-between items-center border-b py-2";
-        div.innerHTML = `
-          <div>
-            <div class="font-semibold">${admin.name}</div>
-            <div class="text-sm text-gray-500">${admin.email}</div>
-          </div>
-          <button onclick="promptUpdatePassword('${admin.uid}')" class="text-blue-500 hover:underline">Update Password</button>
-        `;
-        adminList.appendChild(div);
-      });
+
+      const div = document.createElement("div");
+      div.className = "flex justify-between items-center border-b py-2";
+      div.innerHTML = `
+        <div>
+          <div class="font-semibold">${adminData.name}</div>
+          <div class="text-sm text-gray-500">${adminData.email}</div>
+        </div>
+        <button onclick="promptUpdatePassword('${adminData.uid}')" class="text-blue-500 hover:underline">Update Password</button>
+      `;
+      adminList.appendChild(div);
     }
 
     async function loadUsers() {
@@ -98,6 +95,10 @@
 
     // --- Admin actions ---
     async function promptUpdatePassword(uid) {
+      if (uid !== activeAdmin.uid) {
+        alert("You can only update your own password.");
+        return;
+      }
       const newPass = prompt("Enter new password:");
       if (!newPass) return;
       try {
@@ -140,9 +141,13 @@
           password: pass
         };
 
+        // Save to admin
         await setDoc(doc(db, "admin", uid), newAdmin);
+        // Remove from users
+        await deleteDoc(doc(db, "accounts", uid));
+
         alert("User promoted to admin.");
-        loadAdmins();
+        loadUsers();
       } catch (e) {
         alert("Failed to promote user: " + e.message);
       }
@@ -162,7 +167,7 @@
   <div class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6">
     <h1 class="text-2xl font-bold mb-6">Admin Panel</h1>
 
-    <h2 class="text-xl font-semibold mb-2">Admins</h2>
+    <h2 class="text-xl font-semibold mb-2">My Admin Account</h2>
     <div id="adminList" class="mb-6 border rounded-lg p-3 bg-gray-50"></div>
 
     <h2 class="text-xl font-semibold mb-2">User Accounts</h2>
