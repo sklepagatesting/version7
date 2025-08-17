@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     // --- Firebase Config ---
     const firebaseConfig = {
@@ -23,7 +23,37 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    let activeAdmin = JSON.parse(localStorage.getItem("activeAdmin") || "{}");
+    let activeAccount = JSON.parse(localStorage.getItem("activeAdmin") || "{}");
+
+    async function verifyAccess() {
+      // --- Case 1: No account at all ---
+      if (!activeAccount.uid) {
+        window.location.href = "authentication.html";
+        return;
+      }
+
+      // --- Case 2: Check if account exists in admin collection ---
+      const adminDoc = await getDoc(doc(db, "admin", activeAccount.uid));
+      if (!adminDoc.exists()) {
+        // Not an admin → redirect to messages
+        window.location.href = "messages.html";
+        return;
+      }
+
+      const adminData = adminDoc.data();
+
+      // --- Ask for password before showing ---
+      let pass = prompt("Enter admin password:");
+      if (pass !== adminData.password) {
+        alert("Incorrect password.");
+        window.location.href = "authentication.html";
+        return;
+      }
+
+      // If password correct → load panel
+      loadAdmins();
+      loadUsers();
+    }
 
     async function loadAdmins() {
       const adminList = document.getElementById("adminList");
@@ -124,13 +154,7 @@
 
     // Init
     window.addEventListener("DOMContentLoaded", () => {
-      if (!activeAdmin.uid) {
-        alert("You must be logged in as admin.");
-        window.location.href = "index.html";
-        return;
-      }
-      loadAdmins();
-      loadUsers();
+      verifyAccess();
     });
   </script>
 </head>
