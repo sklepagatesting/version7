@@ -22,7 +22,7 @@
       setDoc
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ✅ Firebase Config (your project)
+    // ✅ Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
       authDomain: "sklepaga-8790e.firebaseapp.com",
@@ -51,9 +51,9 @@
 
     // ---------- Helpers ----------
     const genColor = (seed) => {
-      // simple deterministic color from uid/email
       const palette = ["#2563eb","#16a34a","#db2777","#f59e0b","#7c3aed","#059669","#ef4444","#0ea5e9"];
-      let sum = 0; for (let i=0;i<seed.length;i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
+      let sum = 0; 
+      for (let i=0;i<seed.length;i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
       return palette[sum];
     };
 
@@ -77,9 +77,14 @@
     };
 
     const overwriteSavedUsers = (user) => {
-      // Keep only the latest account (as requested)
       localStorage.setItem("savedUsers", JSON.stringify([user]));
       localStorage.setItem("currentUser", JSON.stringify(user));
+    };
+
+    const addLoginPageUser = (user) => {
+      let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+      users = [user, ...users.filter(u => u.uid !== user.uid)];
+      localStorage.setItem("loginPageUsers", JSON.stringify(users));
     };
 
     const showOffline = (show) => {
@@ -87,7 +92,7 @@
     };
 
     const renderProfiles = () => {
-      const saved = JSON.parse(localStorage.getItem("savedUsers") || "[]");
+      const saved = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
       if (saved.length === 0) {
         profilesSection.classList.add("hidden");
         loginSection.classList.remove("hidden");
@@ -118,7 +123,6 @@
     };
 
     const ensureOnline = async () => {
-      // simple connectivity probe via getAuth state/network; if navigator offline, short-circuit
       if (!navigator.onLine) {
         showOffline(true);
         throw new Error("Offline");
@@ -140,12 +144,12 @@
           avatar: user.photoURL || "",
         };
 
-        // Always overwrite saved users with the new one
         overwriteSavedUsers({ ...userLite, type: "unknown" });
+        addLoginPageUser(userLite);
 
         await routeUser(userLite);
       } catch (e) {
-        if (e.message?.toLowerCase().includes("offline")) return; // banner already shown
+        if (e.message?.toLowerCase().includes("offline")) return;
         console.error(e);
         alert("Login failed: " + (e?.message || e));
       }
@@ -154,8 +158,8 @@
     async function continueWithProfile(user) {
       try {
         await ensureOnline();
-        // Keep only the chosen one
         overwriteSavedUsers(user);
+        addLoginPageUser(user);
         await routeUser(user);
       } catch (e) {
         if (e.message?.toLowerCase().includes("offline")) return;
@@ -165,14 +169,13 @@
     }
 
     async function routeUser(userLite) {
-      // 1) Admin?
       const adminRef = doc(db, "admin", userLite.uid);
       try {
         const adminSnap = await getDoc(adminRef);
         if (adminSnap.exists()) {
-          // mark saved user type
           overwriteSavedUsers({ ...userLite, type: "admin" });
-          // show admin password section
+          addLoginPageUser({ ...userLite, type: "admin" });
+
           adminUidInput.value = userLite.uid;
           adminPwInput.value = "";
           profilesSection.classList.add("hidden");
@@ -181,11 +184,9 @@
           return;
         }
       } catch (e) {
-        // Firestore unreachable
         throw e;
       }
 
-      // 2) Regular user in 'accounts'? If not, create.
       const accRef = doc(db, "accounts", userLite.uid);
       const accSnap = await getDoc(accRef);
       if (!accSnap.exists()) {
@@ -198,10 +199,9 @@
         });
       }
 
-      // set activeAccount for messages.html compatibility
       setActiveAccount(userLite);
-      // keep 'user' tag in saved
       overwriteSavedUsers({ ...userLite, type: "user" });
+      addLoginPageUser({ ...userLite, type: "user" });
 
       window.location.href = "messages.html";
     }
@@ -217,16 +217,13 @@
         const adminSnap = await getDoc(adminRef);
         if (!adminSnap.exists()) {
           alert("Admin record not found.");
-          // back to start
           adminPwSection.classList.add("hidden");
           loginSection.classList.remove("hidden");
           return;
         }
         const admin = adminSnap.data();
         if (admin.password === pw) {
-          // persist active admin for adminpanel.html
           setActiveAdmin({ uid });
-          // also keep a synced activeAccount object for avatar/name if needed visually there
           setActiveAccount({
             uid,
             name: admin.name || "",
@@ -245,14 +242,13 @@
     }
 
     async function logoutLocal() {
-      try {
-        await signOut(auth);
-      } catch {}
+      try { await signOut(auth); } catch {}
       localStorage.removeItem("savedUsers");
       localStorage.removeItem("currentUser");
       localStorage.removeItem("activeAccount");
       localStorage.removeItem("activeAdmin");
-      window.location.reload();
+      localStorage.removeItem("loginPageUsers");
+      window.location.href = "home.html"; // simplified sign out
     }
 
     // ---------- Events ----------
@@ -263,18 +259,14 @@
 
     notYouBtn.addEventListener("click", logoutLocal);
 
-    // Show/hide offline banner on network change
     window.addEventListener("online", () => showOffline(false));
     window.addEventListener("offline", () => showOffline(true));
     showOffline(!navigator.onLine);
 
-    // Initial render (saved profiles or login)
     renderProfiles();
 
-    // If already authed with Firebase, we still route via Firestore checks
     onAuthStateChanged(auth, async (user) => {
       if (!user) return;
-      // Only auto-handle if no admin password screen is up
       if (!adminPwSection.classList.contains("hidden")) return;
       const cached = {
         uid: user.uid,
@@ -282,9 +274,8 @@
         email: user.email || "",
         avatar: user.photoURL || ""
       };
-      // Do NOT auto-redirect; keep the explicit tap experience for returning users.
-      // Just keep storage in sync so the card appears.
       overwriteSavedUsers({ ...cached, type: "unknown" });
+      addLoginPageUser(cached);
       renderProfiles();
     });
   </script>
@@ -307,7 +298,7 @@
     <div id="login-section" class="mt-6">
       <button onclick="login()" class="w-full flex items-center justify-center gap-2 border px-4 py-3 rounded-xl hover:bg-gray-50">
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="">
-        <span class="font-medium">Sign in with Google</span>
+        <span>Sign in with Google</span>
       </button>
       <p class="text-[11px] text-gray-500 text-center mt-3">
         By continuing, you agree to our Terms & Privacy Policy.
@@ -317,10 +308,10 @@
     <div id="profiles-section" class="mt-6 mb-3 hidden">
       <div id="profiles" class="flex flex-col gap-3"></div>
       <div class="flex flex-col items-center justify-center mt-4">
-        <button onclick="login()" class="w-full max-w-xs text-blue-600 font-semibold px-4 py-3 rounded-xl hover:bg-gray-50 text-center">
+        <button onclick="login()" class="w-full max-w-xs text-black px-4 py-3 rounded-xl hover:bg-gray-50 text-center">
           Use another account
         </button>
-        <button id="not-you" class="text-red-600 text-sm hover:underline mt-2">Not you? Sign out</button>
+        <button id="not-you" class="text-red-600 text-sm hover:underline mt-2">Sign out</button>
       </div>
       <p class="text-[11px] text-gray-500 text-center mt-3">
         Selecting a profile will verify your role and continue.
@@ -335,10 +326,6 @@
       <button onclick="verifyAdminPassword()" class="mt-3 w-full bg-blue-600 text-white py-2 rounded-xl hover:bg-blue-700">
         Enter Admin Panel
       </button>
-      <div class="flex items-center justify-between mt-3">
-        <button id="not-you-2" class="text-red-600 text-sm hover:underline" onclick="logoutLocal()">Not you? Sign out</button>
-        <button class="text-gray-600 text-sm hover:underline" onclick="google.html()">Go back</button>
-      </div>
       <p class="text-[11px] text-gray-500 text-center mt-3">
         Your password validates your admin access. Keep it private.
       </p>
