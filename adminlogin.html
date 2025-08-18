@@ -109,7 +109,7 @@ const firebaseConfig = {
       if (passwordInput.value === password) {
         // ✅ Successful login
         localStorage.setItem("activeAdmin", selectedAdminId); // store session
-        window.location.href = "admin.html";
+        window.location.href = "adminpanel.html";
       } else {
         errorMsg.classList.remove("hidden");
       }
