@@ -91,7 +91,7 @@ const renderProfiles = () => {
   if (otherUsers.length > 0) {
     const disclaimer = document.createElement("p");
     disclaimer.className = "text-center text-sm text-gray-500 mt-4 mb-2";
-    disclaimer.textContent = "To use another account, you must choose it again.";
+    disclaimer.textContent = "To use another account below, you must choose it again from the selection of accounts on this device.";
     profilesGrid.appendChild(disclaimer);
 
     otherUsers.forEach(u => {
