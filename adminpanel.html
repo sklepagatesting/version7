@@ -105,9 +105,10 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import {
       getFirestore, collection, doc, getDoc, setDoc, deleteDoc,
-      onSnapshot, query, orderBy, limit, startAfter
+      onSnapshot, query, orderBy, limit, startAfter, getDocs
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     // 🔹 Firebase config (matches your project)
@@ -123,13 +124,9 @@
 
     // Init
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
-
-    // Session guard
-    const activeAdminId = localStorage.getItem("activeAdmin");
-    if (!activeAdminId) {
-      window.location.href = "google.html";
-    }
+    let activeAdminId = null; // Declare a variable to hold the secure UID
 
     // UI handles
     const adminInfoDiv = document.getElementById("adminInfo");
@@ -158,12 +155,18 @@
       document.body.classList.toggle("text-gray-100");
     });
 
+    // Logout securely
+    outBtn.addEventListener("click", async () => {
+      await signOut(auth);
+      // onAuthStateChanged will handle the redirect
+    });
+    
     // ------- Admin Info (only self) -------
-    async function loadAdminInfo() {
-      const snap = await getDoc(doc(db, "admin", activeAdminId));
+    async function loadAdminInfo(uid) {
+      const snap = await getDoc(doc(db, "admin", uid));
       if (!snap.exists()) {
-        localStorage.removeItem("activeAdmin");
-        window.location.href = "google.html";
+        // This user is no longer an admin; log them out
+        await signOut(auth);
         return;
       }
       const a = snap.data();
@@ -173,7 +176,7 @@
         <div class="min-w-0 flex-1">
           <h3 class="font-semibold truncate">${a.name || "(no name)"}</h3>
           <p class="text-gray-600 truncate">${a.email || ""}</p>
-          <p class="text-xs text-gray-500 mt-1">UID: <span class="font-mono">${a.uid || activeAdminId}</span></p>
+          <p class="text-xs text-gray-500 mt-1">UID: <span class="font-mono">${a.uid || uid}</span></p>
         </div>
         <div class="hidden sm:flex gap-2">
           <button class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50" id="copyUidBtn">Copy UID</button>
@@ -181,16 +184,10 @@
       `;
       const copyBtn = document.getElementById("copyUidBtn");
       if (copyBtn) copyBtn.onclick = () => {
-        navigator.clipboard.writeText(a.uid || activeAdminId);
+        navigator.clipboard.writeText(a.uid || uid);
         toast("UID copied");
       };
     }
-
-    // out
-    outBtn.addEventListener("click", () => {
-      localStorage.removeItem("activeAdmin");
-      window.location.href = "google.html";
-    });
 
     // ------- Users list (accounts) with live updates + paging -------
     const PAGE_SIZE = 18;
@@ -277,7 +274,6 @@
     sortSelect.addEventListener("change", applySearchAndSort);
 
     async function initialLoad() {
-      // live listener for the first PAGE_SIZE items by createdAt desc
       if (unsubUsers) unsubUsers();
       const q1 = query(collection(db, "accounts"), orderBy("createdAt", "desc"), limit(PAGE_SIZE));
       unsubUsers = onSnapshot(q1, (snap) => {
@@ -304,9 +300,25 @@
       applySearchAndSort();
     });
 
-    // Kickoff
-    loadAdminInfo();
-    initialLoad();
+    // 🔹 Securely manage user session and admin status
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // User is signed in, now verify if they are an admin
+        const adminDoc = await getDoc(doc(db, "admin", user.uid));
+        if (adminDoc.exists()) {
+          activeAdminId = user.uid;
+          loadAdminInfo(activeAdminId);
+          initialLoad();
+        } else {
+          // Logged in, but not an admin; redirect
+          alert("You are not authorized to view this page.");
+          await signOut(auth);
+        }
+      } else {
+        // No user is signed in; redirect to login
+        window.location.href = "google.html";
+      }
+    });
   </script>
 </body>
 </html>
