@@ -5,173 +5,161 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 hidden"> <!-- hidden until verified -->
+
+  <div class="max-w-4xl mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-6 text-center">Admin Panel</h1>
+
+    <!-- Admin Account Settings -->
+    <div class="bg-white p-6 rounded-lg shadow mb-8">
+      <h2 class="text-xl font-semibold mb-4">My Admin Account</h2>
+      <p id="adminEmail" class="mb-2 text-gray-700"></p>
+      <div>
+        <label class="block mb-2 text-sm font-medium">Update Password</label>
+        <input id="newPassword" type="password" class="border p-2 rounded w-full mb-2" placeholder="Enter new password">
+        <button id="updatePasswordBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Update</button>
+      </div>
+    </div>
+
+    <!-- User Management -->
+    <div class="bg-white p-6 rounded-lg shadow">
+      <h2 class="text-xl font-semibold mb-4">User Accounts</h2>
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="border-b">
+            <th class="py-2">Name</th>
+            <th class="py-2">Email</th>
+            <th class="py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="userList"></tbody>
+      </table>
+    </div>
+  </div>
+
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, collection, getDocs, setDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-    // --- Firebase Config ---
+    // 🔹 Your Firebase config
     const firebaseConfig = {
-      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-      authDomain: "sklepaga-8790e.firebaseapp.com",
-      projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.firebasestorage.app",
-      messagingSenderId: "815409129057",
-      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-      measurementId: "G-9GH707G2WZ"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_BUCKET",
+      messagingSenderId: "YOUR_SENDER",
+      appId: "YOUR_APP_ID"
     };
-
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
 
-    let activeAdmin = JSON.parse(localStorage.getItem("activeAdmin") || "{}");
+    // ✅ Verify Admin
+    async function verifyAdmin(user) {
+      const adminRef = doc(db, "admin", user.uid);
+      const adminSnap = await getDoc(adminRef);
 
-    async function verifyAccess() {
-      // --- Case 1: No account at all ---
-      if (!activeAdmin.uid) {
-        window.location.href = "authentication.html";
-        return;
-      }
-
-      // --- Case 2: Check if account exists in admin collection ---
-      const adminDoc = await getDoc(doc(db, "admin", activeAdmin.uid));
-      if (!adminDoc.exists()) {
-        // Not an admin → redirect to messages
+      if (!adminSnap.exists()) {
         window.location.href = "messages.html";
         return;
       }
 
-      const adminData = adminDoc.data();
-
-      // --- Ask for password before showing ---
-      let pass = prompt("Enter admin password:");
-      if (pass !== adminData.password) {
-        alert("Incorrect password.");
-        window.location.href = "authentication.html";
+      const { password } = adminSnap.data();
+      const enteredPassword = prompt("Enter your admin password:");
+      if (enteredPassword !== password) {
+        alert("Wrong password!");
+        window.location.href = "messages.html";
         return;
       }
 
-      // If password correct → load panel
-      loadMyAdmin(adminData);
+      // ✅ Show admin panel
+      document.body.classList.remove("hidden");
+      document.getElementById("adminEmail").textContent = `Logged in as: ${user.email}`;
+
       loadUsers();
+      setupPasswordUpdate(user.uid);
     }
 
-    async function loadMyAdmin(adminData) {
-      const adminList = document.getElementById("adminList");
-      adminList.innerHTML = "";
-
-      const div = document.createElement("div");
-      div.className = "flex justify-between items-center border-b py-2";
-      div.innerHTML = `
-        <div>
-          <div class="font-semibold">${adminData.name}</div>
-          <div class="text-sm text-gray-500">${adminData.email}</div>
-        </div>
-        <button onclick="promptUpdatePassword('${adminData.uid}')" class="text-blue-500 hover:underline">Update Password</button>
-      `;
-      adminList.appendChild(div);
-    }
-
+    // 🔹 Load users (non-admin only)
     async function loadUsers() {
+      const usersRef = collection(db, "accounts");
+      const querySnapshot = await getDocs(usersRef);
       const userList = document.getElementById("userList");
       userList.innerHTML = "";
-      const snapshot = await getDocs(collection(db, "accounts"));
-      snapshot.forEach(docSnap => {
-        const user = docSnap.data();
-        const div = document.createElement("div");
-        div.className = "flex justify-between items-center border-b py-2";
-        div.innerHTML = `
-          <div>
-            <div class="font-semibold">${user.name}</div>
-            <div class="text-sm text-gray-500">${user.email}</div>
-          </div>
-          <div class="flex gap-3">
-            <button onclick="promoteUser('${user.uid}')" class="text-green-600 hover:underline">Add as Admin</button>
-            <button onclick="deleteUser('${user.uid}')" class="text-red-600 hover:underline">Delete</button>
-          </div>
+
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="py-2">${data.name}</td>
+          <td class="py-2">${data.email}</td>
+          <td class="py-2">
+            <button class="bg-red-600 text-white px-3 py-1 rounded mr-2" data-delete="${docSnap.id}">Delete</button>
+            <button class="bg-green-600 text-white px-3 py-1 rounded" data-promote="${docSnap.id}">Promote to Admin</button>
+          </td>
         `;
-        userList.appendChild(div);
+        userList.appendChild(tr);
+      });
+
+      // Attach action listeners
+      document.querySelectorAll("[data-delete]").forEach(btn => {
+        btn.addEventListener("click", () => deleteUser(btn.dataset.delete));
+      });
+
+      document.querySelectorAll("[data-promote]").forEach(btn => {
+        btn.addEventListener("click", () => promoteUser(btn.dataset.promote));
       });
     }
 
-    // --- Admin actions ---
-    async function promptUpdatePassword(uid) {
-      if (uid !== activeAdmin.uid) {
-        alert("You can only update your own password.");
-        return;
-      }
-      const newPass = prompt("Enter new password:");
-      if (!newPass) return;
-      try {
-        await updateDoc(doc(db, "admin", uid), { password: newPass });
-        alert("Password updated.");
-      } catch (e) {
-        alert("Failed to update password: " + e.message);
-      }
-    }
-
+    // 🔹 Delete user
     async function deleteUser(uid) {
-      if (!confirm("Are you sure you want to delete this user?")) return;
-      try {
-        await deleteDoc(doc(db, "accounts", uid));
-        loadUsers();
-        alert("User deleted.");
-      } catch (e) {
-        alert("Failed to delete user: " + e.message);
-      }
+      if (!confirm("Delete this user?")) return;
+      await deleteDoc(doc(db, "accounts", uid));
+      loadUsers();
     }
 
+    // 🔹 Promote to admin
     async function promoteUser(uid) {
-      const pass = prompt("Enter initial password for this new admin:");
-      if (!pass) return;
+      const userRef = doc(db, "accounts", uid);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) return;
 
-      try {
-        const snapshot = await getDocs(collection(db, "accounts"));
-        let targetUser = null;
-        snapshot.forEach(docSnap => {
-          if (docSnap.id === uid) targetUser = docSnap.data();
-        });
+      const userData = userSnap.data();
+      const password = prompt("Set initial admin password:");
 
-        if (!targetUser) {
-          alert("User not found.");
+      await setDoc(doc(db, "admin", uid), {
+        ...userData,
+        password: password
+      });
+
+      await deleteDoc(userRef); // remove from accounts to avoid duplication
+      loadUsers();
+    }
+
+    // 🔹 Update own admin password
+    function setupPasswordUpdate(adminUid) {
+      document.getElementById("updatePasswordBtn").addEventListener("click", async () => {
+        const newPassword = document.getElementById("newPassword").value;
+        if (!newPassword) {
+          alert("Enter a new password");
           return;
         }
-
-        const newAdmin = {
-          ...targetUser,
-          password: pass
-        };
-
-        // Save to admin
-        await setDoc(doc(db, "admin", uid), newAdmin);
-        // Remove from users
-        await deleteDoc(doc(db, "accounts", uid));
-
-        alert("User promoted to admin.");
-        loadUsers();
-      } catch (e) {
-        alert("Failed to promote user: " + e.message);
-      }
+        await updateDoc(doc(db, "admin", adminUid), { password: newPassword });
+        alert("Password updated successfully");
+        document.getElementById("newPassword").value = "";
+      });
     }
 
-    window.promptUpdatePassword = promptUpdatePassword;
-    window.deleteUser = deleteUser;
-    window.promoteUser = promoteUser;
-
-    // Init
-    window.addEventListener("DOMContentLoaded", () => {
-      verifyAccess();
+    // 🔹 Auth listener
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "authentication.html";
+        return;
+      }
+      verifyAdmin(user);
     });
   </script>
-</head>
-<body class="bg-gray-100 min-h-screen p-6">
-  <div class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6">
-    <h1 class="text-2xl font-bold mb-6">Admin Panel</h1>
-
-    <h2 class="text-xl font-semibold mb-2">My Admin Account</h2>
-    <div id="adminList" class="mb-6 border rounded-lg p-3 bg-gray-50"></div>
-
-    <h2 class="text-xl font-semibold mb-2">User Accounts</h2>
-    <div id="userList" class="border rounded-lg p-3 bg-gray-50"></div>
-  </div>
 </body>
 </html>
