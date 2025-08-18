@@ -3,19 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Google Login</title>
+  <title>Secure Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { 
-      initializeApp 
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-
-    import { 
-      getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut 
+      getAuth, 
+      GoogleAuthProvider, 
+      signInWithPopup,
+      onAuthStateChanged,
+      signOut 
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-
     import { 
-      getFirestore, doc, setDoc, getDoc 
+      getFirestore, 
+      doc, 
+      getDoc, 
+      setDoc 
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     // --- Firebase Config ---
@@ -34,68 +37,129 @@
     const provider = new GoogleAuthProvider();
     const db = getFirestore(app);
 
-    // --- Google Login ---
+    const loginSection = document.getElementById("loginSection");
+    const accountSection = document.getElementById("accountSection");
+    const accountList = document.getElementById("accountList");
+
     async function login() {
       try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
 
-        // Build account object
-        const account = {
-          uid: user.uid,
-          name: user.displayName || "",
-          email: user.email || "",
-          avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
-          avatarColor: "#3498DB",
-          lastLogin: new Date().toISOString()
+        // Check if account exists in Firestore
+        const ref = doc(db, "accounts", user.uid);
+        const snap = await getDoc(ref);
+
+        if (!snap.exists()) {
+          // If account not registered
+          alert("This account is not registered.");
+          await signOut(auth);
+          return;
+        }
+
+        const account = snap.data();
+
+        // Show account selection instead of auto proceeding
+        loginSection.classList.add("hidden");
+        accountSection.classList.remove("hidden");
+
+        accountList.innerHTML = ""; // clear previous
+        const btn = document.createElement("button");
+        btn.className = "flex items-center gap-3 w-full px-4 py-2 border rounded-lg hover:bg-gray-50";
+        btn.innerHTML = `
+          <div class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold" 
+               style="background:#3498DB">
+               ${account.name?.charAt(0).toUpperCase() || "?"}
+          </div>
+          <div>
+            <div class="font-semibold">${account.name}</div>
+            <div class="text-sm text-gray-500">${account.email}</div>
+          </div>
+        `;
+        btn.onclick = () => {
+          // Only proceed if this is the signed-in user
+          if (user.uid === account.uid) {
+            window.location.href = "messages.html";
+          } else {
+            alert("Mismatch: you are not signed in as this account.");
+          }
         };
+        accountList.appendChild(btn);
 
-        // Save/update account in Firestore
-        await setDoc(doc(db, "accounts", user.uid), account, { merge: true });
-
-        // Redirect after successful login
-        window.location.href = "messages.html";
       } catch (error) {
         console.error("Login failed:", error);
         alert("Login failed: " + error.message);
       }
     }
 
-    // --- Auth Listener (secure session) ---
+    // Logout helper
+    async function logout() {
+      await signOut(auth);
+      location.reload();
+    }
+
+    // Check auth state
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Check if account exists in Firestore
-        const snap = await getDoc(doc(db, "accounts", user.uid));
+        // Already signed in → verify again
+        const ref = doc(db, "accounts", user.uid);
+        const snap = await getDoc(ref);
+
         if (snap.exists()) {
-          // User already registered → go to messages
-          window.location.href = "messages.html";
+          // Show confirm screen
+          loginSection.classList.add("hidden");
+          accountSection.classList.remove("hidden");
+
+          const account = snap.data();
+          accountList.innerHTML = "";
+          const btn = document.createElement("button");
+          btn.className = "flex items-center gap-3 w-full px-4 py-2 border rounded-lg hover:bg-gray-50";
+          btn.innerHTML = `
+            <div class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold" 
+                 style="background:#3498DB">
+                 ${account.name?.charAt(0).toUpperCase() || "?"}
+            </div>
+            <div>
+              <div class="font-semibold">${account.name}</div>
+              <div class="text-sm text-gray-500">${account.email}</div>
+            </div>
+          `;
+          btn.onclick = () => {
+            if (user.uid === account.uid) {
+              window.location.href = "messages.html";
+            } else {
+              alert("Mismatch: signed-in user does not match this account.");
+            }
+          };
+          accountList.appendChild(btn);
         } else {
-          // First time login → create entry
-          await setDoc(doc(db, "accounts", user.uid), {
-            uid: user.uid,
-            name: user.displayName || "",
-            email: user.email || "",
-            avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
-            avatarColor: "#3498DB",
-            createdAt: new Date().toISOString()
-          });
-          window.location.href = "messages.html";
+          alert("This account is not registered.");
+          await signOut(auth);
         }
       }
     });
 
-    // Expose login
     window.login = login;
-    window.logout = () => signOut(auth);
+    window.logout = logout;
   </script>
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
+  <!-- Login Section -->
   <div id="loginSection" class="bg-white shadow-lg rounded-lg p-6 text-center">
     <h1 class="text-2xl font-bold mb-4">Welcome</h1>
-    <button onclick="login()" 
-      class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+    <p class="text-gray-600 mb-4">Sign in with Google to continue</p>
+    <button onclick="login()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
       Login with Google
     </button>
+  </div>
+
+  <!-- Account Confirmation Section -->
+  <div id="accountSection" class="hidden bg-white shadow-lg rounded-lg p-6 w-80">
+    <h1 class="text-xl font-bold mb-4">Confirm your account</h1>
+    <div id="accountList" class="flex flex-col gap-3"></div>
+    <div class="mt-4 text-center">
+      <button onclick="logout()" class="text-red-500 hover:underline">Not you? Sign out</button>
+    </div>
   </div>
 </body>
 </html>
