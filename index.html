@@ -1,287 +1,348 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="en" class="scroll-smooth">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Update</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Preconnect to Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Preload the font -->
-  <link rel="preload" href="https://fonts.gstatic.com/s/inter/v12/1Pn0EnyXJmdSgbTxHLk.woff2" as="font" type="font/woff2" crossorigin="anonymous">
-  <!-- Load the font -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
-  <!-- FontFaceObserver Script -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/fontfaceobserver/2.1.0/fontfaceobserver.standalone.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
+    // ✅ Firebase Config (your project)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+      authDomain: "sklepaga-8790e.firebaseapp.com",
+      projectId: "sklepaga-8790e",
+      storageBucket: "sklepaga-8790e.appspot.com",
+      messagingSenderId: "815409129057",
+      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+      measurementId: "G-9GH707G2WZ"
+    };
 
+    // Init
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
 
+    // ---------- UI refs ----------
+    const loginSection = document.getElementById("login-section");
+    const profilesSection = document.getElementById("profiles-section");
+    const profilesGrid = document.getElementById("profiles");
+    const adminPwSection = document.getElementById("admin-password-section");
+    const adminPwInput = document.getElementById("admin-password");
+    const adminUidInput = document.getElementById("admin-uid");
+    const offlineBanner = document.getElementById("offline-banner");
+    const notYouBtn = document.getElementById("not-you");
 
-<link rel="prefetch" href="home.html" as="document">
+    // ---------- Helpers ----------
+    const genColor = (seed) => {
+      // simple deterministic color from uid/email
+      const palette = ["#2563eb","#16a34a","#db2777","#f59e0b","#7c3aed","#059669","#ef4444","#0ea5e9"];
+      let sum = 0; for (let i=0;i<seed.length;i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
+      return palette[sum];
+    };
 
+    const setActiveAccount = (user) => {
+      const avatarLetter = (user.name?.charAt(0) || "?").toUpperCase();
+      const avatarColor = genColor(user.email || user.uid || "x");
+      const active = {
+        uid: user.uid,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar || "",
+        avatarLetter,
+        avatarColor
+      };
+      localStorage.setItem("activeAccount", JSON.stringify(active));
+      return active;
+    };
 
-  <!-- Styles -->
-  <link rel="stylesheet" href="navbar\navbar.css">
-  <link rel="stylesheet" href="font\font.css">
-  <link rel="stylesheet" href="animations/global.css">
-  <link rel="stylesheet" href="pages\index.css">
-  <link rel="stylesheet" href="controlers\scroll.css">
-  <link rel="stylesheet" href="sections/hero.css">
-  <link rel="stylesheet" href="sections\carousel.css">
+    const setActiveAdmin = (user) => {
+      localStorage.setItem("activeAdmin", user.uid);
+    };
+
+    const overwriteSavedUsers = (user) => {
+      // Keep only the latest account (as requested)
+      localStorage.setItem("savedUsers", JSON.stringify([user]));
+      localStorage.setItem("currentUser", JSON.stringify(user));
+    };
+
+    const showOffline = (show) => {
+      offlineBanner.classList.toggle("hidden", !show);
+    };
+
+    const renderProfiles = () => {
+      const saved = JSON.parse(localStorage.getItem("savedUsers") || "[]");
+      if (saved.length === 0) {
+        profilesSection.classList.add("hidden");
+        loginSection.classList.remove("hidden");
+        return;
+      }
+      loginSection.classList.add("hidden");
+      profilesSection.classList.remove("hidden");
+
+      profilesGrid.innerHTML = "";
+      saved.forEach(u => {
+        const card = document.createElement("button");
+        card.className = "flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left";
+        card.innerHTML = `
+          <div class="w-12 h-12 rounded-full border overflow-hidden flex items-center justify-center" style="background:${genColor(u.email||u.uid)}">
+            ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold">${(u.name?.[0]||"?").toUpperCase()}</span>`}
+          </div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate" title="${u.name||""}">${u.name||"Unnamed"}</div>
+            <div class="text-xs text-gray-500 truncate" title="${u.email||""}">${u.email||""}</div>
+          </div>
+          <span class="ml-auto text-[10px] px-2 py-1 rounded-full ${u.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
+            ${u.type==='admin'?'Admin':'User'}
+          </span>
+        `;
+        card.onclick = () => continueWithProfile(u);
+        profilesGrid.appendChild(card);
+      });
+    };
+
+    const ensureOnline = async () => {
+      // simple connectivity probe via getAuth state/network; if navigator offline, short-circuit
+      if (!navigator.onLine) {
+        showOffline(true);
+        throw new Error("Offline");
+      }
+      showOffline(false);
+    };
+
+    // ---------- Core flows ----------
+    async function login() {
+      try {
+        await ensureOnline();
+        const res = await signInWithPopup(auth, provider);
+        const user = res.user;
+
+        const userLite = {
+          uid: user.uid,
+          name: user.displayName || "",
+          email: user.email || "",
+          avatar: user.photoURL || "",
+        };
+
+        // Always overwrite saved users with the new one
+        overwriteSavedUsers({ ...userLite, type: "unknown" });
+
+        await routeUser(userLite);
+      } catch (e) {
+        if (e.message?.toLowerCase().includes("offline")) return; // banner already shown
+        console.error(e);
+        alert("Login failed: " + (e?.message || e));
+      }
+    }
+
+    async function continueWithProfile(user) {
+      try {
+        await ensureOnline();
+        // Keep only the chosen one
+        overwriteSavedUsers(user);
+        await routeUser(user);
+      } catch (e) {
+        if (e.message?.toLowerCase().includes("offline")) return;
+        console.error(e);
+        alert("Could not continue: " + (e?.message || e));
+      }
+    }
+
+    async function routeUser(userLite) {
+      // 1) Admin?
+      const adminRef = doc(db, "admin", userLite.uid);
+      try {
+        const adminSnap = await getDoc(adminRef);
+        if (adminSnap.exists()) {
+          // mark saved user type
+          overwriteSavedUsers({ ...userLite, type: "admin" });
+          // show admin password section
+          adminUidInput.value = userLite.uid;
+          adminPwInput.value = "";
+          profilesSection.classList.add("hidden");
+          loginSection.classList.add("hidden");
+          adminPwSection.classList.remove("hidden");
+          return;
+        }
+      } catch (e) {
+        // Firestore unreachable
+        throw e;
+      }
+
+      // 2) Regular user in 'accounts'? If not, create.
+      const accRef = doc(db, "accounts", userLite.uid);
+      const accSnap = await getDoc(accRef);
+      if (!accSnap.exists()) {
+        await setDoc(accRef, {
+          uid: userLite.uid,
+          name: userLite.name,
+          email: userLite.email,
+          avatar: userLite.avatar,
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      // set activeAccount for messages.html compatibility
+      setActiveAccount(userLite);
+      // keep 'user' tag in saved
+      overwriteSavedUsers({ ...userLite, type: "user" });
+
+      window.location.href = "messages.html";
+    }
+
+    async function verifyAdminPassword() {
+      try {
+        await ensureOnline();
+        const uid = adminUidInput.value;
+        const pw = adminPwInput.value.trim();
+        if (!pw) return alert("Please enter your admin password.");
+
+        const adminRef = doc(db, "admin", uid);
+        const adminSnap = await getDoc(adminRef);
+        if (!adminSnap.exists()) {
+          alert("Admin record not found.");
+          // back to start
+          adminPwSection.classList.add("hidden");
+          loginSection.classList.remove("hidden");
+          return;
+        }
+        const admin = adminSnap.data();
+        if (admin.password === pw) {
+          // persist active admin for adminpanel.html
+          setActiveAdmin({ uid });
+          // also keep a synced activeAccount object for avatar/name if needed visually there
+          setActiveAccount({
+            uid,
+            name: admin.name || "",
+            email: admin.email || "",
+            avatar: admin.avatar || ""
+          });
+          window.location.href = "adminpanel.html";
+        } else {
+          alert("Incorrect password.");
+        }
+      } catch (e) {
+        if (e.message?.toLowerCase().includes("offline")) return;
+        console.error(e);
+        alert("Could not verify password: " + (e?.message || e));
+      }
+    }
+
+    async function logoutLocal() {
+      try {
+        await signOut(auth);
+      } catch {}
+      localStorage.removeItem("savedUsers");
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("activeAccount");
+      localStorage.removeItem("activeAdmin");
+      window.location.reload();
+    }
+
+    // ---------- Events ----------
+    window.login = login;
+    window.continueWithProfile = continueWithProfile;
+    window.verifyAdminPassword = verifyAdminPassword;
+    window.logoutLocal = logoutLocal;
+
+    notYouBtn.addEventListener("click", logoutLocal);
+
+    // Show/hide offline banner on network change
+    window.addEventListener("online", () => showOffline(false));
+    window.addEventListener("offline", () => showOffline(true));
+    showOffline(!navigator.onLine);
+
+    // Initial render (saved profiles or login)
+    renderProfiles();
+
+    // If already authed with Firebase, we still route via Firestore checks
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      // Only auto-handle if no admin password screen is up
+      if (!adminPwSection.classList.contains("hidden")) return;
+      const cached = {
+        uid: user.uid,
+        name: user.displayName || "",
+        email: user.email || "",
+        avatar: user.photoURL || ""
+      };
+      // Do NOT auto-redirect; keep the explicit tap experience for returning users.
+      // Just keep storage in sync so the card appears.
+      overwriteSavedUsers({ ...cached, type: "unknown" });
+      renderProfiles();
+    });
+  </script>
 
   <style>
-body.preload {
-        visibility: hidden;
-        opacity: 0; }
-
-    body { transition: opacity 0.2s ease-in; }
+    html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   </style>
-
 </head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
-<body class="preload">
-  <main id="swup">
+  <div id="offline-banner" class="fixed top-0 inset-x-0 z-50 hidden">
+    <div class="mx-auto max-w-xl bg-yellow-100 text-yellow-800 text-sm px-4 py-2 rounded-b-lg shadow">
+      You appear to be offline. Some actions may not work. Please check your internet connection.
+    </div>
+  </div>
 
-  <div class="main-content text-container">
+  <div class="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
+    <h1 class="text-2xl font-bold text-center">Sign in with Google</h1>
 
-    <!-- 🌐 NAVIGATION BAR (Smaller) -->
-    <nav id="navbar" class="text-line duration-300 fixed inset-x-0 top-0 z-50 h-20">
-      <div class="flex items-center justify-between h-full max-w-screen-xl mx-auto px-8">
-        <a href="#" class="flex items-center space-x-8">
-          <img src="https://cdn.prod.website-files.com/67ebf279c44c5fad2f90f315/67ebf279c44c5fad2f90f3ee_ctzeuvcjvyq518kr6iga-p-1080.webp" alt="Logo" class="h-5 w-auto" />
-          <span class="font-theme font-medium">SK Lepaga</span>
-        </a>
-        <button id="menu-toggle-btn" type="button" class="font-theme rounded-md hover:bg-[#e8e8e8] dark:hover:bg-[#696969] focus:outline-none" aria-controls="sidebar-multi-level-sidebar" aria-expanded="false">
-          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path id="menu-icon-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+    <div id="login-section" class="mt-6">
+      <button onclick="login()" class="w-full flex items-center justify-center gap-2 border px-4 py-3 rounded-xl hover:bg-gray-50">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="">
+        <span class="font-medium">Sign in with Google</span>
+      </button>
+      <p class="text-[11px] text-gray-500 text-center mt-3">
+        By continuing, you agree to our Terms & Privacy Policy.
+      </p>
+    </div>
+
+    <div id="profiles-section" class="mt-6 mb-3 hidden">
+      <div id="profiles" class="flex flex-col gap-3"></div>
+      <div class="flex flex-col items-center justify-center mt-4">
+        <button onclick="login()" class="w-full max-w-xs text-blue-600 font-semibold px-4 py-3 rounded-xl hover:bg-gray-50 text-center">
+          Use another account
         </button>
+        <button id="not-you" class="text-red-600 text-sm hover:underline mt-2">Not you? Sign out</button>
       </div>
-    </nav>
-
-    <!-- 🧭 SIDEBAR -->
-    <aside id="sidebar-multi-level-sidebar" class="fixed top-20 left-0 z-30 w-[100vw] hidden transition-[height: 100%] duration-500 bg-white dark:bg-[#242424]" style="height: calc(100vh - 3rem); overflow-y: auto;" aria-label="Sidebar">
-      <div class="h-full flex items-center justify-center px-4 py-4 max-w-4xl mx-auto">
-        <div id="sidebar-menu" class="font-theme space-y-5 flex flex-col items-center justify-center">
-          <!-- Menu Items -->
-          <div class="sidebar-menu-item flex flex-col items-center m-6">
-            <a href="home2.html" data-transition rel="nofollow noopener">
-              <button class="sidebar-menu-header flex items-center space-x-2 focus:outline-none">
-                <h2 class="subtext-title">CALENDAR</h2>
-              </button>
-            </a>
-          </div>
-          <!-- Repeat for other menu items... -->
-        </div>
-      </div>
-    </aside>
-
-<section class="clipp-section h-[calc(var(--vh)_*_100)] w-full flex flex-col justify-between bg-white overflow-hidden">
-<div class="w-full pt-24 sm:pt-32 md:pt-36 lg:pt-40 pb-6 px-0 z-10">
-   
-      
-<div class="overflow-hidden relative w-full">
-<div id="scroller" class="flex w-max will-change-transform" >
-
-<a href="home2.html" class="group relative flex-shrink-0 mr-8" data-transition rel="nofollow noopener">
-  <div class="overflow-hidden relative h-[150px] aspect-[16/9] sm:h-[250px] sm:aspect-[16/9] lg:h-[300px] lg:aspect-[16/9]">
-    <picture>
-      <source media="(max-width: 767px)" srcset="https://platform.vox.com/wp-content/uploads/sites/2/2025/08/gettyimages-2201978086.jpg?quality=90&strip=all&crop=1.63772691397%2C0%2C96.72454617206%2C100&w=750" />
-      <source media="(max-width: 1023px)" srcset="https://platform.vox.com/wp-content/uploads/sites/2/2025/08/gettyimages-2227409013.jpg?quality=90&strip=all&crop=0%2C0.0031922364808779%2C100%2C99.993615527038&w=750" />
-      <img src="https://platform.vox.com/wp-content/uploads/sites/2/2025/07/gettyimages-2167167934.jpg?quality=90&strip=all&crop=0%2C0.0062492188476426%2C100%2C99.987501562305&w=750" alt="Image 1" class="w-full h-full object-cover" />
-    </picture>
-  </div>
-  <div class="w-full pt-2 overflow-hidden">
-    <p class="context text-black sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-500 ease-in-out">
-      Creative Campaign
-    </p>
-  </div>
-</a>
-
-
-
-
-<a href="home2.html" class="group relative flex-shrink-0 mr-8" data-transition rel="nofollow noopener">
-  <div class="overflow-hidden relative h-[150px] aspect-[16/9] sm:h-[250px] sm:aspect-[16/9] lg:h-[300px] lg:aspect-[16/9]">
-    <img
-      src="https://cdn.prod.website-files.com/67ebf279c44c5fad2f90f315/67ebf279c44c5fad2f90f3f8_mwfjzg2ztxjr9u2unz9p.webp"
-      alt="Image 1"
-      class="w-full h-full object-cover"
-    />
-  </div>
-  <div class="w-full pt-2 overflow-hidden">
-    <p class="context text-black 
-      sm:translate-y-full sm:group-hover:translate-y-0 
-      transition-transform duration-500 ease-in-out">
-      Creative Campaign
-    </p>
-  </div>
-</a>
-
-
-
-
-<a href="home2.html" class="group relative flex-shrink-0 mr-8" data-transition rel="nofollow noopener">
-  <div class="overflow-hidden relative h-[150px] aspect-[16/9] sm:h-[250px] sm:aspect-[16/9] lg:h-[300px] lg:aspect-[16/9]">
-    <img
-      src="https://scontent.fcgy2-2.fna.fbcdn.net/v/t39.30808-6/520286002_1320406156757302_6002734886054240797_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=104&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeGPBaMqCyZ5NvZkN-IKX9XrAEVDM9CeEVIARUMz0J4RUqsyZLH2qZiHwUt7jYOCedMv5MRpo36K2Tu0lU1MTFOs&_nc_ohc=1nkPWXcx7jEQ7kNvwFVMqhN&_nc_oc=Adn-IRms6kU6N701KtPCgi4qeQ3OzvZyBJXnQPFh7Q9y8izizZX_G-aT-PdF_LQCjPU&_nc_zt=23&_nc_ht=scontent.fcgy2-2.fna&_nc_gid=JvzAfNKzVTzoERlwV5phcQ&oh=00_AfXTg1RPZq6NVix5Edqltlnzg29gsx2_XW0k_vmxuuN4aw&oe=689B05A5"
-      alt="Image 1" class="w-full h-full object-cover"/>
-  </div>
-  <div class="w-full pt-2 overflow-hidden">
-    <p class="context text-black sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-500 ease-in-out">
-      Creative Campaign
-    </p>
-  </div>
-</a>
-
-
-
-
-<a href="home2.html" class="group relative flex-shrink-0 mr-8" data-transition rel="nofollow noopener">
-  <div class="overflow-hidden relative h-[150px] aspect-[16/9] sm:h-[250px] sm:aspect-[16/9] lg:h-[300px] lg:aspect-[16/9]">
-    <img
-      src="https://scontent.fcgy2-2.fna.fbcdn.net/v/t39.30808-6/488885328_1118851910257617_2621432574784784267_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeFbSr7N-F9ms-tS5X4Swn9fzEwF-RRYrg3MTAX5FFiuDen8saSS6n8KCyMmjNDgIL4PmliRg9Ieg-94L-fezYTB&_nc_ohc=5H0uHkIze7sQ7kNvwEdN9RX&_nc_oc=AdlzldIj0B3dnHGJg8vGeJfzU3wuesJNQK-tW_HsD4VPidvUne37rNx72ZPqo0ilUQ0&_nc_zt=23&_nc_ht=scontent.fcgy2-2.fna&_nc_gid=okkjGEsvB0a9rtJkawo-bQ&oh=00_AfWu04dOUND51WqYcmPU2BUQ3rPXcW9xCA_hn1jQ5XbgAg&oe=68A053DE"
-      alt="Image 1"
-      class="w-full h-full object-cover"
-    />
-  </div>
-  <div class="w-full pt-2 overflow-hidden">
-    <p class="context text-black 
-      sm:translate-y-full sm:group-hover:translate-y-0 
-      transition-transform duration-500 ease-in-out">
-      Creative Campaign
-    </p>
-  </div>
-</a>
-   
-    </div>
-  </div>
+      <p class="text-[11px] text-gray-500 text-center mt-3">
+        Selecting a profile will verify your role and continue.
+      </p>
     </div>
 
-  <div class="w-full px-8 pb-12 gap-8 flex flex-col-reverse md:flex-row">
-    
-<div class="hero w-full md:w-3/8 mb-8 md:mb-0 flex items-end relative">
-  <div class="flex flex-col justify-end">
-    <p class="mb-4 text-sm text-gray-700">Play Reel ▶</p>
-    <div class="w-full max-w-sm">
-      <video
-        id="playReel"
-        src="https://a.storyblok.com/f/336513/x/ed337dfa5b/home-default-video.mp4"
-        autoplay
-        loop
-        muted
-        playsinline
-        class="shadow-lg object-cover aspect-video w-[160px] sm:w-[320px] lg:w-[480px] cursor-pointer"
-      ></video>
+    <div id="admin-password-section" class="mt-6 hidden">
+      <input id="admin-uid" type="hidden" />
+      <p class="text-gray-700 font-medium mb-2">Admin password required</p>
+      <input id="admin-password" type="password" placeholder="Enter admin password"
+             class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      <button onclick="verifyAdminPassword()" class="mt-3 w-full bg-blue-600 text-white py-2 rounded-xl hover:bg-blue-700">
+        Enter Admin Panel
+      </button>
+      <div class="flex items-center justify-between mt-3">
+        <button id="not-you-2" class="text-red-600 text-sm hover:underline" onclick="logoutLocal()">Not you? Sign out</button>
+        <button class="text-gray-600 text-sm hover:underline" onclick="google.html()">Go back</button>
+      </div>
+      <p class="text-[11px] text-gray-500 text-center mt-3">
+        Your password validates your admin access. Keep it private.
+      </p>
     </div>
   </div>
-</div>
-
-<div id="videoOverlayBg" class="video-overlay-bg"></div>
-
-<style>
-#videoOverlayBg {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(50px);
-  -webkit-backdrop-filter: blur(50px);
-  pointer-events: none;
-  opacity: 0;
-  z-index: 9998;
-}
-</style>
-
-
-
-
-        <div class="w-full md:w-5/8 flex flex-col justify-end sm:text-left md:text-left">
-          <div>
-            <div class="text-container">
-            <h2 class="text-line context text-black mb-2">Studio Lepaga</h2>
-            </div>
-            <div class="text-container">
-            <h1 class="text-line subtext-title text-black">CRAFTING VISUALLY.</h1>
-            </div>
-            <div class="text-container mb-4">
-            <h1 class="text-line subtext-title text-black">THINKING BOLDLY.</h1>
-            </div>
-            <div class="text-container">
-            <p class="text-line subtext text-black">Not just makers. Campaign creators.</p>
-            </div>
-            <div class="text-container mb-4">
-            <p class="text-line subtext text-black">Visual disruptors.</p>
-            </div>
-            <div class="text-container">
-            <a href="home.html" class="text-line context inline-block w-fit text-black border-b border-black hover:opacity-75 transition" data-transition rel="nofollow noopener">
-              Explore All Work
-            </a>
-            </div>
-          </div>
-        </div>
-      </div>
-</section>
-
-
-  </div>
-
-
-
-</main>
-
-  <!-- Script to wait for the font to load before showing the page -->
-
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flowbite/dist/flowbite.min.js"></script>
-
-
-  <script src="navbar\navbar.js"></script>
-
-      <script src="pages/index.js"></script>
-  <script src="animations\globalindex.js"></script>
-    <script src="font\font.js"></script>
-    <script src="loader\loaders.js"></script>
-        <script src="loader\others.js"></script>
-
-
-
-
-    <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
-<script src="https://unpkg.com/gsap@3/dist/ScrollTrigger.min.js"></script>
-<script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
-<script src="https://unpkg.com/gsap@3/dist/gsap-core.min.js"></script>
-<script src="https://unpkg.com/gsap@3/dist/ScrollTrigger.min.js"></script>
-<script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
-<script src="https://unpkg.com/gsap@3/dist/MotionPathPlugin.min.js"></script>
-<script src="https://unpkg.com/gsap@3/dist/ScrollToPlugin.min.js"></script>
-<script src="https://unpkg.com/gsap@3/dist/Draggable.min.js"></script>
-<script src="https://unpkg.com/gsap@3/dist/EasePack.min.js"></script>
-<script src="https://unpkg.com/gsap@3/dist/ModifiersPlugin.min.js"></script>
-<script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
-<script src="https://unpkg.com/gsap@3.12.2/dist/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fontfaceobserver/2.1.0/fontfaceobserver.standalone.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
-
-<script src="https://unpkg.com/swup@latest/dist/swup.min.js"></script>
-
-
-<script>
-  // On DOM load
-  window.addEventListener("DOMContentLoaded", () => {
-    gsap.utils.toArray(".clipp-section").forEach((section, index) => {
-      gsap.to(section, {
-        clipPath: "inset(0% 0% 0% 0%)", // Reveal fully
-        duration: 0.7,
-        ease: "power2.out",
-      });
-    });
-  });
-</script>
-
 </body>
-
 </html>
-
