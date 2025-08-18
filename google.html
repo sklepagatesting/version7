@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sign in with Google</title>
+  <title>Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
@@ -26,43 +26,121 @@
     const provider = new GoogleAuthProvider();
     const db = getFirestore(app);
 
-    async function login() {
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
+    // ============== UTILITIES =================
+    function saveUserToLocal(user) {
+      let saved = JSON.parse(localStorage.getItem("savedUsers") || "[]");
+      if (!saved.find(u => u.uid === user.uid)) {
+        saved.push(user);
+        localStorage.setItem("savedUsers", JSON.stringify(saved));
+      }
+    }
 
-        // Check if user exists in admins
+    function renderSavedProfiles() {
+      const saved = JSON.parse(localStorage.getItem("savedUsers") || "[]");
+      const container = document.getElementById("profiles");
+      container.innerHTML = "";
+
+      if (saved.length === 0) {
+        document.getElementById("login-section").classList.remove("hidden");
+        return;
+      }
+
+      document.getElementById("profiles-section").classList.remove("hidden");
+
+      saved.forEach(u => {
+        const div = document.createElement("div");
+        div.className = "flex flex-col items-center cursor-pointer hover:bg-gray-100 p-4 rounded-lg";
+        div.innerHTML = `
+          <img src="${u.avatar}" class="w-16 h-16 rounded-full border mb-2">
+          <span class="font-medium">${u.name}</span>
+          <span class="text-xs text-gray-500">${u.email}</span>
+        `;
+        div.onclick = () => continueWithProfile(u);
+        container.appendChild(div);
+      });
+    }
+
+    async function continueWithProfile(user) {
+      try {
+        // validate from firestore
         const adminRef = doc(db, "admin", user.uid);
         const adminSnap = await getDoc(adminRef);
 
         if (adminSnap.exists()) {
-          // Admin found → require password before redirect
           const password = prompt("Enter your admin password:");
           if (password === adminSnap.data().password) {
             window.location.href = "adminpanel.html";
             return;
           } else {
-            alert("Wrong admin password!");
+            alert("Wrong password!");
             return;
           }
         }
 
-        // Not an admin → check in accounts
-        const accountRef = doc(db, "accounts", user.uid);
-        const accountSnap = await getDoc(accountRef);
+        const accRef = doc(db, "accounts", user.uid);
+        const accSnap = await getDoc(accRef);
+        if (accSnap.exists()) {
+          window.location.href = "messages.html";
+        } else {
+          alert("Account no longer exists. Please sign in again.");
+          localStorage.removeItem("savedUsers");
+          location.reload();
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error: " + err.message);
+      }
+    }
 
-        if (!accountSnap.exists()) {
-          // Register new user
-          await setDoc(accountRef, {
+    // ============= LOGIN ===============
+    async function login() {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        // check admin first
+        const adminRef = doc(db, "admin", user.uid);
+        const adminSnap = await getDoc(adminRef);
+        if (adminSnap.exists()) {
+          saveUserToLocal({
             uid: user.uid,
-            name: user.displayName || "",
-            email: user.email || "",
-            avatar: user.photoURL || "",
+            name: user.displayName,
+            email: user.email,
+            avatar: user.photoURL,
+            type: "admin"
+          });
+
+          const password = prompt("Enter your admin password:");
+          if (password === adminSnap.data().password) {
+            window.location.href = "adminpanel.html";
+          } else {
+            alert("Wrong password!");
+          }
+          return;
+        }
+
+        // check accounts
+        const accRef = doc(db, "accounts", user.uid);
+        const accSnap = await getDoc(accRef);
+
+        if (!accSnap.exists()) {
+          await setDoc(accRef, {
+            uid: user.uid,
+            name: user.displayName,
+            email: user.email,
+            avatar: user.photoURL,
             createdAt: new Date().toISOString()
           });
         }
 
-        // Redirect normal users
+        saveUserToLocal({
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          avatar: user.photoURL,
+          type: "user"
+        });
+
         window.location.href = "messages.html";
 
       } catch (error) {
@@ -72,16 +150,33 @@
     }
 
     window.login = login;
+
+    // On load → render saved profiles
+    window.onload = renderSavedProfiles;
   </script>
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
-  <div class="bg-white shadow-lg rounded-lg p-6 text-center">
+  <div class="bg-white shadow-lg rounded-xl p-6 w-full max-w-md text-center">
     <h1 class="text-2xl font-bold mb-4">Welcome</h1>
-    <!-- Standard Google button style -->
-    <button onclick="login()" class="flex items-center justify-center gap-2 w-full border rounded-lg px-4 py-2 hover:bg-gray-50">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google logo">
-      <span class="font-medium">Sign in with Google</span>
-    </button>
+
+    <!-- Saved Profiles -->
+    <div id="profiles-section" class="hidden">
+      <p class="text-gray-600 mb-4">Choose your account</p>
+      <div id="profiles" class="grid grid-cols-2 gap-4"></div>
+      <button onclick="login()" class="mt-6 flex items-center justify-center gap-2 w-full border rounded-lg px-4 py-2 hover:bg-gray-50">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
+        <span class="font-medium">Add another account</span>
+      </button>
+    </div>
+
+    <!-- First-time login -->
+    <div id="login-section" class="hidden">
+      <button onclick="login()" class="flex items-center justify-center gap-2 w-full border rounded-lg px-4 py-2 hover:bg-gray-50">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
+        <span class="font-medium">Sign in with Google</span>
+      </button>
+    </div>
+
     <p class="text-xs text-gray-500 mt-4">
       By continuing, you agree to our Terms & Privacy Policy.
     </p>
