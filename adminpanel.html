@@ -140,251 +140,159 @@
   </div>
 
   <!-- Scripts -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import {
-      getFirestore, collection, doc, getDoc, setDoc, deleteDoc, updateDoc,
-      onSnapshot, query, orderBy, limit, startAfter
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  signOut 
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+import { 
+  getFirestore, 
+  doc, 
+  getDoc, 
+  updateDoc, 
+  deleteDoc, 
+  getDocs, 
+  collection, 
+  setDoc 
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // 🔹 Firebase config (matches your project)
-    const firebaseConfig = {
-      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-      authDomain: "sklepaga-8790e.firebaseapp.com",
-      projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.appspot.com",
-      messagingSenderId: "815409129057",
-      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-      measurementId: "G-9GH707G2WZ"
-    };
+// ✅ Firebase Config
+const firebaseConfig = {
+  apiKey: "YOUR-API-KEY",
+  authDomain: "YOUR-PROJECT.firebaseapp.com",
+  projectId: "YOUR-PROJECT-ID",
+  storageBucket: "YOUR-PROJECT.appspot.com",
+  messagingSenderId: "YOUR-SENDER-ID",
+  appId: "YOUR-APP-ID"
+};
 
-    // Init
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
+// ✅ Init
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-    // Session guard
-    const activeAdminId = localStorage.getItem("activeAdmin");
-    if (!activeAdminId) {
-      window.location.href = "admin-login.html";
-    }
+// DOM refs
+const adminNameEl = document.getElementById("adminName");
+const adminEmailEl = document.getElementById("adminEmail");
+const adminAvatarEl = document.getElementById("adminAvatar");
+const logoutBtn = document.getElementById("logoutBtn");
+const changePassBtn = document.getElementById("changePassBtn");
+const usersList = document.getElementById("usersList");
 
-    // UI handles
-    const adminInfoDiv     = document.getElementById("adminInfo");
-    const passwordMsg      = document.getElementById("passwordMsg");
-    const updatePasswordBtn= document.getElementById("updatePasswordBtn");
-    const newPasswordInput = document.getElementById("newPassword");
-    const reverifyBtn      = document.getElementById("reverifyBtn");
-    const logoutBtn        = document.getElementById("logoutBtn");
-    const themeBtn         = document.getElementById("themeBtn");
+// ✅ Session Guard
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "authentication.html";
+    return;
+  }
 
-    const userListEl       = document.getElementById("userList");
-    const searchInput      = document.getElementById("searchInput");
-    const sortSelect       = document.getElementById("sortSelect");
-    const loadMoreBtn      = document.getElementById("loadMoreBtn");
+  // Check if in admin collection
+  const adminRef = doc(db, "admin", user.uid);
+  const adminSnap = await getDoc(adminRef);
 
-    // Promote modal
-    const promoteModal     = document.getElementById("promoteModal");
-    const promoteUserLabel = document.getElementById("promoteUserLabel");
-    const promotePassword  = document.getElementById("promotePassword");
-    const cancelPromoteBtn = document.getElementById("cancelPromote");
-    const confirmPromoteBtn= document.getElementById("confirmPromote");
+  if (!adminSnap.exists()) {
+    // Not admin → redirect to user messages
+    window.location.href = "messages.html";
+    return;
+  }
 
-    // Toast
-    const toastEl          = document.getElementById("toast");
-    const toastBody        = document.getElementById("toastBody");
-    function toast(msg, type="success") {
-      toastBody.className = "px-4 py-2 rounded-xl text-white shadow-lg " + (type === "success" ? "bg-green-600" : type === "warn" ? "bg-amber-600" : "bg-red-600");
-      toastBody.textContent = msg;
-      toastEl.classList.remove("hidden");
-      setTimeout(()=>toastEl.classList.add("hidden"), 2000);
-    }
+  // ✅ Is admin
+  localStorage.setItem("activeAdmin", user.uid);
 
-    // Dark/Light
-    themeBtn.addEventListener("click", () => {
-      if (document.documentElement.classList.contains("dark")) {
-        document.documentElement.classList.remove("dark");
-        document.body.classList.remove("bg-gray-900","text-gray-100");
-      } else {
-        document.documentElement.classList.add("dark");
-        document.body.classList.add("bg-gray-900","text-gray-100");
+  // Load dashboard info
+  loadAdminInfo(adminSnap.data(), user);
+  loadAllUsers();
+});
+
+// ✅ Load Admin Info
+function loadAdminInfo(adminData, user) {
+  adminNameEl.textContent = user.displayName || "Admin";
+  adminEmailEl.textContent = user.email;
+  adminAvatarEl.src = user.photoURL || "default-avatar.png";
+}
+
+// ✅ Load All Users (accounts collection)
+async function loadAllUsers() {
+  usersList.innerHTML = "";
+  const querySnap = await getDocs(collection(db, "accounts"));
+  querySnap.forEach((docSnap) => {
+    const user = docSnap.data();
+    const li = document.createElement("li");
+    li.className = "p-2 border-b flex justify-between items-center";
+    li.innerHTML = `
+      <div class="flex items-center gap-2">
+        <img src="${user.avatar || "default-avatar.png"}" class="w-8 h-8 rounded-full">
+        <span>${user.name || "Unnamed"}</span>
+      </div>
+      <div class="flex gap-2">
+        <button class="bg-red-500 text-white px-2 py-1 rounded delete-btn" data-id="${docSnap.id}">Delete</button>
+        <button class="bg-blue-500 text-white px-2 py-1 rounded promote-btn" data-id="${docSnap.id}">Promote to Admin</button>
+      </div>
+    `;
+    usersList.appendChild(li);
+  });
+
+  // attach events
+  attachUserActions();
+}
+
+// ✅ Attach delete/promote
+function attachUserActions() {
+  document.querySelectorAll(".delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      if (confirm("Delete this user?")) {
+        await deleteDoc(doc(db, "accounts", id));
+        loadAllUsers();
       }
     });
+  });
 
-    // ------- Admin Info (only self) -------
-    async function loadAdminInfo() {
-      const snap = await getDoc(doc(db, "admin", activeAdminId));
-      if (!snap.exists()) {
-        localStorage.removeItem("activeAdmin");
-        window.location.href = "admin-login.html";
-        return;
-      }
-      const a = snap.data();
-      adminInfoDiv.innerHTML = `
-        <img src="${a.avatar || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name='+encodeURIComponent(a.name||'A')}"
-             class="w-16 h-16 rounded-full border" alt="avatar">
-        <div class="min-w-0 flex-1">
-          <h3 class="font-semibold truncate">${a.name || "(no name)"}</h3>
-          <p class="text-gray-600 truncate">${a.email || ""}</p>
-          <p class="text-xs text-gray-500 mt-1">UID: <span class="font-mono">${a.uid || activeAdminId}</span></p>
-        </div>
-        <div class="hidden sm:flex gap-2">
-          <button class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50" id="copyUidBtn">Copy UID</button>
-        </div>
-      `;
-      const copyBtn = document.getElementById("copyUidBtn");
-      if (copyBtn) copyBtn.onclick = () => { navigator.clipboard.writeText(a.uid || activeAdminId); toast("UID copied"); };
-    }
+  document.querySelectorAll(".promote-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      const userDoc = await getDoc(doc(db, "accounts", id));
+      if (!userDoc.exists()) return;
 
-    // Update admin password (only self)
-    updatePasswordBtn.addEventListener("click", async () => {
-      const newPass = newPasswordInput.value.trim();
-      if (!newPass) { toast("Enter a password", "warn"); return; }
-      try {
-        await updateDoc(doc(db, "admin", activeAdminId), { password: newPass, updatedAt: new Date().toISOString() });
-        passwordMsg.textContent = "Password updated successfully.";
-        passwordMsg.className = "text-green-600 text-sm mt-2";
-        passwordMsg.classList.remove("hidden");
-        newPasswordInput.value = "";
-        toast("Password updated");
-      } catch (e) {
-        console.error(e);
-        toast("Failed to update password", "error");
-      }
-    });
+      const userData = userDoc.data();
+      const pass = prompt("Set a password for this new admin:");
+      if (!pass) return;
 
-    // Optional: “re-verify” action stub (e.g., re-enter password)
-    reverifyBtn.addEventListener("click", async () => {
-      const adminSnap = await getDoc(doc(db, "admin", activeAdminId));
-      if (!adminSnap.exists()) return toast("Admin missing", "error");
-      const pass = prompt("Enter your admin password to verify:");
-      if (pass && pass === adminSnap.data().password) toast("Verified");
-      else toast("Verification failed", "error");
-    });
-
-    // Logout
-    logoutBtn.addEventListener("click", () => {
-      localStorage.removeItem("activeAdmin");
-      window.location.href = "admin-login.html";
-    });
-
-    // ------- Users list (accounts) with live updates + paging -------
-    const PAGE_SIZE = 18;
-    let cachedUsers = [];   // in-memory cache for client-side search/sort
-    let lastDocSnap = null; // for server-side pagination
-    let unsubUsers = null;
-
-    function renderUsers(list) {
-      userListEl.innerHTML = "";
-      if (list.length === 0) {
-        userListEl.innerHTML = `<div class="text-center text-gray-500 col-span-full py-10">No users found.</div>`;
-        return;
-      }
-      list.forEach(u => {
-        const card = document.createElement("div");
-        card.className = "bg-white rounded-2xl border border-gray-200 p-4";
-        card.innerHTML = `
-          <div class="flex items-center gap-3">
-            <img src="${u.avatar || 'https://ui-avatars.com/api/?name='+encodeURIComponent(u.name||'U')}" class="w-14 h-14 rounded-full border" alt="avatar">
-            <div class="min-w-0">
-              <p class="font-semibold truncate">${u.name || "(no name)"}</p>
-              <p class="text-sm text-gray-600 truncate">${u.email || ""}</p>
-              <p class="text-xs text-gray-500 mt-1">Joined: ${u.createdAt ? new Date(u.createdAt).toLocaleString() : "—"}</p>
-            </div>
-          </div>
-          <div class="mt-4 flex gap-2">
-            <button class="px-3 py-2 rounded-lg border hover:bg-gray-50 w-full deleteBtn">Delete</button>
-            <button class="px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 w-full promoteBtn">Promote</button>
-          </div>
-        `;
-        // Actions
-        card.querySelector(".deleteBtn").onclick = async () => {
-          if (!confirm(`Delete ${u.name || u.email || u.uid}?`)) return;
-          try {
-            await deleteDoc(doc(db, "accounts", u.uid));
-            toast("User deleted");
-          } catch (e) {
-            console.error(e); toast("Delete failed", "error");
-          }
-        };
-        card.querySelector(".promoteBtn").onclick = () => openPromote(u);
-        userListEl.appendChild(card);
+      // Create admin
+      await setDoc(doc(db, "admin", id), {
+        ...userData,
+        password: pass
       });
-    }
 
-    function applySearchAndSort() {
-      const q = (searchInput.value || "").toLowerCase().trim();
-      let list = cachedUsers.filter(u =>
-        (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q)
-      );
+      // Remove from accounts
+      await deleteDoc(doc(db, "accounts", id));
 
-      const sort = sortSelect.value;
-      if (sort === "name-asc") list.sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-      if (sort === "name-desc") list.sort((a,b)=>(b.name||"").localeCompare(a.name||""));
-      if (sort === "time-desc") list.sort((a,b)=> (new Date(b.createdAt||0)) - (new Date(a.createdAt||0)));
-      if (sort === "time-asc") list.sort((a,b)=> (new Date(a.createdAt||0)) - (new Date(b.createdAt||0)));
-
-      renderUsers(list);
-    }
-
-    searchInput.addEventListener("input", applySearchAndSort);
-    sortSelect.addEventListener("change", applySearchAndSort);
-
-    async function initialLoad() {
-      // live listener for the first PAGE_SIZE items by createdAt desc
-      if (unsubUsers) unsubUsers();
-      const q1 = query(collection(db, "accounts"), orderBy("createdAt", "desc"), limit(PAGE_SIZE));
-      unsubUsers = onSnapshot(q1, (snap) => {
-        cachedUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-        lastDocSnap = snap.docs[snap.docs.length - 1] || null;
-        applySearchAndSort();
-      });
-    }
-
-    loadMoreBtn.addEventListener("click", async () => {
-      if (!lastDocSnap) { toast("No more users", "warn"); return; }
-      const q2 = query(collection(db, "accounts"), orderBy("createdAt", "desc"), startAfter(lastDocSnap), limit(PAGE_SIZE));
-      const next = await (await import("https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js")).getDocs(q2);
-      const more = next.docs.map(d => ({ uid: d.id, ...d.data() }));
-      if (more.length === 0) { toast("No more users", "warn"); return; }
-      cachedUsers = cachedUsers.concat(more);
-      lastDocSnap = next.docs[next.docs.length - 1] || null;
-      applySearchAndSort();
+      alert("User promoted to admin!");
+      loadAllUsers();
     });
+  });
+}
 
-    // ------- Promote flow (moves to admin + deletes from accounts) -------
-    let promoteTarget = null;
-    function openPromote(user) {
-      promoteTarget = user;
-      promotePassword.value = "";
-      promoteUserLabel.textContent = `Set password for ${user.name || user.email || user.uid}`;
-      promoteModal.classList.remove("hidden");
-    }
-    cancelPromoteBtn.onclick = () => promoteModal.classList.add("hidden");
-    confirmPromoteBtn.onclick = async () => {
-      const pw = promotePassword.value.trim();
-      if (!pw) { toast("Enter password", "warn"); return; }
-      if (!promoteTarget) return;
-      try {
-        await setDoc(doc(db, "admin", promoteTarget.uid), {
-          uid: promoteTarget.uid,
-          name: promoteTarget.name || "",
-          email: promoteTarget.email || "",
-          avatar: promoteTarget.avatar || "",
-          password: pw,
-          createdAt: new Date().toISOString(),
-          createdBy: activeAdminId
-        });
-        await deleteDoc(doc(db, "accounts", promoteTarget.uid));
-        toast("Promoted to admin");
-        promoteModal.classList.add("hidden");
-      } catch (e) {
-        console.error(e); toast("Promotion failed", "error");
-      }
-    };
+// ✅ Change Password
+changePassBtn.addEventListener("click", async () => {
+  const activeAdminId = localStorage.getItem("activeAdmin");
+  if (!activeAdminId) return;
 
-    // Kickoff
-    loadAdminInfo();
-    initialLoad();
-  </script>
+  const newPass = prompt("Enter your new password:");
+  if (!newPass) return;
+
+  await updateDoc(doc(db, "admin", activeAdminId), { password: newPass });
+  alert("Password updated successfully!");
+});
+
+// ✅ Logout
+logoutBtn.addEventListener("click", async () => {
+  await signOut(auth);
+  localStorage.removeItem("activeAdmin");
+  window.location.href = "authentication.html";
+});
+</script>
 </body>
 </html>
