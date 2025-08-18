@@ -2,299 +2,182 @@
 <html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <meta name="color-scheme" content="light dark" />
-  <style>
-    .glass { background: rgba(255,255,255,.7); backdrop-filter: blur(8px); }
-    .skeleton { background: linear-gradient(90deg,#eee 25%,#f5f5f5 37%,#eee 63%); background-size: 400% 100%; animation: sh 1.2s ease-in-out infinite; }
-    @keyframes sh { 0%{background-position: 100% 0}100%{background-position: -100% 0} }
-  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+<body class="bg-gray-100 min-h-screen flex flex-col">
 
-  <!-- Top Bar -->
-  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-blue-600 text-white grid place-items-center font-bold">A</div>
-        <div>
-          <h1 class="text-base font-semibold leading-tight">Admin Panel</h1>
-          <p class="text-xs text-gray-500">Manage users & your admin account</p>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <button id="themeBtn" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50">Theme</button>
-        <button id="logoutBtn" class="px-3 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600">Logout</button>
-      </div>
-    </div>
+  <!-- Header -->
+  <header class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">Admin Panel</h1>
+    <button id="logoutBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Logout</button>
   </header>
 
-  <!-- Main -->
-  <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-6">
-    <!-- Admin card -->
-    <section class="mb-6">
-      <h2 class="text-lg font-semibold mb-3">My Admin Account</h2>
-      <div id="adminInfo" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex items-center gap-4">
-        <div class="w-16 h-16 rounded-full overflow-hidden border skeleton"></div>
-        <div class="flex-1">
-          <div class="h-5 w-40 rounded skeleton mb-2"></div>
-          <div class="h-4 w-64 rounded skeleton"></div>
-        </div>
-        <div class="hidden sm:flex gap-2">
-          <button id="reverifyBtn" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50">Re-verify</button>
-        </div>
+  <!-- Main Content -->
+  <main class="flex-1 p-6 space-y-6">
+    <!-- Admin Info -->
+    <section id="adminInfo" class="bg-white p-4 rounded-2xl shadow flex items-center gap-4">
+      <div class="w-16 h-16 bg-gray-200 rounded-full animate-pulse"></div>
+      <div class="flex-1 space-y-2">
+        <div class="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+        <div class="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
       </div>
     </section>
 
-    <!-- Update password -->
-    <section class="mb-8">
-      <h2 class="text-lg font-semibold mb-3">Update Admin Password</h2>
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row gap-3">
-        <input id="newPassword" type="password" placeholder="New password"
-               class="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <button id="updatePasswordBtn"
-                class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
-          Update Password
-        </button>
-      </div>
-      <p id="passwordMsg" class="text-sm mt-2 hidden"></p>
+    <!-- Update Password -->
+    <section class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="text-lg font-semibold mb-4">Update Password</h2>
+      <input id="newPassword" type="password" placeholder="New Password" 
+             class="w-full p-2 border rounded-lg mb-3" />
+      <button id="updatePasswordBtn" 
+              class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+        Update Password
+      </button>
     </section>
 
-    <!-- Users -->
-    <section class="mb-4">
-      <div class="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-        <h2 class="text-lg font-semibold">User Accounts</h2>
-        <div class="flex items-center gap-2">
-          <input id="searchInput" type="search" placeholder="Search name or email"
-                 class="border rounded-lg px-3 py-2 w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <select id="sortSelect" class="border rounded-lg px-3 py-2">
-            <option value="name-asc">Name A–Z</option>
-            <option value="name-desc">Name Z–A</option>
-            <option value="time-desc">Newest</option>
-            <option value="time-asc">Oldest</option>
-          </select>
-        </div>
-      </div>
-      <p class="text-xs text-gray-500 mt-1">Promoting a user moves them from <code>accounts</code> ➜ <code>admin</code> and deletes from <code>accounts</code> to avoid duplication.</p>
-    </section>
-
-    <section>
-      <div id="userList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- skeletons -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-4">
-          <div class="w-14 h-14 rounded-full skeleton mb-3"></div>
-          <div class="h-5 rounded skeleton w-40 mb-2"></div>
-          <div class="h-4 rounded skeleton w-56 mb-4"></div>
-          <div class="flex gap-2">
-            <div class="h-9 w-24 rounded skeleton"></div>
-            <div class="h-9 w-28 rounded skeleton"></div>
-          </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4">
-          <div class="w-14 h-14 rounded-full skeleton mb-3"></div>
-          <div class="h-5 rounded skeleton w-40 mb-2"></div>
-          <div class="h-4 rounded skeleton w-56 mb-4"></div>
-          <div class="flex gap-2">
-            <div class="h-9 w-24 rounded skeleton"></div>
-            <div class="h-9 w-28 rounded skeleton"></div>
-          </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4">
-          <div class="w-14 h-14 rounded-full skeleton mb-3"></div>
-          <div class="h-5 rounded skeleton w-40 mb-2"></div>
-          <div class="h-4 rounded skeleton w-56 mb-4"></div>
-          <div class="flex gap-2">
-            <div class="h-9 w-24 rounded skeleton"></div>
-            <div class="h-9 w-28 rounded skeleton"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex justify-center mt-6">
-        <button id="loadMoreBtn" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Load more</button>
+    <!-- Manage Users -->
+    <section class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="text-lg font-semibold mb-4">Manage Users</h2>
+      <div id="userList" class="space-y-3">
+        <p class="text-gray-500">Loading users...</p>
       </div>
     </section>
   </main>
 
-  <!-- Promote Modal -->
-  <div id="promoteModal" class="fixed inset-0 z-40 hidden">
-    <div class="absolute inset-0 bg-black/50"></div>
-    <div class="relative z-50 max-w-md mx-auto mt-24 bg-white rounded-2xl p-5 shadow-lg">
-      <h3 class="text-lg font-semibold mb-2">Promote to Admin</h3>
-      <p id="promoteUserLabel" class="text-sm text-gray-600 mb-4"></p>
-      <input id="promotePassword" type="password" placeholder="Set admin password"
-             class="w-full border rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      <div class="flex justify-end gap-2">
-        <button id="cancelPromote" class="px-3 py-2 rounded-lg border hover:bg-gray-50">Cancel</button>
-        <button id="confirmPromote" class="px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700">Promote</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast -->
-  <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden">
-    <div id="toastBody" class="px-4 py-2 rounded-xl text-white shadow-lg"></div>
-  </div>
-
-  <!-- Scripts -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { 
-  getAuth, 
-  onAuthStateChanged, 
-  signOut 
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-import { 
-  getFirestore, 
-  doc, 
-  getDoc, 
-  updateDoc, 
-  deleteDoc, 
-  getDocs, 
-  collection, 
-  setDoc 
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-// ✅ Firebase Config
-    // 🔹 Firebase config (matches your project)
+  <script>
+    // Firebase config (replace with your project config)
     const firebaseConfig = {
-      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-      authDomain: "sklepaga-8790e.firebaseapp.com",
-      projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.appspot.com",
-      messagingSenderId: "815409129057",
-      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-      measurementId: "G-9GH707G2WZ"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
     };
 
-// ✅ Init
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+    // Init
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-// DOM refs
-const adminNameEl = document.getElementById("adminName");
-const adminEmailEl = document.getElementById("adminEmail");
-const adminAvatarEl = document.getElementById("adminAvatar");
-const logoutBtn = document.getElementById("logoutBtn");
-const changePassBtn = document.getElementById("changePassBtn");
-const usersList = document.getElementById("usersList");
+    // DOM Refs
+    const adminInfoEl = document.getElementById("adminInfo");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const updatePasswordBtn = document.getElementById("updatePasswordBtn");
+    const userList = document.getElementById("userList");
 
-// ✅ Session Guard
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    window.location.href = "authentication.html";
-    return;
-  }
-
-  // Check if in admin collection
-  const adminRef = doc(db, "admin", user.uid);
-  const adminSnap = await getDoc(adminRef);
-
-  if (!adminSnap.exists()) {
-    // Not admin → redirect to user messages
-    window.location.href = "messages.html";
-    return;
-  }
-
-  // ✅ Is admin
-  localStorage.setItem("activeAdmin", user.uid);
-
-  // Load dashboard info
-  loadAdminInfo(adminSnap.data(), user);
-  loadAllUsers();
-});
-
-// ✅ Load Admin Info
-function loadAdminInfo(adminData, user) {
-  adminNameEl.textContent = user.displayName || "Admin";
-  adminEmailEl.textContent = user.email;
-  adminAvatarEl.src = user.photoURL || "default-avatar.png";
-}
-
-// ✅ Load All Users (accounts collection)
-async function loadAllUsers() {
-  usersList.innerHTML = "";
-  const querySnap = await getDocs(collection(db, "accounts"));
-  querySnap.forEach((docSnap) => {
-    const user = docSnap.data();
-    const li = document.createElement("li");
-    li.className = "p-2 border-b flex justify-between items-center";
-    li.innerHTML = `
-      <div class="flex items-center gap-2">
-        <img src="${user.avatar || "default-avatar.png"}" class="w-8 h-8 rounded-full">
-        <span>${user.name || "Unnamed"}</span>
-      </div>
-      <div class="flex gap-2">
-        <button class="bg-red-500 text-white px-2 py-1 rounded delete-btn" data-id="${docSnap.id}">Delete</button>
-        <button class="bg-blue-500 text-white px-2 py-1 rounded promote-btn" data-id="${docSnap.id}">Promote to Admin</button>
-      </div>
-    `;
-    usersList.appendChild(li);
-  });
-
-  // attach events
-  attachUserActions();
-}
-
-// ✅ Attach delete/promote
-function attachUserActions() {
-  document.querySelectorAll(".delete-btn").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const id = btn.dataset.id;
-      if (confirm("Delete this user?")) {
-        await deleteDoc(doc(db, "accounts", id));
-        loadAllUsers();
+    // Session Guard
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = "authentication.html";
+        return;
       }
+
+      const activeAdminId = localStorage.getItem("activeAdmin");
+      if (!activeAdminId) {
+        window.location.href = "authentication.html";
+        return;
+      }
+
+      const adminRef = db.collection("admin").doc(activeAdminId);
+      const adminSnap = await adminRef.get();
+
+      if (!adminSnap.exists) {
+        window.location.href = "messages.html";
+        return;
+      }
+
+      loadAdminInfo(adminSnap.data(), user);
+      loadUsers();
     });
-  });
 
-  document.querySelectorAll(".promote-btn").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const id = btn.dataset.id;
-      const userDoc = await getDoc(doc(db, "accounts", id));
-      if (!userDoc.exists()) return;
+    // Load Admin Info
+    function loadAdminInfo(adminData, user) {
+      adminInfoEl.innerHTML = `
+        <img src="${user.photoURL || "default-avatar.png"}" 
+             class="w-16 h-16 rounded-full border" />
+        <div class="flex-1">
+          <p class="text-lg font-semibold">${user.displayName || "Admin"}</p>
+          <p class="text-sm text-gray-600">${user.email}</p>
+        </div>
+      `;
+    }
 
-      const userData = userDoc.data();
-      const pass = prompt("Set a password for this new admin:");
-      if (!pass) return;
+    // Load Users
+    async function loadUsers() {
+      const accountsSnap = await db.collection("accounts").get();
+      if (accountsSnap.empty) {
+        userList.innerHTML = `<p class="text-gray-500">No users found.</p>`;
+        return;
+      }
 
-      // Create admin
-      await setDoc(doc(db, "admin", id), {
-        ...userData,
-        password: pass
+      userList.innerHTML = "";
+      accountsSnap.forEach(doc => {
+        const user = doc.data();
+        const div = document.createElement("div");
+        div.className = "flex justify-between items-center p-3 border rounded-lg";
+        div.innerHTML = `
+          <div>
+            <p class="font-semibold">${user.name || "Unnamed User"}</p>
+            <p class="text-sm text-gray-600">${user.email}</p>
+          </div>
+          <div class="space-x-2">
+            <button class="px-3 py-1 bg-red-500 text-white rounded deleteBtn">Delete</button>
+            <button class="px-3 py-1 bg-green-500 text-white rounded promoteBtn">Promote</button>
+          </div>
+        `;
+
+        // Delete
+        div.querySelector(".deleteBtn").addEventListener("click", async () => {
+          if (confirm("Delete this user?")) {
+            await db.collection("accounts").doc(doc.id).delete();
+            div.remove();
+          }
+        });
+
+        // Promote
+        div.querySelector(".promoteBtn").addEventListener("click", async () => {
+          const password = prompt("Set an initial password for this new admin:");
+          if (!password) return;
+
+          await db.collection("admin").doc(doc.id).set({
+            ...user,
+            password
+          });
+          await db.collection("accounts").doc(doc.id).delete();
+          div.remove();
+          alert("User promoted to admin!");
+        });
+
+        userList.appendChild(div);
       });
+    }
 
-      // Remove from accounts
-      await deleteDoc(doc(db, "accounts", id));
+    // Update Password
+    updatePasswordBtn.addEventListener("click", async () => {
+      const activeAdminId = localStorage.getItem("activeAdmin");
+      if (!activeAdminId) return;
 
-      alert("User promoted to admin!");
-      loadAllUsers();
+      const newPass = document.getElementById("newPassword").value;
+      if (!newPass) {
+        alert("Enter a new password!");
+        return;
+      }
+
+      await db.collection("admin").doc(activeAdminId).update({ password: newPass });
+      alert("Password updated successfully!");
     });
-  });
-}
 
-// ✅ Change Password
-changePassBtn.addEventListener("click", async () => {
-  const activeAdminId = localStorage.getItem("activeAdmin");
-  if (!activeAdminId) return;
-
-  const newPass = prompt("Enter your new password:");
-  if (!newPass) return;
-
-  await updateDoc(doc(db, "admin", activeAdminId), { password: newPass });
-  alert("Password updated successfully!");
-});
-
-// ✅ Logout
-logoutBtn.addEventListener("click", async () => {
-  await signOut(auth);
-  localStorage.removeItem("activeAdmin");
-  window.location.href = "authentication.html";
-});
-</script>
+    // Logout
+    logoutBtn.addEventListener("click", async () => {
+      await auth.signOut();
+      localStorage.removeItem("activeAdmin");
+      window.location.href = "authentication.html";
+    });
+  </script>
 </body>
 </html>
