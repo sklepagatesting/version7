@@ -79,42 +79,62 @@ const renderProfiles = () => {
   loginSection.classList.add("hidden");
   profilesSection.classList.remove("hidden");
   profilesGrid.innerHTML = "";
+  
+  const activeUid = auth.currentUser ? auth.currentUser.uid : null;
+  const activeUser = saved.find(u => u.uid === activeUid);
+  const otherUsers = saved.filter(u => u.uid !== activeUid);
 
-  saved.forEach(u => {
-    const card = document.createElement("button");
-    card.className = "flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left relative";
-    card.innerHTML = `
-      <div class="w-12 h-12 rounded-full border overflow-hidden flex items-center justify-center" style="background:${genColor(u.email||u.uid)}">
-        ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold">${(u.name?.[0]||"?").toUpperCase()}</span>`}
-      </div>
-      <div class="min-w-0">
-        <div class="font-semibold truncate" title="${u.name||""}">${u.name||"Unnamed"}</div>
-        <div class="text-xs text-gray-500 truncate" title="${u.email||""}">${u.email||""}</div>
-      </div>
-      <span class="ml-auto text-[10px] px-2 py-1 rounded-full ${u.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
-        ${u.type==='admin'?'Admin':'User'}
-      </span>
-    `;
-    // Badge for currently signed-in user
-    if (auth.currentUser && auth.currentUser.uid === u.uid) {
-      const badge = document.createElement("span");
-      badge.innerHTML = "✓";
-      badge.className = "absolute top-2 right-2 bg-green-500 text-white rounded-full text-xs px-1";
-      card.appendChild(badge);
+  if (activeUser) {
+    profilesGrid.appendChild(createProfileCard(activeUser, true));
+  }
+
+  if (otherUsers.length > 0) {
+    const disclaimer = document.createElement("p");
+    disclaimer.className = "text-center text-sm text-gray-500 mt-4 mb-2";
+    disclaimer.textContent = "To use another account, you must choose it again.";
+    profilesGrid.appendChild(disclaimer);
+
+    otherUsers.forEach(u => {
+      profilesGrid.appendChild(createProfileCard(u, false));
+    });
+  }
+};
+
+const createProfileCard = (user, isActive) => {
+  const card = document.createElement("button");
+  card.className = "flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left relative";
+  card.innerHTML = `
+    <div class="w-12 h-12 rounded-full border overflow-hidden flex items-center justify-center" style="background:${genColor(user.email||user.uid)}">
+      ${user.avatar ? `<img src="${user.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold">${(user.name?.[0]||"?").toUpperCase()}</span>`}
+    </div>
+    <div class="min-w-0">
+      <div class="font-semibold truncate" title="${user.name||""}">${user.name||"Unnamed"}</div>
+      <div class="text-xs text-gray-500 truncate" title="${user.email||""}">${user.email||""}</div>
+    </div>
+    <span class="ml-auto text-[10px] px-2 py-1 rounded-full ${user.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
+      ${user.type==='admin'?'Admin':'User'}
+    </span>
+  `;
+
+  // Add a verified check for the active user
+  if (isActive) {
+    const badge = document.createElement("span");
+    badge.innerHTML = "✓";
+    badge.className = "absolute -bottom-1 -right-1 w-5 h-5 flex items-center justify-center bg-green-500 text-white rounded-full text-xs font-bold";
+    card.appendChild(badge);
+  }
+
+  // Click behavior
+  card.onclick = async () => {
+    // If clicked profile is already currentUser, skip popup
+    if (auth.currentUser && auth.currentUser.uid === user.uid) {
+      await routeUser(auth.currentUser);
+    } else {
+      await login(); // popup for new or different user
     }
+  };
 
-    // Click behavior
-    card.onclick = async () => {
-      // If clicked profile is already currentUser, skip popup
-      if (auth.currentUser && auth.currentUser.uid === u.uid) {
-        await routeUser(auth.currentUser);
-      } else {
-        await login(); // popup for new or different user
-      }
-    };
-
-    profilesGrid.appendChild(card);
-  });
+  return card;
 };
 
 // --- Core flows ---
