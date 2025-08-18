@@ -1,215 +1,135 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-    // --- Firebase Config ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-      authDomain: "sklepaga-8790e.firebaseapp.com",
-      projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.firebasestorage.app",
-      messagingSenderId: "815409129057",
-      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-      measurementId: "G-9GH707G2WZ"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-    const db = getFirestore(app);
-
-    // ================== UTILITIES ==================
-    function saveUserToLocal(user) {
-      let saved = JSON.parse(localStorage.getItem("savedUsers") || "[]");
-      if (!saved.find(u => u.uid === user.uid)) {
-        saved.push(user);
-        localStorage.setItem("savedUsers", JSON.stringify(saved));
-      }
-      localStorage.setItem("currentUser", JSON.stringify(user)); // store current session user
-    }
-
-    function renderSavedProfiles() {
-      const saved = JSON.parse(localStorage.getItem("savedUsers") || "[]");
-      const container = document.getElementById("profiles");
-      container.innerHTML = "";
-
-      if (saved.length === 0) {
-        document.getElementById("login-section").classList.remove("hidden");
-        return;
-      }
-
-      document.getElementById("profiles-section").classList.remove("hidden");
-
-      saved.forEach(u => {
-        const div = document.createElement("div");
-        div.className = "flex flex-col items-center cursor-pointer hover:bg-gray-100 p-4 rounded-lg";
-        div.innerHTML = `
-          <img src="${u.avatar}" class="w-16 h-16 rounded-full border mb-2">
-          <span class="font-medium truncate max-w-[120px]" title="${u.name}">${u.name}</span>
-          <span class="text-xs text-gray-500 truncate max-w-[120px]" title="${u.email}">${u.email}</span>
-        `;
-        div.onclick = () => continueWithProfile(u);
-        container.appendChild(div);
-      });
-    }
-
-    async function continueWithProfile(user) {
-      try {
-        const adminRef = doc(db, "admin", user.uid);
-        const adminSnap = await getDoc(adminRef);
-
-        if (adminSnap.exists()) {
-          // show admin password field
-          document.getElementById("admin-password-section").classList.remove("hidden");
-          document.getElementById("profiles-section").classList.add("hidden");
-          document.getElementById("login-section").classList.add("hidden");
-          document.getElementById("admin-uid").value = user.uid; // keep track
-          saveUserToLocal(user);
-          return;
-        }
-
-        // check accounts
-        const accRef = doc(db, "accounts", user.uid);
-        const accSnap = await getDoc(accRef);
-        if (accSnap.exists()) {
-          saveUserToLocal(user);
-          window.location.href = "messages.html";
-        } else {
-          alert("Account no longer exists. Please sign in again.");
-          localStorage.removeItem("savedUsers");
-          location.reload();
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Error: " + err.message);
-      }
-    }
-
-    async function verifyAdminPassword() {
-      const uid = document.getElementById("admin-uid").value;
-      const password = document.getElementById("admin-password").value;
-
-      if (!password) {
-        alert("Please enter your admin password.");
-        return;
-      }
-
-      try {
-        const adminRef = doc(db, "admin", uid);
-        const adminSnap = await getDoc(adminRef);
-
-        if (adminSnap.exists() && password === adminSnap.data().password) {
-          window.location.href = "adminpanel.html";
-        } else {
-          alert("Incorrect password.");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Error verifying password.");
-      }
-    }
-
-    // ============= LOGIN ===============
-    async function login() {
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-
-        const adminRef = doc(db, "admin", user.uid);
-        const adminSnap = await getDoc(adminRef);
-        if (adminSnap.exists()) {
-          const userData = {
-            uid: user.uid,
-            name: user.displayName,
-            email: user.email,
-            avatar: user.photoURL,
-            type: "admin"
-          };
-          saveUserToLocal(userData);
-
-          document.getElementById("admin-password-section").classList.remove("hidden");
-          document.getElementById("login-section").classList.add("hidden");
-          document.getElementById("admin-uid").value = user.uid;
-          return;
-        }
-
-        // check accounts
-        const accRef = doc(db, "accounts", user.uid);
-        const accSnap = await getDoc(accRef);
-
-        if (!accSnap.exists()) {
-          await setDoc(accRef, {
-            uid: user.uid,
-            name: user.displayName,
-            email: user.email,
-            avatar: user.photoURL,
-            createdAt: new Date().toISOString()
-          });
-        }
-
-        const userData = {
-          uid: user.uid,
-          name: user.displayName,
-          email: user.email,
-          avatar: user.photoURL,
-          type: "user"
-        };
-        saveUserToLocal(userData);
-
-        window.location.href = "messages.html";
-
-      } catch (error) {
-        console.error("Login failed:", error);
-        alert("Login failed: " + error.message);
-      }
-    }
-
-    window.login = login;
-    window.verifyAdminPassword = verifyAdminPassword;
-    window.onload = renderSavedProfiles;
-  </script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="flex items-center justify-center min-h-screen bg-gray-100">
-  <div class="bg-white shadow-lg rounded-xl p-6 w-full max-w-md text-center">
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
     <h1 class="text-2xl font-bold mb-4">Welcome</h1>
+    <p class="text-gray-600 mb-6">Sign in with Google to continue</p>
+
+    <!-- Google Sign-in Button -->
+    <button onclick="login()" class="w-full flex items-center justify-center gap-2 bg-red-500 text-white px-4 py-3 rounded-lg hover:bg-red-600 transition">
+      <img src="https://www.svgrepo.com/show/355037/google.svg" alt="Google" class="w-5 h-5">
+      Continue with Google
+    </button>
 
     <!-- Saved Profiles -->
-    <div id="profiles-section" class="hidden">
-      <p class="text-gray-600 mb-4">Choose your account</p>
-      <div id="profiles" class="grid grid-cols-2 gap-4"></div>
-      <button onclick="login()" class="mt-6 flex items-center justify-center gap-2 w-full border rounded-lg px-4 py-2 hover:bg-gray-50">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
-        <span class="font-medium">Add another account</span>
-      </button>
+    <div id="profiles" class="mt-6 hidden">
+      <h2 class="text-lg font-semibold mb-3">Continue as</h2>
+      <div id="profilesList" class="grid gap-3"></div>
     </div>
-
-    <!-- First-time login -->
-    <div id="login-section" class="hidden">
-      <button onclick="login()" class="flex items-center justify-center gap-2 w-full border rounded-lg px-4 py-2 hover:bg-gray-50">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
-        <span class="font-medium">Sign in with Google</span>
-      </button>
-    </div>
-
-    <!-- Admin password -->
-    <div id="admin-password-section" class="hidden">
-      <input id="admin-uid" type="hidden">
-      <p class="mb-3 text-gray-700 font-medium">Enter Admin Password</p>
-      <input id="admin-password" type="password" placeholder="Password" class="border rounded-lg px-3 py-2 w-full mb-3">
-      <button onclick="verifyAdminPassword()" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Continue</button>
-    </div>
-
-    <p class="text-xs text-gray-500 mt-4">
-      By continuing, you agree to our Terms & Privacy Policy.
-    </p>
   </div>
+
+<script>
+  // ============= FIREBASE CONFIG =============
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const provider = new firebase.auth.GoogleAuthProvider();
+
+  // ============= LOGIN FUNCTION =============
+  async function login() {
+    try {
+      const result = await auth.signInWithPopup(provider);
+      const user = result.user;
+
+      // Always overwrite savedUsers with the new account
+      const currentUser = {
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+        avatar: user.photoURL
+      };
+      localStorage.setItem("savedUsers", JSON.stringify([currentUser]));
+
+      handleUser(currentUser);
+
+    } catch (err) {
+      console.error(err);
+      alert("Login failed: " + err.message);
+    }
+  }
+
+  // ============= HANDLE USER LOGIC =============
+  async function handleUser(user) {
+    try {
+      // First check admin
+      const adminSnap = await db.collection("admin").doc(user.uid).get();
+      if (adminSnap.exists) {
+        const password = prompt("Enter your admin password:");
+        if (password === adminSnap.data().password) {
+          window.location.href = "adminpanel.html";
+          return;
+        } else {
+          alert("Wrong password!");
+          return;
+        }
+      }
+
+      // Else check accounts
+      const accSnap = await db.collection("accounts").doc(user.uid).get();
+      if (!accSnap.exists) {
+        await db.collection("accounts").doc(user.uid).set({
+          uid: user.uid,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          createdAt: new Date().toISOString()
+        });
+      }
+      window.location.href = "messages.html";
+
+    } catch (err) {
+      console.error(err);
+      alert("Error: " + err.message);
+    }
+  }
+
+  // ============= CONTINUE WITH PROFILE =============
+  async function continueWithProfile(user) {
+    // overwrite storage to keep only chosen one
+    localStorage.setItem("savedUsers", JSON.stringify([user]));
+    handleUser(user);
+  }
+
+  // ============= LOAD SAVED PROFILES =============
+  window.onload = () => {
+    const saved = JSON.parse(localStorage.getItem("savedUsers")) || [];
+    if (saved.length > 0) {
+      document.getElementById("profiles").classList.remove("hidden");
+      const list = document.getElementById("profilesList");
+      list.innerHTML = "";
+      saved.forEach(user => {
+        const btn = document.createElement("button");
+        btn.className = "flex items-center gap-3 bg-gray-100 p-3 rounded-lg hover:bg-gray-200 transition w-full text-left";
+        btn.innerHTML = `
+          <img src="${user.avatar}" class="w-10 h-10 rounded-full">
+          <div>
+            <p class="font-semibold">${user.name}</p>
+            <p class="text-sm text-gray-500">${user.email}</p>
+          </div>
+        `;
+        btn.onclick = () => continueWithProfile(user);
+        list.appendChild(btn);
+      });
+    }
+  };
+</script>
 </body>
 </html>
