@@ -26,13 +26,14 @@
     const provider = new GoogleAuthProvider();
     const db = getFirestore(app);
 
-    // ---------- UTILITIES ----------
+    // ================== UTILITIES ==================
     function saveUserToLocal(user) {
       let saved = JSON.parse(localStorage.getItem("savedUsers") || "[]");
       if (!saved.find(u => u.uid === user.uid)) {
         saved.push(user);
         localStorage.setItem("savedUsers", JSON.stringify(saved));
       }
+      localStorage.setItem("currentUser", JSON.stringify(user)); // store current session user
     }
 
     function renderSavedProfiles() {
@@ -49,12 +50,11 @@
 
       saved.forEach(u => {
         const div = document.createElement("div");
-        div.className =
-          "flex flex-col items-center cursor-pointer hover:bg-gray-100 p-4 rounded-lg shadow-sm transition";
+        div.className = "flex flex-col items-center cursor-pointer hover:bg-gray-100 p-4 rounded-lg";
         div.innerHTML = `
-          <img src="${u.avatar}" class="w-16 h-16 rounded-full border mb-2 shadow">
-          <span class="font-medium text-sm truncate w-28 text-center" title="${u.name}">${u.name}</span>
-          <span class="text-xs text-gray-500 truncate w-28 text-center" title="${u.email}">${u.email}</span>
+          <img src="${u.avatar}" class="w-16 h-16 rounded-full border mb-2">
+          <span class="font-medium truncate max-w-[120px]" title="${u.name}">${u.name}</span>
+          <span class="text-xs text-gray-500 truncate max-w-[120px]" title="${u.email}">${u.email}</span>
         `;
         div.onclick = () => continueWithProfile(u);
         container.appendChild(div);
@@ -63,12 +63,14 @@
 
     async function continueWithProfile(user) {
       try {
-        // check if admin
+        // validate from firestore
         const adminRef = doc(db, "admin", user.uid);
         const adminSnap = await getDoc(adminRef);
+
         if (adminSnap.exists()) {
           const password = prompt("Enter your admin password:");
           if (password === adminSnap.data().password) {
+            localStorage.setItem("currentUser", JSON.stringify(user));
             window.location.href = "adminpanel.html";
             return;
           } else {
@@ -77,10 +79,10 @@
           }
         }
 
-        // check if user
         const accRef = doc(db, "accounts", user.uid);
         const accSnap = await getDoc(accRef);
         if (accSnap.exists()) {
+          localStorage.setItem("currentUser", JSON.stringify(user));
           window.location.href = "messages.html";
         } else {
           alert("Account no longer exists. Please sign in again.");
@@ -93,23 +95,24 @@
       }
     }
 
-    // ---------- LOGIN ----------
+    // ============= LOGIN ===============
     async function login() {
       try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
 
-        // check admin
+        // check admin first
         const adminRef = doc(db, "admin", user.uid);
         const adminSnap = await getDoc(adminRef);
         if (adminSnap.exists()) {
-          saveUserToLocal({
+          const userData = {
             uid: user.uid,
             name: user.displayName,
             email: user.email,
             avatar: user.photoURL,
             type: "admin"
-          });
+          };
+          saveUserToLocal(userData);
 
           const password = prompt("Enter your admin password:");
           if (password === adminSnap.data().password) {
@@ -134,15 +137,17 @@
           });
         }
 
-        saveUserToLocal({
+        const userData = {
           uid: user.uid,
           name: user.displayName,
           email: user.email,
           avatar: user.photoURL,
           type: "user"
-        });
+        };
+        saveUserToLocal(userData);
 
         window.location.href = "messages.html";
+
       } catch (error) {
         console.error("Login failed:", error);
         alert("Login failed: " + error.message);
@@ -150,32 +155,34 @@
     }
 
     window.login = login;
+
+    // On load → render saved profiles
     window.onload = renderSavedProfiles;
   </script>
 </head>
-<body class="flex items-center justify-center min-h-screen bg-gray-50">
-  <div class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-md text-center">
-    <h1 class="text-2xl font-bold mb-6 text-gray-800">Welcome Back</h1>
+<body class="flex items-center justify-center min-h-screen bg-gray-100">
+  <div class="bg-white shadow-lg rounded-xl p-6 w-full max-w-md text-center">
+    <h1 class="text-2xl font-bold mb-4">Welcome</h1>
 
     <!-- Saved Profiles -->
     <div id="profiles-section" class="hidden">
-      <p class="text-gray-600 mb-4">Select an account</p>
+      <p class="text-gray-600 mb-4">Choose your account</p>
       <div id="profiles" class="grid grid-cols-2 gap-4"></div>
-      <button onclick="login()" class="mt-6 flex items-center justify-center gap-2 w-full border rounded-lg px-4 py-2 hover:bg-gray-100 transition">
+      <button onclick="login()" class="mt-6 flex items-center justify-center gap-2 w-full border rounded-lg px-4 py-2 hover:bg-gray-50">
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
-        <span class="font-medium">Use another account</span>
+        <span class="font-medium">Add another account</span>
       </button>
     </div>
 
     <!-- First-time login -->
     <div id="login-section" class="hidden">
-      <button onclick="login()" class="flex items-center justify-center gap-2 w-full border rounded-lg px-4 py-2 hover:bg-gray-100 transition">
+      <button onclick="login()" class="flex items-center justify-center gap-2 w-full border rounded-lg px-4 py-2 hover:bg-gray-50">
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
         <span class="font-medium">Sign in with Google</span>
       </button>
     </div>
 
-    <p class="text-xs text-gray-500 mt-6">
+    <p class="text-xs text-gray-500 mt-4">
       By continuing, you agree to our Terms & Privacy Policy.
     </p>
   </div>
