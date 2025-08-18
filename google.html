@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Login</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-
- <script type="module">
+  <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
   import {
     getAuth,
@@ -74,8 +72,10 @@
       type: user.type || "user"
     };
     let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]"); // ✅ FIXED
-    users = [lite, ...users.filter(u => u.uid !== lite.uid)]; // dedupe
-    if (users.length > 6) users = users.slice(0, 6); // cap to 6
+    // dedupe by uid
+    users = [lite, ...users.filter(u => u.uid !== lite.uid)];
+    // cap to 6
+    if (users.length > 6) users = users.slice(0, 6);
     localStorage.setItem("loginPageUsers", JSON.stringify(users));
   };
 
@@ -105,7 +105,8 @@
           ${u.type==='admin'?'Admin':'User'}
         </span>
       `;
-      card.onclick = () => login(); // must always re-authenticate
+      // Always requires Google popup again
+      card.onclick = () => login();
       profilesGrid.appendChild(card);
     });
   };
@@ -124,7 +125,7 @@
       await ensureOnline();
       const res = await signInWithPopup(auth, provider);
       const user = res.user;
-      addLoginPageUser(user);
+      addLoginPageUser(user); // UI-only recent list
       await routeUser(user);
     } catch (e) {
       if (String(e?.message || "").toLowerCase().includes("offline")) return;
@@ -177,6 +178,7 @@
   // ---------- Events ----------
   window.login = login;
   window.logoutLocal = doSignOut;
+
   notYouBtn.addEventListener("click", doSignOut);
 
   window.addEventListener("online", () => showOffline(false));
@@ -186,15 +188,14 @@
   // Initial render of recent list
   renderProfiles();
 
-  // 🔁 Manual-only mode: never auto-redirect
-  onAuthStateChanged(auth, (user) => {
+  // 🔁 Auto-restore session
+  onAuthStateChanged(auth, async (user) => {
     if (!user) {
       renderProfiles();
       return;
     }
-    // Only update recent list + show chooser, no routing
     addLoginPageUser(user);
-    renderProfiles();
+    await routeUser(user);
   });
 </script>
   <style>
