@@ -14,7 +14,6 @@
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
-  <!-- Top Bar -->
   <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 justify-between">
       <div class="flex items-center gap-3">
@@ -32,9 +31,7 @@
     </div>
   </header>
 
-  <!-- Main -->
   <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-6">
-    <!-- Admin card -->
     <section class="mb-6">
       <h2 class="text-lg font-semibold mb-3">My Admin Account</h2>
       <div id="adminInfo" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex items-center gap-4">
@@ -43,27 +40,9 @@
           <div class="h-5 w-40 rounded skeleton mb-2"></div>
           <div class="h-4 w-64 rounded skeleton"></div>
         </div>
-        <div class="hidden sm:flex gap-2">
-          <button id="reverifyBtn" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50">Re-verify</button>
-        </div>
       </div>
     </section>
 
-    <!-- Update password -->
-    <section class="mb-8">
-      <h2 class="text-lg font-semibold mb-3">Update Admin Password</h2>
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row gap-3">
-        <input id="newPassword" type="password" placeholder="New password"
-               class="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <button id="updatePasswordBtn"
-                class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
-          Update Password
-        </button>
-      </div>
-      <p id="passwordMsg" class="text-sm mt-2 hidden"></p>
-    </section>
-
-    <!-- Users -->
     <section class="mb-4">
       <div class="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
         <h2 class="text-lg font-semibold">User Accounts</h2>
@@ -78,12 +57,13 @@
           </select>
         </div>
       </div>
-      <p class="text-xs text-gray-500 mt-1">Promoting a user moves them from <code>accounts</code> ➜ <code>admin</code> and deletes from <code>accounts</code> to avoid duplication.</p>
+      <p class="text-xs text-gray-500 mt-1">
+        Use the buttons to manage user accounts. "Promote" moves a user from the accounts collection to the admin collection.
+      </p>
     </section>
 
     <section>
       <div id="userList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- skeletons -->
         <div class="bg-white rounded-2xl border border-gray-200 p-4">
           <div class="w-14 h-14 rounded-full skeleton mb-3"></div>
           <div class="h-5 rounded skeleton w-40 mb-2"></div>
@@ -119,31 +99,14 @@
     </section>
   </main>
 
-  <!-- Promote Modal -->
-  <div id="promoteModal" class="fixed inset-0 z-40 hidden">
-    <div class="absolute inset-0 bg-black/50"></div>
-    <div class="relative z-50 max-w-md mx-auto mt-24 bg-white rounded-2xl p-5 shadow-lg">
-      <h3 class="text-lg font-semibold mb-2">Promote to Admin</h3>
-      <p id="promoteUserLabel" class="text-sm text-gray-600 mb-4"></p>
-      <input id="promotePassword" type="password" placeholder="Set admin password"
-             class="w-full border rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      <div class="flex justify-end gap-2">
-        <button id="cancelPromote" class="px-3 py-2 rounded-lg border hover:bg-gray-50">Cancel</button>
-        <button id="confirmPromote" class="px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700">Promote</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast -->
   <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden">
     <div id="toastBody" class="px-4 py-2 rounded-xl text-white shadow-lg"></div>
   </div>
 
-  <!-- Scripts -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import {
-      getFirestore, collection, doc, getDoc, setDoc, deleteDoc, updateDoc,
+      getFirestore, collection, doc, getDoc, setDoc, deleteDoc,
       onSnapshot, query, orderBy, limit, startAfter
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
@@ -160,54 +123,39 @@
 
     // Init
     const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
+    const db = getFirestore(app);
 
     // Session guard
     const activeAdminId = localStorage.getItem("activeAdmin");
     if (!activeAdminId) {
-      window.location.href = "admin-in.html";
+      window.location.href = "google.html";
     }
 
     // UI handles
-    const adminInfoDiv     = document.getElementById("adminInfo");
-    const passwordMsg      = document.getElementById("passwordMsg");
-    const updatePasswordBtn= document.getElementById("updatePasswordBtn");
-    const newPasswordInput = document.getElementById("newPassword");
-    const reverifyBtn      = document.getElementById("reverifyBtn");
-    const outBtn        = document.getElementById("outBtn");
-    const themeBtn         = document.getElementById("themeBtn");
+    const adminInfoDiv = document.getElementById("adminInfo");
+    const outBtn = document.getElementById("outBtn");
+    const themeBtn = document.getElementById("themeBtn");
 
-    const userListEl       = document.getElementById("userList");
-    const searchInput      = document.getElementById("searchInput");
-    const sortSelect       = document.getElementById("sortSelect");
-    const loadMoreBtn      = document.getElementById("loadMoreBtn");
-
-    // Promote modal
-    const promoteModal     = document.getElementById("promoteModal");
-    const promoteUserLabel = document.getElementById("promoteUserLabel");
-    const promotePassword  = document.getElementById("promotePassword");
-    const cancelPromoteBtn = document.getElementById("cancelPromote");
-    const confirmPromoteBtn= document.getElementById("confirmPromote");
+    const userListEl = document.getElementById("userList");
+    const searchInput = document.getElementById("searchInput");
+    const sortSelect = document.getElementById("sortSelect");
+    const loadMoreBtn = document.getElementById("loadMoreBtn");
 
     // Toast
-    const toastEl          = document.getElementById("toast");
-    const toastBody        = document.getElementById("toastBody");
-    function toast(msg, type="success") {
+    const toastEl = document.getElementById("toast");
+    const toastBody = document.getElementById("toastBody");
+    function toast(msg, type = "success") {
       toastBody.className = "px-4 py-2 rounded-xl text-white shadow-lg " + (type === "success" ? "bg-green-600" : type === "warn" ? "bg-amber-600" : "bg-red-600");
       toastBody.textContent = msg;
       toastEl.classList.remove("hidden");
-      setTimeout(()=>toastEl.classList.add("hidden"), 2000);
+      setTimeout(() => toastEl.classList.add("hidden"), 2000);
     }
 
     // Dark/Light
     themeBtn.addEventListener("click", () => {
-      if (document.documentElement.classList.contains("dark")) {
-        document.documentElement.classList.remove("dark");
-        document.body.classList.remove("bg-gray-900","text-gray-100");
-      } else {
-        document.documentElement.classList.add("dark");
-        document.body.classList.add("bg-gray-900","text-gray-100");
-      }
+      document.documentElement.classList.toggle("dark");
+      document.body.classList.toggle("bg-gray-900");
+      document.body.classList.toggle("text-gray-100");
     });
 
     // ------- Admin Info (only self) -------
@@ -215,12 +163,12 @@
       const snap = await getDoc(doc(db, "admin", activeAdminId));
       if (!snap.exists()) {
         localStorage.removeItem("activeAdmin");
-        window.location.href = "admin-in.html";
+        window.location.href = "google.html";
         return;
       }
       const a = snap.data();
       adminInfoDiv.innerHTML = `
-        <img src="${a.avatar || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name='+encodeURIComponent(a.name||'A')}"
+        <img src="${a.avatar || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(a.name || 'A')}"
              class="w-16 h-16 rounded-full border" alt="avatar">
         <div class="min-w-0 flex-1">
           <h3 class="font-semibold truncate">${a.name || "(no name)"}</h3>
@@ -232,34 +180,11 @@
         </div>
       `;
       const copyBtn = document.getElementById("copyUidBtn");
-      if (copyBtn) copyBtn.onclick = () => { navigator.clipboard.writeText(a.uid || activeAdminId); toast("UID copied"); };
+      if (copyBtn) copyBtn.onclick = () => {
+        navigator.clipboard.writeText(a.uid || activeAdminId);
+        toast("UID copied");
+      };
     }
-
-    // Update admin password (only self)
-    updatePasswordBtn.addEventListener("click", async () => {
-      const newPass = newPasswordInput.value.trim();
-      if (!newPass) { toast("Enter a password", "warn"); return; }
-      try {
-        await updateDoc(doc(db, "admin", activeAdminId), { password: newPass, updatedAt: new Date().toISOString() });
-        passwordMsg.textContent = "Password updated successfully.";
-        passwordMsg.className = "text-green-600 text-sm mt-2";
-        passwordMsg.classList.remove("hidden");
-        newPasswordInput.value = "";
-        toast("Password updated");
-      } catch (e) {
-        console.error(e);
-        toast("Failed to update password", "error");
-      }
-    });
-
-    // Optional: “re-verify” action stub (e.g., re-enter password)
-    reverifyBtn.addEventListener("click", async () => {
-      const adminSnap = await getDoc(doc(db, "admin", activeAdminId));
-      if (!adminSnap.exists()) return toast("Admin missing", "error");
-      const pass = prompt("Enter your admin password to verify:");
-      if (pass && pass === adminSnap.data().password) toast("Verified");
-      else toast("Verification failed", "error");
-    });
 
     // out
     outBtn.addEventListener("click", () => {
@@ -269,8 +194,8 @@
 
     // ------- Users list (accounts) with live updates + paging -------
     const PAGE_SIZE = 18;
-    let cachedUsers = [];   // in-memory cache for client-side search/sort
-    let lastDocSnap = null; // for server-side pagination
+    let cachedUsers = [];
+    let lastDocSnap = null;
     let unsubUsers = null;
 
     function renderUsers(list) {
@@ -284,29 +209,51 @@
         card.className = "bg-white rounded-2xl border border-gray-200 p-4";
         card.innerHTML = `
           <div class="flex items-center gap-3">
-            <img src="${u.avatar || 'https://ui-avatars.com/api/?name='+encodeURIComponent(u.name||'U')}" class="w-14 h-14 rounded-full border" alt="avatar">
+            <img src="${u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || 'U')}" class="w-14 h-14 rounded-full border" alt="avatar">
             <div class="min-w-0">
               <p class="font-semibold truncate">${u.name || "(no name)"}</p>
               <p class="text-sm text-gray-600 truncate">${u.email || ""}</p>
               <p class="text-xs text-gray-500 mt-1">Joined: ${u.createdAt ? new Date(u.createdAt).toLocaleString() : "—"}</p>
             </div>
           </div>
-          <div class="mt-4 flex gap-2">
-            <button class="px-3 py-2 rounded-lg border hover:bg-gray-50 w-full deleteBtn">Delete</button>
-            <button class="px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 w-full promoteBtn">Promote</button>
+          <div class="mt-4 flex flex-col sm:flex-row gap-2">
+            <button class="px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 flex-1 promoteBtn">Add as admin</button>
+            <button class="px-3 py-2 rounded-lg border hover:bg-gray-50 flex-1 deleteBtn">Remove</button>
+            <button class="px-3 py-2 rounded-lg border hover:bg-gray-50 flex-1 messageBtn">Message</button>
           </div>
         `;
         // Actions
-        card.querySelector(".deleteBtn").onclick = async () => {
-          if (!confirm(`Delete ${u.name || u.email || u.uid}?`)) return;
+        card.querySelector(".promoteBtn").onclick = async () => {
+          if (!confirm(`Are you sure you want to promote ${u.name || u.email} to admin?`)) return;
           try {
+            await setDoc(doc(db, "admin", u.uid), {
+              uid: u.uid,
+              name: u.name || "",
+              email: u.email || "",
+              avatar: u.avatar || "",
+              createdAt: new Date().toISOString(),
+              createdBy: activeAdminId
+            });
             await deleteDoc(doc(db, "accounts", u.uid));
-            toast("User deleted");
+            toast("Promoted to admin");
           } catch (e) {
-            console.error(e); toast("Delete failed", "error");
+            console.error(e);
+            toast("Promotion failed", "error");
           }
         };
-        card.querySelector(".promoteBtn").onclick = () => openPromote(u);
+        card.querySelector(".deleteBtn").onclick = async () => {
+          if (!confirm(`Are you sure you want to remove ${u.name || u.email}? This action cannot be undone.`)) return;
+          try {
+            await deleteDoc(doc(db, "accounts", u.uid));
+            toast("User removed");
+          } catch (e) {
+            console.error(e);
+            toast("Removal failed", "error");
+          }
+        };
+        card.querySelector(".messageBtn").onclick = () => {
+          window.location.href = `messages.html?user=${u.uid}`;
+        };
         userListEl.appendChild(card);
       });
     }
@@ -318,10 +265,10 @@
       );
 
       const sort = sortSelect.value;
-      if (sort === "name-asc") list.sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-      if (sort === "name-desc") list.sort((a,b)=>(b.name||"").localeCompare(a.name||""));
-      if (sort === "time-desc") list.sort((a,b)=> (new Date(b.createdAt||0)) - (new Date(a.createdAt||0)));
-      if (sort === "time-asc") list.sort((a,b)=> (new Date(a.createdAt||0)) - (new Date(b.createdAt||0)));
+      if (sort === "name-asc") list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      if (sort === "name-desc") list.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+      if (sort === "time-desc") list.sort((a, b) => (new Date(b.createdAt || 0)) - (new Date(a.createdAt || 0)));
+      if (sort === "time-asc") list.sort((a, b) => (new Date(a.createdAt || 0)) - (new Date(b.createdAt || 0)));
 
       renderUsers(list);
     }
@@ -341,46 +288,21 @@
     }
 
     loadMoreBtn.addEventListener("click", async () => {
-      if (!lastDocSnap) { toast("No more users", "warn"); return; }
+      if (!lastDocSnap) {
+        toast("No more users", "warn");
+        return;
+      }
       const q2 = query(collection(db, "accounts"), orderBy("createdAt", "desc"), startAfter(lastDocSnap), limit(PAGE_SIZE));
-      const next = await (await import("https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js")).getDocs(q2);
+      const next = await getDocs(q2);
       const more = next.docs.map(d => ({ uid: d.id, ...d.data() }));
-      if (more.length === 0) { toast("No more users", "warn"); return; }
+      if (more.length === 0) {
+        toast("No more users", "warn");
+        return;
+      }
       cachedUsers = cachedUsers.concat(more);
       lastDocSnap = next.docs[next.docs.length - 1] || null;
       applySearchAndSort();
     });
-
-    // ------- Promote flow (moves to admin + deletes from accounts) -------
-    let promoteTarget = null;
-    function openPromote(user) {
-      promoteTarget = user;
-      promotePassword.value = "";
-      promoteUserLabel.textContent = `Set password for ${user.name || user.email || user.uid}`;
-      promoteModal.classList.remove("hidden");
-    }
-    cancelPromoteBtn.onclick = () => promoteModal.classList.add("hidden");
-    confirmPromoteBtn.onclick = async () => {
-      const pw = promotePassword.value.trim();
-      if (!pw) { toast("Enter password", "warn"); return; }
-      if (!promoteTarget) return;
-      try {
-        await setDoc(doc(db, "admin", promoteTarget.uid), {
-          uid: promoteTarget.uid,
-          name: promoteTarget.name || "",
-          email: promoteTarget.email || "",
-          avatar: promoteTarget.avatar || "",
-          password: pw,
-          createdAt: new Date().toISOString(),
-          createdBy: activeAdminId
-        });
-        await deleteDoc(doc(db, "accounts", promoteTarget.uid));
-        toast("Promoted to admin");
-        promoteModal.classList.add("hidden");
-      } catch (e) {
-        console.error(e); toast("Promotion failed", "error");
-      }
-    };
 
     // Kickoff
     loadAdminInfo();
