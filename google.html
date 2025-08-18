@@ -39,7 +39,7 @@
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
 
-  // ✅ Persist session across pages/tabs
+  // Persist session across pages/tabs
   (async () => {
     await setPersistence(auth, browserLocalPersistence);
   })();
@@ -71,10 +71,8 @@
       avatar: user.photoURL || user.avatar || "",
       type: user.type || "user"
     };
-    let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]"); // ✅ FIXED
-    // dedupe by uid
+    let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
     users = [lite, ...users.filter(u => u.uid !== lite.uid)];
-    // cap to 6
     if (users.length > 6) users = users.slice(0, 6);
     localStorage.setItem("loginPageUsers", JSON.stringify(users));
   };
@@ -105,7 +103,6 @@
           ${u.type==='admin'?'Admin':'User'}
         </span>
       `;
-      // Always requires Google popup again
       card.onclick = () => login();
       profilesGrid.appendChild(card);
     });
@@ -125,7 +122,7 @@
       await ensureOnline();
       const res = await signInWithPopup(auth, provider);
       const user = res.user;
-      addLoginPageUser(user); // UI-only recent list
+      addLoginPageUser(user);
       await routeUser(user);
     } catch (e) {
       if (String(e?.message || "").toLowerCase().includes("offline")) return;
@@ -135,7 +132,6 @@
   }
 
   async function routeUser(user) {
-    // Check admin collection
     const adminRef = doc(db, "admin", user.uid);
     try {
       const adminSnap = await getDoc(adminRef);
@@ -150,7 +146,6 @@
       return;
     }
 
-    // Ensure user has an account doc
     const accRef = doc(db, "accounts", user.uid);
     const accSnap = await getDoc(accRef);
     if (!accSnap.exists()) {
@@ -162,7 +157,6 @@
         createdAt: new Date().toISOString()
       });
     }
-
     window.location.href = "messages.html";
   }
 
@@ -185,10 +179,8 @@
   window.addEventListener("offline", () => showOffline(true));
   showOffline(!navigator.onLine);
 
-  // Initial render of recent list
   renderProfiles();
 
-  // 🔁 Auto-restore session
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
       renderProfiles();
