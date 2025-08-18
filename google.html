@@ -4,22 +4,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Login</title>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import {
-      getAuth,
-      GoogleAuthProvider,
-      signInWithPopup,
-      onAuthStateChanged,
-      setPersistence,
-      browserLocalPersistence,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import {
-      getFirestore,
-      doc,
-      getDoc,
-      setDoc
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";const firebaseConfig = {
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  signOut
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+// --- Firebase Config ---
+const firebaseConfig = {
   apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
   authDomain: "sklepaga-8790e.firebaseapp.com",
   projectId: "sklepaga-8790e",
@@ -29,27 +32,26 @@
   measurementId: "G-9GH707G2WZ"
 };
 
+// --- Initialize ---
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
-
 await setPersistence(auth, browserLocalPersistence);
 
+// --- UI refs ---
 const loginSection = document.getElementById("login-section");
 const profilesSection = document.getElementById("profiles-section");
 const profilesGrid = document.getElementById("profiles");
-const offlineBanner = document.getElementById("offline-banner");
 const notYouBtn = document.getElementById("not-you");
 
+// --- Helpers ---
 const genColor = (seed) => {
   const palette = ["#2563eb","#16a34a","#db2777","#f59e0b","#7c3aed","#059669","#ef4444","#0ea5e9"];
   let sum = 0;
   for (let i=0;i<seed.length;i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
   return palette[sum];
 };
-
-const showOffline = (show) => offlineBanner.classList.toggle("hidden", !show);
 
 const addLoginPageUser = (user) => {
   const lite = {
@@ -91,7 +93,7 @@ const renderProfiles = () => {
         ${u.type==='admin'?'Admin':'User'}
       </span>
     `;
-
+    // Badge for currently signed-in user
     if (auth.currentUser && auth.currentUser.uid === u.uid) {
       const badge = document.createElement("span");
       badge.innerHTML = "✓";
@@ -99,28 +101,28 @@ const renderProfiles = () => {
       card.appendChild(badge);
     }
 
-    card.onclick = () => login();
+    // Click behavior
+    card.onclick = async () => {
+      // If clicked profile is already currentUser, skip popup
+      if (auth.currentUser && auth.currentUser.uid === u.uid) {
+        await routeUser(auth.currentUser);
+      } else {
+        await login(); // popup for new or different user
+      }
+    };
+
     profilesGrid.appendChild(card);
   });
 };
 
-const ensureOnline = async () => {
-  if (!navigator.onLine) {
-    showOffline(true);
-    throw new Error("Offline");
-  }
-  showOffline(false);
-};
-
+// --- Core flows ---
 async function login() {
   try {
-    await ensureOnline();
     const res = await signInWithPopup(auth, provider);
     const user = res.user;
     addLoginPageUser(user);
     await routeUser(user);
   } catch (e) {
-    if (String(e?.message || "").toLowerCase().includes("offline")) return;
     console.error(e);
     alert("Login failed: " + (e?.message || e));
   }
@@ -156,30 +158,24 @@ async function routeUser(user) {
 }
 
 async function doSignOut() {
-  try { await signOut(auth); } catch (e) { console.warn("Sign out error (ignored):", e); }
+  try { await signOut(auth); } catch (e) { console.warn("Sign out error:", e); }
   window.location.href = "home.html";
 }
 
+// --- Events ---
 window.login = login;
 window.logoutLocal = doSignOut;
 notYouBtn.addEventListener("click", doSignOut);
 
-window.addEventListener("online", () => showOffline(false));
-window.addEventListener("offline", () => showOffline(true));
-showOffline(!navigator.onLine);
-
 renderProfiles();
 
 onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    renderProfiles();
-    return;
+  if (user) {
+    addLoginPageUser(user);
   }
-  addLoginPageUser(user);
   renderProfiles();
 });
-
-  </script>
+</script>
   <style>
     html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   </style>
