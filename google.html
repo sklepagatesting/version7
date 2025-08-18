@@ -5,14 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Secure Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { 
       getAuth, 
+      signInWithCredential, 
       GoogleAuthProvider, 
-      signInWithPopup,
-      onAuthStateChanged,
-      signOut 
+      signOut, 
+      onAuthStateChanged 
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import { 
       getFirestore, 
@@ -34,112 +38,125 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
     const db = getFirestore(app);
 
     const loginSection = document.getElementById("loginSection");
     const accountSection = document.getElementById("accountSection");
     const accountList = document.getElementById("accountList");
+    const passwordSection = document.getElementById("passwordSection");
+    const passwordInput = document.getElementById("adminPassword");
 
-    async function login() {
+    let currentAccountType = null; // "account" | "admin"
+    let currentUser = null;
+
+    // Google One Tap + Button callback
+    window.handleCredentialResponse = async (response) => {
       try {
-        const result = await signInWithPopup(auth, provider);
+        const credential = GoogleAuthProvider.credential(response.credential);
+        const result = await signInWithCredential(auth, credential);
         const user = result.user;
+        currentUser = user;
 
-        // Check if account exists in Firestore
-        const ref = doc(db, "accounts", user.uid);
-        const snap = await getDoc(ref);
+        await handleAccount(user);
+      } catch (err) {
+        console.error("Login error:", err);
+        alert("Google login failed.");
+      }
+    };
 
-        if (!snap.exists()) {
-          // If account not registered
-          alert("This account is not registered.");
-          await signOut(auth);
-          return;
-        }
+    async function handleAccount(user) {
+      const accRef = doc(db, "accounts", user.uid);
+      const adminRef = doc(db, "admin", user.uid);
 
-        const account = snap.data();
+      const [accSnap, adminSnap] = await Promise.all([getDoc(accRef), getDoc(adminRef)]);
 
-        // Show account selection instead of auto proceeding
-        loginSection.classList.add("hidden");
-        accountSection.classList.remove("hidden");
+      if (!accSnap.exists() && !adminSnap.exists()) {
+        // First-time registration → accounts
+        await setDoc(accRef, {
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          createdAt: Date.now()
+        });
+        currentAccountType = "account";
+        showAccountCard({ uid: user.uid, name: user.displayName, email: user.email }, "account");
+        return;
+      }
 
-        accountList.innerHTML = ""; // clear previous
-        const btn = document.createElement("button");
-        btn.className = "flex items-center gap-3 w-full px-4 py-2 border rounded-lg hover:bg-gray-50";
-        btn.innerHTML = `
-          <div class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold" 
-               style="background:#3498DB">
-               ${account.name?.charAt(0).toUpperCase() || "?"}
-          </div>
-          <div>
-            <div class="font-semibold">${account.name}</div>
-            <div class="text-sm text-gray-500">${account.email}</div>
-          </div>
-        `;
-        btn.onclick = () => {
-          // Only proceed if this is the signed-in user
-          if (user.uid === account.uid) {
-            window.location.href = "messages.html";
-          } else {
-            alert("Mismatch: you are not signed in as this account.");
-          }
-        };
-        accountList.appendChild(btn);
+      if (accSnap.exists()) {
+        currentAccountType = "account";
+        showAccountCard(accSnap.data(), "account");
+        return;
+      }
 
-      } catch (error) {
-        console.error("Login failed:", error);
-        alert("Login failed: " + error.message);
+      if (adminSnap.exists()) {
+        currentAccountType = "admin";
+        showAccountCard(adminSnap.data(), "admin");
+        return;
       }
     }
 
-    // Logout helper
+    function showAccountCard(account, type) {
+      loginSection.classList.add("hidden");
+      accountSection.classList.remove("hidden");
+      accountList.innerHTML = "";
+
+      const btn = document.createElement("button");
+      btn.className = "flex items-center gap-3 w-full px-4 py-2 border rounded-lg hover:bg-gray-50";
+      btn.innerHTML = `
+        <div class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold" 
+             style="background:#3498DB">
+             ${account.name?.charAt(0).toUpperCase() || "?"}
+        </div>
+        <div>
+          <div class="font-semibold">${account.name}</div>
+          <div class="text-sm text-gray-500">${account.email}</div>
+          <div class="text-xs text-gray-400">${type === "admin" ? "Admin" : "User"}</div>
+        </div>
+      `;
+
+      btn.onclick = () => {
+        if (type === "account") {
+          window.location.href = "messages.html";
+        } else if (type === "admin") {
+          accountSection.classList.add("hidden");
+          passwordSection.classList.remove("hidden");
+        }
+      };
+
+      accountList.appendChild(btn);
+    }
+
+    async function confirmPassword() {
+      const entered = passwordInput.value;
+      if (!entered) return alert("Enter your admin password.");
+
+      const adminRef = doc(db, "admin", currentUser.uid);
+      const adminSnap = await getDoc(adminRef);
+
+      if (!adminSnap.exists()) return alert("Admin record not found.");
+      const adminData = adminSnap.data();
+
+      if (adminData.password === entered) {
+        window.location.href = "adminpanel.html";
+      } else {
+        alert("Incorrect password.");
+      }
+    }
+
     async function logout() {
       await signOut(auth);
       location.reload();
     }
 
-    // Check auth state
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Already signed in → verify again
-        const ref = doc(db, "accounts", user.uid);
-        const snap = await getDoc(ref);
-
-        if (snap.exists()) {
-          // Show confirm screen
-          loginSection.classList.add("hidden");
-          accountSection.classList.remove("hidden");
-
-          const account = snap.data();
-          accountList.innerHTML = "";
-          const btn = document.createElement("button");
-          btn.className = "flex items-center gap-3 w-full px-4 py-2 border rounded-lg hover:bg-gray-50";
-          btn.innerHTML = `
-            <div class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold" 
-                 style="background:#3498DB">
-                 ${account.name?.charAt(0).toUpperCase() || "?"}
-            </div>
-            <div>
-              <div class="font-semibold">${account.name}</div>
-              <div class="text-sm text-gray-500">${account.email}</div>
-            </div>
-          `;
-          btn.onclick = () => {
-            if (user.uid === account.uid) {
-              window.location.href = "messages.html";
-            } else {
-              alert("Mismatch: signed-in user does not match this account.");
-            }
-          };
-          accountList.appendChild(btn);
-        } else {
-          alert("This account is not registered.");
-          await signOut(auth);
-        }
+        currentUser = user;
+        await handleAccount(user);
       }
     });
 
-    window.login = login;
+    window.confirmPassword = confirmPassword;
     window.logout = logout;
   </script>
 </head>
@@ -147,16 +164,33 @@
   <!-- Login Section -->
   <div id="loginSection" class="bg-white shadow-lg rounded-lg p-6 text-center">
     <h1 class="text-2xl font-bold mb-4">Welcome</h1>
-    <p class="text-gray-600 mb-4">Sign in with Google to continue</p>
-    <button onclick="login()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-      Login with Google
-    </button>
+    <p class="text-gray-600 mb-4">Continue with Google to proceed</p>
+    <!-- Standard Google Button -->
+    <div id="g_id_onload"
+      data-client_id="45782859870-mn28b8adq1kaqmedhq0u7n6n1hev9joi.apps.googleusercontent.com"
+      data-callback="handleCredentialResponse">
+    </div>
+    <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" 
+         data-text="continue_with" data-size="large" data-logo_alignment="left"></div>
   </div>
 
   <!-- Account Confirmation Section -->
   <div id="accountSection" class="hidden bg-white shadow-lg rounded-lg p-6 w-80">
     <h1 class="text-xl font-bold mb-4">Confirm your account</h1>
     <div id="accountList" class="flex flex-col gap-3"></div>
+    <div class="mt-4 text-center">
+      <button onclick="logout()" class="text-red-500 hover:underline">Not you? Sign out</button>
+    </div>
+  </div>
+
+  <!-- Password Section (Admin only) -->
+  <div id="passwordSection" class="hidden bg-white shadow-lg rounded-lg p-6 w-80">
+    <h1 class="text-xl font-bold mb-4">Admin Login</h1>
+    <input id="adminPassword" type="password" placeholder="Enter password"
+           class="w-full border rounded-lg px-3 py-2 mb-4" />
+    <button onclick="confirmPassword()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg w-full">
+      Enter Admin Panel
+    </button>
     <div class="mt-4 text-center">
       <button onclick="logout()" class="text-red-500 hover:underline">Not you? Sign out</button>
     </div>
