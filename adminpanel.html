@@ -27,7 +27,7 @@
 
       <div class="flex items-center gap-2">
         <button id="themeBtn" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50">Theme</button>
-        <button id="logoutBtn" class="px-3 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600">Logout</button>
+        <button id="outBtn" class="px-3 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600">out</button>
       </div>
     </div>
   </header>
@@ -165,7 +165,7 @@
     // Session guard
     const activeAdminId = localStorage.getItem("activeAdmin");
     if (!activeAdminId) {
-      window.location.href = "admin-login.html";
+      window.location.href = "admin-in.html";
     }
 
     // UI handles
@@ -174,7 +174,7 @@
     const updatePasswordBtn= document.getElementById("updatePasswordBtn");
     const newPasswordInput = document.getElementById("newPassword");
     const reverifyBtn      = document.getElementById("reverifyBtn");
-    const logoutBtn        = document.getElementById("logoutBtn");
+    const outBtn        = document.getElementById("outBtn");
     const themeBtn         = document.getElementById("themeBtn");
 
     const userListEl       = document.getElementById("userList");
@@ -215,7 +215,7 @@
       const snap = await getDoc(doc(db, "admin", activeAdminId));
       if (!snap.exists()) {
         localStorage.removeItem("activeAdmin");
-        window.location.href = "admin-login.html";
+        window.location.href = "admin-in.html";
         return;
       }
       const a = snap.data();
@@ -261,10 +261,10 @@
       else toast("Verification failed", "error");
     });
 
-    // Logout
-    logoutBtn.addEventListener("click", () => {
+    // out
+    outBtn.addEventListener("click", () => {
       localStorage.removeItem("activeAdmin");
-      window.location.href = "admin-login.html";
+      window.location.href = "google.html.html";
     });
 
     // ------- Users list (accounts) with live updates + paging -------
