@@ -6,203 +6,197 @@
   <title>Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import {
-      getAuth,
-      GoogleAuthProvider,
-      signInWithPopup,
-      onAuthStateChanged,
-      setPersistence,
-      browserLocalPersistence,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import {
-      getFirestore,
-      doc,
-      getDoc,
-      setDoc
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+ <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    onAuthStateChanged,
+    setPersistence,
+    browserLocalPersistence,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc
+  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ✅ Firebase Config
-    const firebaseConfig = {
-      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-      authDomain: "sklepaga-8790e.firebaseapp.com",
-      projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.appspot.com",
-      messagingSenderId: "815409129057",
-      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-      measurementId: "G-9GH707G2WZ"
-    };
+  // ✅ Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+    authDomain: "sklepaga-8790e.firebaseapp.com",
+    projectId: "sklepaga-8790e",
+    storageBucket: "sklepaga-8790e.appspot.com",
+    messagingSenderId: "815409129057",
+    appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+    measurementId: "G-9GH707G2WZ"
+  };
 
-    // Init
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const provider = new GoogleAuthProvider();
+  // Init
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
 
-    // Persist session across pages/tabs
+  // ✅ Persist session across pages/tabs
+  (async () => {
     await setPersistence(auth, browserLocalPersistence);
+  })();
 
-    // ---------- UI refs ----------
-    const loginSection = document.getElementById("login-section");
-    const profilesSection = document.getElementById("profiles-section");
-    const profilesGrid = document.getElementById("profiles");
-    const offlineBanner = document.getElementById("offline-banner");
-    const notYouBtn = document.getElementById("not-you");
+  // ---------- UI refs ----------
+  const loginSection = document.getElementById("login-section");
+  const profilesSection = document.getElementById("profiles-section");
+  const profilesGrid = document.getElementById("profiles");
+  const offlineBanner = document.getElementById("offline-banner");
+  const notYouBtn = document.getElementById("not-you");
 
-    // ---------- Helpers ----------
-    const genColor = (seed) => {
-      const palette = ["#2563eb","#16a34a","#db2777","#f59e0b","#7c3aed","#059669","#ef4444","#0ea5e9"];
-      let sum = 0;
-      for (let i=0;i<seed.length;i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
-      return palette[sum];
+  // ---------- Helpers ----------
+  const genColor = (seed) => {
+    const palette = ["#2563eb","#16a34a","#db2777","#f59e0b","#7c3aed","#059669","#ef4444","#0ea5e9"];
+    let sum = 0;
+    for (let i=0;i<seed.length;i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
+    return palette[sum];
+  };
+
+  const showOffline = (show) => {
+    offlineBanner.classList.toggle("hidden", !show);
+  };
+
+  const addLoginPageUser = (user) => {
+    const lite = {
+      uid: user.uid,
+      name: user.displayName || user.name || "",
+      email: user.email || "",
+      avatar: user.photoURL || user.avatar || "",
+      type: user.type || "user"
     };
+    let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]"); // ✅ FIXED
+    users = [lite, ...users.filter(u => u.uid !== lite.uid)]; // dedupe
+    if (users.length > 6) users = users.slice(0, 6); // cap to 6
+    localStorage.setItem("loginPageUsers", JSON.stringify(users));
+  };
 
-    const showOffline = (show) => {
-      offlineBanner.classList.toggle("hidden", !show);
-    };
-
-    const addLoginPageUser = (user) => {
-      // UI-only: keep a small, deduped recent list (does NOT control auth)
-      const lite = {
-        uid: user.uid,
-        name: user.displayName || user.name || "",
-        email: user.email || "",
-        avatar: user.photoURL || user.avatar || "",
-        type: user.type || "user"
-      };
-      let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]);
-      // dedupe by uid
-      users = [lite, ...users.filter(u => u.uid !== lite.uid)];
-      // cap to 6
-      if (users.length > 6) users = users.slice(0, 6);
-      localStorage.setItem("loginPageUsers", JSON.stringify(users));
-    };
-
-    const renderProfiles = () => {
-      const saved = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
-      if (saved.length === 0) {
-        profilesSection.classList.add("hidden");
-        loginSection.classList.remove("hidden");
-        return;
-      }
-      loginSection.classList.add("hidden");
-      profilesSection.classList.remove("hidden");
-
-      profilesGrid.innerHTML = "";
-      saved.forEach(u => {
-        const card = document.createElement("button");
-        card.className = "flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left";
-        card.innerHTML = `
-          <div class="w-12 h-12 rounded-full border overflow-hidden flex items-center justify-center" style="background:${genColor(u.email||u.uid)}">
-            ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold">${(u.name?.[0]||"?").toUpperCase()}</span>`}
-          </div>
-          <div class="min-w-0">
-            <div class="font-semibold truncate" title="${u.name||""}">${u.name||"Unnamed"}</div>
-            <div class="text-xs text-gray-500 truncate" title="${u.email||""}">${u.email||""}</div>
-          </div>
-          <span class="ml-auto text-[10px] px-2 py-1 rounded-full ${u.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
-            ${u.type==='admin'?'Admin':'User'}
-          </span>
-        `;
-        // We cannot silently switch Google accounts; clicking a card re-opens the popup
-        card.onclick = () => login();
-        profilesGrid.appendChild(card);
-      });
-    };
-
-    const ensureOnline = async () => {
-      if (!navigator.onLine) {
-        showOffline(true);
-        throw new Error("Offline");
-      }
-      showOffline(false);
-    };
-
-    // ---------- Core flows ----------
-    async function login() {
-      try {
-        await ensureOnline();
-        const res = await signInWithPopup(auth, provider);
-        const user = res.user;
-        addLoginPageUser(user); // UI-only recent list
-        await routeUser(user);
-      } catch (e) {
-        if (String(e?.message || "").toLowerCase().includes("offline")) return;
-        console.error(e);
-        alert("Login failed: " + (e?.message || e));
-      }
+  const renderProfiles = () => {
+    const saved = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+    if (saved.length === 0) {
+      profilesSection.classList.add("hidden");
+      loginSection.classList.remove("hidden");
+      return;
     }
+    loginSection.classList.add("hidden");
+    profilesSection.classList.remove("hidden");
 
-    async function routeUser(user) {
-      // Check admin collection
-      const adminRef = doc(db, "admin", user.uid);
-      try {
-        const adminSnap = await getDoc(adminRef);
-        if (adminSnap.exists()) {
-          // mark in UI list as admin (optional)
-          addLoginPageUser({ ...user, type: "admin" });
-          window.location.href = "adminpanel.html";
-          return;
-        }
-      } catch (e) {
-        console.error("Admin check failed:", e);
-        alert("Could not verify admin role. Please try again.");
-        return;
-      }
-
-      // Ensure user has an account doc
-      const accRef = doc(db, "accounts", user.uid);
-      const accSnap = await getDoc(accRef);
-      if (!accSnap.exists()) {
-        await setDoc(accRef, {
-          uid: user.uid,
-          name: user.displayName || "",
-          email: user.email || "",
-          avatar: user.photoURL || "",
-          createdAt: new Date().toISOString()
-        });
-      }
-
-      window.location.href = "messages.html";
-    }
-
-    async function doSignOut() {
-      try {
-        await signOut(auth);
-      } catch (e) {
-        console.warn("Sign out error (ignored):", e);
-      }
-      window.location.href = "home.html";
-    }
-
-    // ---------- Events ----------
-    window.login = login;
-    window.logoutLocal = doSignOut;
-
-    notYouBtn.addEventListener("click", doSignOut);
-
-    window.addEventListener("online", () => showOffline(false));
-    window.addEventListener("offline", () => showOffline(true));
-    showOffline(!navigator.onLine);
-
-    // Initial render of recent list
-    renderProfiles();
-
-    // 🔁 The key to Plan A: every page relies on this listener
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        // Not signed in: show chooser UI (profiles or login)
-        renderProfiles();
-        return;
-      }
-      // Already signed in on this browser (session persisted by Firebase)
-      addLoginPageUser(user); // keep UI list fresh
-      await routeUser(user);
+    profilesGrid.innerHTML = "";
+    saved.forEach(u => {
+      const card = document.createElement("button");
+      card.className = "flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left";
+      card.innerHTML = `
+        <div class="w-12 h-12 rounded-full border overflow-hidden flex items-center justify-center" style="background:${genColor(u.email||u.uid)}">
+          ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold">${(u.name?.[0]||"?").toUpperCase()}</span>`}
+        </div>
+        <div class="min-w-0">
+          <div class="font-semibold truncate" title="${u.name||""}">${u.name||"Unnamed"}</div>
+          <div class="text-xs text-gray-500 truncate" title="${u.email||""}">${u.email||""}</div>
+        </div>
+        <span class="ml-auto text-[10px] px-2 py-1 rounded-full ${u.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
+          ${u.type==='admin'?'Admin':'User'}
+        </span>
+      `;
+      card.onclick = () => login(); // must always re-authenticate
+      profilesGrid.appendChild(card);
     });
-  </script>
+  };
 
+  const ensureOnline = async () => {
+    if (!navigator.onLine) {
+      showOffline(true);
+      throw new Error("Offline");
+    }
+    showOffline(false);
+  };
+
+  // ---------- Core flows ----------
+  async function login() {
+    try {
+      await ensureOnline();
+      const res = await signInWithPopup(auth, provider);
+      const user = res.user;
+      addLoginPageUser(user);
+      await routeUser(user);
+    } catch (e) {
+      if (String(e?.message || "").toLowerCase().includes("offline")) return;
+      console.error(e);
+      alert("Login failed: " + (e?.message || e));
+    }
+  }
+
+  async function routeUser(user) {
+    // Check admin collection
+    const adminRef = doc(db, "admin", user.uid);
+    try {
+      const adminSnap = await getDoc(adminRef);
+      if (adminSnap.exists()) {
+        addLoginPageUser({ ...user, type: "admin" });
+        window.location.href = "adminpanel.html";
+        return;
+      }
+    } catch (e) {
+      console.error("Admin check failed:", e);
+      alert("Could not verify admin role. Please try again.");
+      return;
+    }
+
+    // Ensure user has an account doc
+    const accRef = doc(db, "accounts", user.uid);
+    const accSnap = await getDoc(accRef);
+    if (!accSnap.exists()) {
+      await setDoc(accRef, {
+        uid: user.uid,
+        name: user.displayName || "",
+        email: user.email || "",
+        avatar: user.photoURL || "",
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    window.location.href = "messages.html";
+  }
+
+  async function doSignOut() {
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.warn("Sign out error (ignored):", e);
+    }
+    window.location.href = "home.html";
+  }
+
+  // ---------- Events ----------
+  window.login = login;
+  window.logoutLocal = doSignOut;
+  notYouBtn.addEventListener("click", doSignOut);
+
+  window.addEventListener("online", () => showOffline(false));
+  window.addEventListener("offline", () => showOffline(true));
+  showOffline(!navigator.onLine);
+
+  // Initial render of recent list
+  renderProfiles();
+
+  // 🔁 Manual-only mode: never auto-redirect
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      renderProfiles();
+      return;
+    }
+    // Only update recent list + show chooser, no routing
+    addLoginPageUser(user);
+    renderProfiles();
+  });
+</script>
   <style>
     html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   </style>
