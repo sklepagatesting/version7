@@ -63,26 +63,24 @@
 
     async function continueWithProfile(user) {
       try {
-        // validate from firestore
         const adminRef = doc(db, "admin", user.uid);
         const adminSnap = await getDoc(adminRef);
 
         if (adminSnap.exists()) {
-          const password = prompt("Enter your admin password:");
-          if (password === adminSnap.data().password) {
-            localStorage.setItem("currentUser", JSON.stringify(user));
-            window.location.href = "adminpanel.html";
-            return;
-          } else {
-            alert("Wrong password!");
-            return;
-          }
+          // show admin password field
+          document.getElementById("admin-password-section").classList.remove("hidden");
+          document.getElementById("profiles-section").classList.add("hidden");
+          document.getElementById("login-section").classList.add("hidden");
+          document.getElementById("admin-uid").value = user.uid; // keep track
+          saveUserToLocal(user);
+          return;
         }
 
+        // check accounts
         const accRef = doc(db, "accounts", user.uid);
         const accSnap = await getDoc(accRef);
         if (accSnap.exists()) {
-          localStorage.setItem("currentUser", JSON.stringify(user));
+          saveUserToLocal(user);
           window.location.href = "messages.html";
         } else {
           alert("Account no longer exists. Please sign in again.");
@@ -95,13 +93,36 @@
       }
     }
 
+    async function verifyAdminPassword() {
+      const uid = document.getElementById("admin-uid").value;
+      const password = document.getElementById("admin-password").value;
+
+      if (!password) {
+        alert("Please enter your admin password.");
+        return;
+      }
+
+      try {
+        const adminRef = doc(db, "admin", uid);
+        const adminSnap = await getDoc(adminRef);
+
+        if (adminSnap.exists() && password === adminSnap.data().password) {
+          window.location.href = "adminpanel.html";
+        } else {
+          alert("Incorrect password.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error verifying password.");
+      }
+    }
+
     // ============= LOGIN ===============
     async function login() {
       try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
 
-        // check admin first
         const adminRef = doc(db, "admin", user.uid);
         const adminSnap = await getDoc(adminRef);
         if (adminSnap.exists()) {
@@ -114,12 +135,9 @@
           };
           saveUserToLocal(userData);
 
-          const password = prompt("Enter your admin password:");
-          if (password === adminSnap.data().password) {
-            window.location.href = "adminpanel.html";
-          } else {
-            alert("Wrong password!");
-          }
+          document.getElementById("admin-password-section").classList.remove("hidden");
+          document.getElementById("login-section").classList.add("hidden");
+          document.getElementById("admin-uid").value = user.uid;
           return;
         }
 
@@ -155,8 +173,7 @@
     }
 
     window.login = login;
-
-    // On load → render saved profiles
+    window.verifyAdminPassword = verifyAdminPassword;
     window.onload = renderSavedProfiles;
   </script>
 </head>
@@ -180,6 +197,14 @@
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
         <span class="font-medium">Sign in with Google</span>
       </button>
+    </div>
+
+    <!-- Admin password -->
+    <div id="admin-password-section" class="hidden">
+      <input id="admin-uid" type="hidden">
+      <p class="mb-3 text-gray-700 font-medium">Enter Admin Password</p>
+      <input id="admin-password" type="password" placeholder="Password" class="border rounded-lg px-3 py-2 w-full mb-3">
+      <button onclick="verifyAdminPassword()" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Continue</button>
     </div>
 
     <p class="text-xs text-gray-500 mt-4">
