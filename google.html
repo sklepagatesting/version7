@@ -1,233 +1,217 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<!DOCTYPE html><html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Login</title>
   <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-  import {
-    getAuth,
-    GoogleAuthProvider,
-    signInWithPopup,
-    onAuthStateChanged,
-    setPersistence,
-    browserLocalPersistence,
-    signOut
-  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-  import {
-    getFirestore,
-    doc,
-    getDoc,
-    setDoc
-  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      onAuthStateChanged,
+      setPersistence,
+      browserLocalPersistence,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";const firebaseConfig = {
+  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+  authDomain: "sklepaga-8790e.firebaseapp.com",
+  projectId: "sklepaga-8790e",
+  storageBucket: "sklepaga-8790e.appspot.com",
+  messagingSenderId: "815409129057",
+  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+  measurementId: "G-9GH707G2WZ"
+};
 
-  // ✅ Firebase Config
-  const firebaseConfig = {
-    apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-    authDomain: "sklepaga-8790e.firebaseapp.com",
-    projectId: "sklepaga-8790e",
-    storageBucket: "sklepaga-8790e.appspot.com",
-    messagingSenderId: "815409129057",
-    appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-    measurementId: "G-9GH707G2WZ"
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+await setPersistence(auth, browserLocalPersistence);
+
+const loginSection = document.getElementById("login-section");
+const profilesSection = document.getElementById("profiles-section");
+const profilesGrid = document.getElementById("profiles");
+const offlineBanner = document.getElementById("offline-banner");
+const notYouBtn = document.getElementById("not-you");
+
+const genColor = (seed) => {
+  const palette = ["#2563eb","#16a34a","#db2777","#f59e0b","#7c3aed","#059669","#ef4444","#0ea5e9"];
+  let sum = 0;
+  for (let i=0;i<seed.length;i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
+  return palette[sum];
+};
+
+const showOffline = (show) => offlineBanner.classList.toggle("hidden", !show);
+
+const addLoginPageUser = (user) => {
+  const lite = {
+    uid: user.uid,
+    name: user.displayName || user.name || "",
+    email: user.email || "",
+    avatar: user.photoURL || user.avatar || "",
+    type: user.type || "user"
   };
+  let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+  users = [lite, ...users.filter(u => u.uid !== lite.uid)];
+  if (users.length > 6) users = users.slice(0, 6);
+  localStorage.setItem("loginPageUsers", JSON.stringify(users));
+};
 
-  // Init
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  const provider = new GoogleAuthProvider();
+const renderProfiles = () => {
+  const saved = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+  if (saved.length === 0) {
+    profilesSection.classList.add("hidden");
+    loginSection.classList.remove("hidden");
+    return;
+  }
+  loginSection.classList.add("hidden");
+  profilesSection.classList.remove("hidden");
+  profilesGrid.innerHTML = "";
 
-  // Persist session across pages/tabs
-  (async () => {
-    await setPersistence(auth, browserLocalPersistence);
-  })();
+  saved.forEach(u => {
+    const card = document.createElement("button");
+    card.className = "flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left relative";
+    card.innerHTML = `
+      <div class="w-12 h-12 rounded-full border overflow-hidden flex items-center justify-center" style="background:${genColor(u.email||u.uid)}">
+        ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold">${(u.name?.[0]||"?").toUpperCase()}</span>`}
+      </div>
+      <div class="min-w-0">
+        <div class="font-semibold truncate" title="${u.name||""}">${u.name||"Unnamed"}</div>
+        <div class="text-xs text-gray-500 truncate" title="${u.email||""}">${u.email||""}</div>
+      </div>
+      <span class="ml-auto text-[10px] px-2 py-1 rounded-full ${u.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
+        ${u.type==='admin'?'Admin':'User'}
+      </span>
+    `;
 
-  // ---------- UI refs ----------
-  const loginSection = document.getElementById("login-section");
-  const profilesSection = document.getElementById("profiles-section");
-  const profilesGrid = document.getElementById("profiles");
-  const offlineBanner = document.getElementById("offline-banner");
-  const notYouBtn = document.getElementById("not-you");
+    if (auth.currentUser && auth.currentUser.uid === u.uid) {
+      const badge = document.createElement("span");
+      badge.innerHTML = "✓";
+      badge.className = "absolute top-2 right-2 bg-green-500 text-white rounded-full text-xs px-1";
+      card.appendChild(badge);
+    }
 
-  // ---------- Helpers ----------
-  const genColor = (seed) => {
-    const palette = ["#2563eb","#16a34a","#db2777","#f59e0b","#7c3aed","#059669","#ef4444","#0ea5e9"];
-    let sum = 0;
-    for (let i=0;i<seed.length;i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
-    return palette[sum];
-  };
+    card.onclick = () => login();
+    profilesGrid.appendChild(card);
+  });
+};
 
-  const showOffline = (show) => {
-    offlineBanner.classList.toggle("hidden", !show);
-  };
+const ensureOnline = async () => {
+  if (!navigator.onLine) {
+    showOffline(true);
+    throw new Error("Offline");
+  }
+  showOffline(false);
+};
 
-  const addLoginPageUser = (user) => {
-    const lite = {
+async function login() {
+  try {
+    await ensureOnline();
+    const res = await signInWithPopup(auth, provider);
+    const user = res.user;
+    addLoginPageUser(user);
+    await routeUser(user);
+  } catch (e) {
+    if (String(e?.message || "").toLowerCase().includes("offline")) return;
+    console.error(e);
+    alert("Login failed: " + (e?.message || e));
+  }
+}
+
+async function routeUser(user) {
+  const adminRef = doc(db, "admin", user.uid);
+  try {
+    const adminSnap = await getDoc(adminRef);
+    if (adminSnap.exists()) {
+      addLoginPageUser({ ...user, type: "admin" });
+      window.location.href = "adminpanel.html";
+      return;
+    }
+  } catch (e) {
+    console.error("Admin check failed:", e);
+    alert("Could not verify admin role. Please try again.");
+    return;
+  }
+
+  const accRef = doc(db, "accounts", user.uid);
+  const accSnap = await getDoc(accRef);
+  if (!accSnap.exists()) {
+    await setDoc(accRef, {
       uid: user.uid,
-      name: user.displayName || user.name || "",
+      name: user.displayName || "",
       email: user.email || "",
-      avatar: user.photoURL || user.avatar || "",
-      type: user.type || "user"
-    };
-    let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
-    users = [lite, ...users.filter(u => u.uid !== lite.uid)];
-    if (users.length > 6) users = users.slice(0, 6);
-    localStorage.setItem("loginPageUsers", JSON.stringify(users));
-  };
-
-  const renderProfiles = () => {
-    const saved = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
-    if (saved.length === 0) {
-      profilesSection.classList.add("hidden");
-      loginSection.classList.remove("hidden");
-      return;
-    }
-    loginSection.classList.add("hidden");
-    profilesSection.classList.remove("hidden");
-
-    profilesGrid.innerHTML = "";
-    saved.forEach(u => {
-      const card = document.createElement("button");
-      card.className = "flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left";
-      card.innerHTML = `
-        <div class="w-12 h-12 rounded-full border overflow-hidden flex items-center justify-center" style="background:${genColor(u.email||u.uid)}">
-          ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold">${(u.name?.[0]||"?").toUpperCase()}</span>`}
-        </div>
-        <div class="min-w-0">
-          <div class="font-semibold truncate" title="${u.name||""}">${u.name||"Unnamed"}</div>
-          <div class="text-xs text-gray-500 truncate" title="${u.email||""}">${u.email||""}</div>
-        </div>
-        <span class="ml-auto text-[10px] px-2 py-1 rounded-full ${u.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
-          ${u.type==='admin'?'Admin':'User'}
-        </span>
-      `;
-      card.onclick = () => login();
-      profilesGrid.appendChild(card);
+      avatar: user.photoURL || "",
+      createdAt: new Date().toISOString()
     });
-  };
-
-  const ensureOnline = async () => {
-    if (!navigator.onLine) {
-      showOffline(true);
-      throw new Error("Offline");
-    }
-    showOffline(false);
-  };
-
-  // ---------- Core flows ----------
-  async function login() {
-    try {
-      await ensureOnline();
-      const res = await signInWithPopup(auth, provider);
-      const user = res.user;
-      addLoginPageUser(user);
-      await routeUser(user);
-    } catch (e) {
-      if (String(e?.message || "").toLowerCase().includes("offline")) return;
-      console.error(e);
-      alert("Login failed: " + (e?.message || e));
-    }
   }
+  window.location.href = "messages.html";
+}
 
-  async function routeUser(user) {
-    const adminRef = doc(db, "admin", user.uid);
-    try {
-      const adminSnap = await getDoc(adminRef);
-      if (adminSnap.exists()) {
-        addLoginPageUser({ ...user, type: "admin" });
-        window.location.href = "adminpanel.html";
-        return;
-      }
-    } catch (e) {
-      console.error("Admin check failed:", e);
-      alert("Could not verify admin role. Please try again.");
-      return;
-    }
+async function doSignOut() {
+  try { await signOut(auth); } catch (e) { console.warn("Sign out error (ignored):", e); }
+  window.location.href = "home.html";
+}
 
-    const accRef = doc(db, "accounts", user.uid);
-    const accSnap = await getDoc(accRef);
-    if (!accSnap.exists()) {
-      await setDoc(accRef, {
-        uid: user.uid,
-        name: user.displayName || "",
-        email: user.email || "",
-        avatar: user.photoURL || "",
-        createdAt: new Date().toISOString()
-      });
-    }
-    window.location.href = "messages.html";
-  }
+window.login = login;
+window.logoutLocal = doSignOut;
+notYouBtn.addEventListener("click", doSignOut);
 
-  async function doSignOut() {
-    try {
-      await signOut(auth);
-    } catch (e) {
-      console.warn("Sign out error (ignored):", e);
-    }
-    window.location.href = "home.html";
-  }
+window.addEventListener("online", () => showOffline(false));
+window.addEventListener("offline", () => showOffline(true));
+showOffline(!navigator.onLine);
 
-  // ---------- Events ----------
-  window.login = login;
-  window.logoutLocal = doSignOut;
+renderProfiles();
 
-  notYouBtn.addEventListener("click", doSignOut);
-
-  window.addEventListener("online", () => showOffline(false));
-  window.addEventListener("offline", () => showOffline(true));
-  showOffline(!navigator.onLine);
-
-  renderProfiles();
-
-  onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, (user) => {
   if (!user) {
     renderProfiles();
     return;
   }
-  // User is signed in, just update the profile list
   addLoginPageUser(user);
-  renderProfiles();  // show chooser instead of redirect
+  renderProfiles();
 });
-</script>
+
+  </script>
   <style>
     html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-
-  <div id="offline-banner" class="fixed top-0 inset-x-0 z-50 hidden">
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">  <div id="offline-banner" class="fixed top-0 inset-x-0 z-50 hidden">
     <div class="mx-auto max-w-xl bg-yellow-100 text-yellow-800 text-sm px-4 py-2 rounded-b-lg shadow">
       You appear to be offline. Some actions may not work. Please check your internet connection.
     </div>
+  </div>  <div class="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
+    <h1 class="text-2xl font-bold text-center">Sign in with Google</h1><div id="login-section" class="mt-6">
+  <button onclick="login()" class="w-full flex items-center justify-center gap-2 border px-4 py-3 rounded-xl hover:bg-gray-50">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="">
+    <span>Sign in with Google</span>
+  </button>
+  <p class="text-[11px] text-gray-500 text-center mt-3">
+    By continuing, you agree to our Terms & Privacy Policy.
+  </p>
+</div>
+
+<div id="profiles-section" class="mt-6 mb-3 hidden">
+  <div id="profiles" class="flex flex-col gap-3"></div>
+  <div class="flex flex-col items-center justify-center mt-4">
+    <button onclick="login()" class="w-full max-w-xs text-black px-4 py-3 rounded-xl hover:bg-gray-50 text-center">
+      Use another account
+    </button>
+    <button id="not-you" class="text-red-600 text-sm hover:underline mt-2">Sign out</button>
   </div>
+  <p class="text-[11px] text-gray-500 text-center mt-3">
+    Selecting a profile will trigger Google’s account chooser and continue.
+  </p>
+</div>
 
-  <div class="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
-    <h1 class="text-2xl font-bold text-center">Sign in with Google</h1>
-
-    <div id="login-section" class="mt-6">
-      <button onclick="login()" class="w-full flex items-center justify-center gap-2 border px-4 py-3 rounded-xl hover:bg-gray-50">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="">
-        <span>Sign in with Google</span>
-      </button>
-      <p class="text-[11px] text-gray-500 text-center mt-3">
-        By continuing, you agree to our Terms & Privacy Policy.
-      </p>
-    </div>
-
-    <div id="profiles-section" class="mt-6 mb-3 hidden">
-      <div id="profiles" class="flex flex-col gap-3"></div>
-      <div class="flex flex-col items-center justify-center mt-4">
-        <button onclick="login()" class="w-full max-w-xs text-black px-4 py-3 rounded-xl hover:bg-gray-50 text-center">
-          Use another account
-        </button>
-        <button id="not-you" class="text-red-600 text-sm hover:underline mt-2">Sign out</button>
-      </div>
-      <p class="text-[11px] text-gray-500 text-center mt-3">
-        Selecting a profile will trigger Google’s account chooser and continue.
-      </p>
-    </div>
   </div>
 </body>
 </html>
