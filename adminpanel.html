@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <meta name="color-scheme" content="light dark" />
   <style>
-    .glass { background: rgba(255,255,255,.7); backdrop-filter: blur(8px); }
     .skeleton { background: linear-gradient(90deg,#eee 25%,#f5f5f5 37%,#eee 63%); background-size: 400% 100%; animation: sh 1.2s ease-in-out infinite; }
     @keyframes sh { 0%{background-position: 100% 0}100%{background-position: -100% 0} }
   </style>
@@ -15,18 +14,17 @@
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
   <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-blue-600 text-white grid place-items-center font-bold">A</div>
-        <div>
-          <h1 class="text-base font-semibold leading-tight">Admin Panel</h1>
-          <p class="text-xs text-gray-500">Manage users & your admin account</p>
-        </div>
-      </div>
-
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <h1 class="text-lg font-semibold">Administrator</h1>
       <div class="flex items-center gap-2">
-        <button id="themeBtn" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50">Theme</button>
-        <button id="outBtn" class="px-3 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600">out</button>
+        <a href="#" id="adminMessagesLink" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M3.5 2.75a.75.75 0 00-1.5 0v14.5a.75.75 0 001.5 0v-4.392l1.657-.348a6.441 6.441 0 015.686 0l2.311.482 1.657-.348A6.441 6.441 0 0118 12.25v-2.5a6.441 6.441 0 01-1.843-4.252l-1.657-.348-2.311.482-1.657-.348a6.441 6.441 0 01-5.686 0L3.5 5.142V2.75z"></path></svg>
+          <span class="hidden sm:inline">Admin Messages</span>
+        </a>
+        <button id="outBtn" class="px-3 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 flex items-center gap-2">
+           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z" clip-rule="evenodd"></path><path fill-rule="evenodd" d="M16.72 9.22a.75.75 0 011.06 0l2.25 2.25a.75.75 0 010 1.06l-2.25 2.25a.75.75 0 11-1.06-1.06L17.94 12l-1.22-1.22a.75.75 0 010-1.06z" clip-rule="evenodd"></path></svg>
+           <span class="hidden sm:inline">Sign out</span>
+        </button>
       </div>
     </div>
   </header>
@@ -47,9 +45,8 @@
       <div class="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
         <h2 class="text-lg font-semibold">User Accounts</h2>
         <div class="flex items-center gap-2">
-          <input id="searchInput" type="search" placeholder="Search name or email"
-                 class="border rounded-lg px-3 py-2 w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <select id="sortSelect" class="border rounded-lg px-3 py-2">
+          <input id="searchInput" type="search" placeholder="Search name or email" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 p-2.5" />
+          <select id="sortSelect" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
             <option value="name-asc">Name A–Z</option>
             <option value="name-desc">Name Z–A</option>
             <option value="time-desc">Newest</option>
@@ -58,39 +55,15 @@
         </div>
       </div>
       <p class="text-xs text-gray-500 mt-1">
-        Use the buttons to manage user accounts. "Promote" moves a user from the accounts collection to the admin collection.
+        Use the buttons to manage user accounts. The shield icon promotes a user to an admin.
       </p>
     </section>
 
     <section>
       <div id="userList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="bg-white rounded-2xl border border-gray-200 p-4">
-          <div class="w-14 h-14 rounded-full skeleton mb-3"></div>
-          <div class="h-5 rounded skeleton w-40 mb-2"></div>
-          <div class="h-4 rounded skeleton w-56 mb-4"></div>
-          <div class="flex gap-2">
-            <div class="h-9 w-24 rounded skeleton"></div>
-            <div class="h-9 w-28 rounded skeleton"></div>
-          </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4">
-          <div class="w-14 h-14 rounded-full skeleton mb-3"></div>
-          <div class="h-5 rounded skeleton w-40 mb-2"></div>
-          <div class="h-4 rounded skeleton w-56 mb-4"></div>
-          <div class="flex gap-2">
-            <div class="h-9 w-24 rounded skeleton"></div>
-            <div class="h-9 w-28 rounded skeleton"></div>
-          </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4">
-          <div class="w-14 h-14 rounded-full skeleton mb-3"></div>
-          <div class="h-5 rounded skeleton w-40 mb-2"></div>
-          <div class="h-4 rounded skeleton w-56 mb-4"></div>
-          <div class="flex gap-2">
-            <div class="h-9 w-24 rounded skeleton"></div>
-            <div class="h-9 w-28 rounded skeleton"></div>
-          </div>
-        </div>
+        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
+        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
+        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
       </div>
 
       <div class="flex justify-center mt-6">
@@ -111,7 +84,7 @@
       onSnapshot, query, orderBy, limit, startAfter, getDocs
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // 🔹 Firebase config (matches your project)
+    // 🔹 Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
       authDomain: "sklepaga-8790e.firebaseapp.com",
@@ -126,70 +99,83 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    let activeAdminId = null; // Declare a variable to hold the secure UID
+    let activeAdmin = null;
 
     // UI handles
     const adminInfoDiv = document.getElementById("adminInfo");
     const outBtn = document.getElementById("outBtn");
-    const themeBtn = document.getElementById("themeBtn");
-
+    const adminMessagesLink = document.getElementById("adminMessagesLink");
     const userListEl = document.getElementById("userList");
     const searchInput = document.getElementById("searchInput");
     const sortSelect = document.getElementById("sortSelect");
     const loadMoreBtn = document.getElementById("loadMoreBtn");
-
-    // Toast
     const toastEl = document.getElementById("toast");
     const toastBody = document.getElementById("toastBody");
+
+    // --- Helpers ---
     function toast(msg, type = "success") {
       toastBody.className = "px-4 py-2 rounded-xl text-white shadow-lg " + (type === "success" ? "bg-green-600" : type === "warn" ? "bg-amber-600" : "bg-red-600");
       toastBody.textContent = msg;
       toastEl.classList.remove("hidden");
-      setTimeout(() => toastEl.classList.add("hidden"), 2000);
+      setTimeout(() => toastEl.classList.add("hidden"), 2500);
     }
 
-    // Dark/Light
-    themeBtn.addEventListener("click", () => {
-      document.documentElement.classList.toggle("dark");
-      document.body.classList.toggle("bg-gray-900");
-      document.body.classList.toggle("text-gray-100");
-    });
-
-    // Logout securely
     outBtn.addEventListener("click", async () => {
       await signOut(auth);
-      // onAuthStateChanged will handle the redirect
     });
-    
-    // ------- Admin Info (only self) -------
-    async function loadAdminInfo(uid) {
-      const snap = await getDoc(doc(db, "admin", uid));
-      if (!snap.exists()) {
-        // This user is no longer an admin; log them out
-        await signOut(auth);
-        return;
-      }
-      const a = snap.data();
-      adminInfoDiv.innerHTML = `
-        <img src="${a.avatar || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(a.name || 'A')}"
-             class="w-16 h-16 rounded-full border" alt="avatar">
-        <div class="min-w-0 flex-1">
-          <h3 class="font-semibold truncate">${a.name || "(no name)"}</h3>
-          <p class="text-gray-600 truncate">${a.email || ""}</p>
-          <p class="text-xs text-gray-500 mt-1">UID: <span class="font-mono">${a.uid || uid}</span></p>
-        </div>
-        <div class="hidden sm:flex gap-2">
-          <button class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50" id="copyUidBtn">Copy UID</button>
-        </div>
-      `;
-      const copyBtn = document.getElementById("copyUidBtn");
-      if (copyBtn) copyBtn.onclick = () => {
-        navigator.clipboard.writeText(a.uid || uid);
-        toast("UID copied");
-      };
+
+    // --- Admin Actions ---
+    async function resignAdminRole() {
+        if (!activeAdmin || !confirm("Are you sure you want to resign your admin role? You will be signed out and will lose access to this panel.")) return;
+        
+        try {
+            const adminRef = doc(db, "admin", activeAdmin.uid);
+            const adminSnap = await getDoc(adminRef);
+            if (!adminSnap.exists()) throw new Error("Admin document not found.");
+
+            const adminData = adminSnap.data();
+            const accountData = {
+                uid: adminData.uid,
+                name: adminData.name || activeAdmin.displayName || "",
+                email: adminData.email || activeAdmin.email || "",
+                avatar: adminData.avatar || activeAdmin.photoURL || "",
+                createdAt: adminData.createdAt || new Date().toISOString(),
+            };
+            
+            await setDoc(doc(db, "accounts", activeAdmin.uid), accountData);
+            await deleteDoc(adminRef);
+
+            toast("Admin role resigned. Signing out...");
+            setTimeout(() => signOut(auth), 1500);
+        } catch (e) {
+            console.error("Failed to resign admin role:", e);
+            toast("An error occurred. Could not resign admin role.", "error");
+        }
     }
 
-    // ------- Users list (accounts) with live updates + paging -------
+    async function loadAdminInfo(user) {
+      adminMessagesLink.href = `messages.html?user=${user.uid}`;
+      adminInfoDiv.innerHTML = `
+        <img src="${user.photoURL || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(user.displayName || 'A')}"
+             class="w-16 h-16 rounded-full border" alt="avatar">
+        <div class="min-w-0 flex-1">
+          <h3 class="font-semibold truncate">${user.displayName || "(no name)"}</h3>
+          <p class="text-gray-600 truncate">${user.email || ""}</p>
+          <p class="text-xs text-gray-500 mt-1">UID: <span class="font-mono">${user.uid}</span></p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50" id="copyUidBtn">Copy UID</button>
+          <button class="px-3 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50" id="resignBtn">Resign Admin Role</button>
+        </div>
+      `;
+      document.getElementById("copyUidBtn").onclick = () => {
+        navigator.clipboard.writeText(user.uid);
+        toast("UID copied");
+      };
+      document.getElementById("resignBtn").onclick = resignAdminRole;
+    }
+
+    // --- Users List Management ---
     const PAGE_SIZE = 18;
     let cachedUsers = [];
     let lastDocSnap = null;
@@ -198,59 +184,53 @@
     function renderUsers(list) {
       userListEl.innerHTML = "";
       if (list.length === 0) {
-        userListEl.innerHTML = `<div class="text-center text-gray-500 col-span-full py-10">No users found.</div>`;
+        userListEl.innerHTML = `<div class="text-center text-gray-500 col-span-full py-10">No users found matching your criteria.</div>`;
         return;
       }
       list.forEach(u => {
         const card = document.createElement("div");
-        card.className = "bg-white rounded-2xl border border-gray-200 p-4";
+        card.className = "bg-white rounded-2xl border border-gray-200 p-4 flex flex-col";
         card.innerHTML = `
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 flex-1">
             <img src="${u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || 'U')}" class="w-14 h-14 rounded-full border" alt="avatar">
             <div class="min-w-0">
               <p class="font-semibold truncate">${u.name || "(no name)"}</p>
               <p class="text-sm text-gray-600 truncate">${u.email || ""}</p>
-              <p class="text-xs text-gray-500 mt-1">Joined: ${u.createdAt ? new Date(u.createdAt).toLocaleString() : "—"}</p>
+              <p class="text-xs text-gray-500 mt-1">Joined: ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</p>
             </div>
           </div>
-          <div class="mt-4 flex flex-col sm:flex-row gap-2">
-            <button class="px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 flex-1 promoteBtn">Add as admin</button>
-            <button class="px-3 py-2 rounded-lg border hover:bg-gray-50 flex-1 deleteBtn">Remove</button>
-            <button class="px-3 py-2 rounded-lg border hover:bg-gray-50 flex-1 messageBtn">Message</button>
+          <div class="mt-4 pt-4 border-t flex items-center justify-end gap-2">
+            <button title="Promote to Admin" class="promoteBtn w-9 h-9 grid place-items-center rounded-lg text-white bg-green-600 hover:bg-green-700">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>
+            </button>
+            <button title="Send Message" class="messageBtn w-9 h-9 grid place-items-center rounded-lg border hover:bg-gray-50">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M3.5 2A1.5 1.5 0 002 3.5v1.143a1.5 1.5 0 00.75 1.309l6.5 4.333c.414.275.986.275 1.4 0l6.5-4.333A1.5 1.5 0 0018 4.643V3.5A1.5 1.5 0 0016.5 2h-13z" /><path d="M2 8.252V16.5A1.5 1.5 0 003.5 18h13a1.5 1.5 0 001.5-1.5V8.252l-6.522 4.348a2.502 2.502 0 01-2.956 0L2 8.252z" /></svg>
+            </button>
+            <button title="Delete User" class="deleteBtn w-9 h-9 grid place-items-center rounded-lg text-red-600 border border-red-200 hover:bg-red-50">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193v-.443A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd" /></svg>
+            </button>
           </div>
         `;
         // Actions
         card.querySelector(".promoteBtn").onclick = async () => {
-          if (!confirm(`Are you sure you want to promote ${u.name || u.email} to admin?`)) return;
+          if (!confirm(`Promote ${u.name || u.email} to admin? They will be removed from the regular user list.`)) return;
           try {
             await setDoc(doc(db, "admin", u.uid), {
-              uid: u.uid,
-              name: u.name || "",
-              email: u.email || "",
-              avatar: u.avatar || "",
-              createdAt: new Date().toISOString(),
-              createdBy: activeAdminId
+              uid: u.uid, name: u.name || "", email: u.email || "", avatar: u.avatar || "",
+              createdAt: new Date().toISOString(), createdBy: activeAdmin.uid
             });
             await deleteDoc(doc(db, "accounts", u.uid));
             toast("Promoted to admin");
-          } catch (e) {
-            console.error(e);
-            toast("Promotion failed", "error");
-          }
+          } catch (e) { console.error(e); toast("Promotion failed", "error"); }
         };
         card.querySelector(".deleteBtn").onclick = async () => {
-          if (!confirm(`Are you sure you want to remove ${u.name || u.email}? This action cannot be undone.`)) return;
+          if (!confirm(`Are you sure you want to remove ${u.name || u.email}? This cannot be undone.`)) return;
           try {
             await deleteDoc(doc(db, "accounts", u.uid));
             toast("User removed");
-          } catch (e) {
-            console.error(e);
-            toast("Removal failed", "error");
-          }
+          } catch (e) { console.error(e); toast("Removal failed", "error"); }
         };
-        card.querySelector(".messageBtn").onclick = () => {
-          window.location.href = `messages.html?user=${u.uid}`;
-        };
+        card.querySelector(".messageBtn").onclick = () => { window.location.href = `messages.html?user=${u.uid}`; };
         userListEl.appendChild(card);
       });
     }
@@ -260,13 +240,11 @@
       let list = cachedUsers.filter(u =>
         (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q)
       );
-
       const sort = sortSelect.value;
       if (sort === "name-asc") list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       if (sort === "name-desc") list.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
       if (sort === "time-desc") list.sort((a, b) => (new Date(b.createdAt || 0)) - (new Date(a.createdAt || 0)));
       if (sort === "time-asc") list.sort((a, b) => (new Date(a.createdAt || 0)) - (new Date(b.createdAt || 0)));
-
       renderUsers(list);
     }
 
@@ -279,43 +257,40 @@
       unsubUsers = onSnapshot(q1, (snap) => {
         cachedUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
         lastDocSnap = snap.docs[snap.docs.length - 1] || null;
+        loadMoreBtn.style.display = snap.docs.length < PAGE_SIZE ? 'none' : 'inline-block';
         applySearchAndSort();
       });
     }
 
     loadMoreBtn.addEventListener("click", async () => {
-      if (!lastDocSnap) {
-        toast("No more users", "warn");
-        return;
-      }
+      if (!lastDocSnap) { toast("No more users", "warn"); return; }
       const q2 = query(collection(db, "accounts"), orderBy("createdAt", "desc"), startAfter(lastDocSnap), limit(PAGE_SIZE));
       const next = await getDocs(q2);
       const more = next.docs.map(d => ({ uid: d.id, ...d.data() }));
       if (more.length === 0) {
-        toast("No more users", "warn");
+        toast("No more users to load", "warn");
+        loadMoreBtn.style.display = 'none';
         return;
       }
       cachedUsers = cachedUsers.concat(more);
       lastDocSnap = next.docs[next.docs.length - 1] || null;
+      if (next.docs.length < PAGE_SIZE) loadMoreBtn.style.display = 'none';
       applySearchAndSort();
     });
 
     // 🔹 Securely manage user session and admin status
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // User is signed in, now verify if they are an admin
         const adminDoc = await getDoc(doc(db, "admin", user.uid));
         if (adminDoc.exists()) {
-          activeAdminId = user.uid;
-          loadAdminInfo(activeAdminId);
+          activeAdmin = user;
+          loadAdminInfo(activeAdmin);
           initialLoad();
         } else {
-          // Logged in, but not an admin; redirect
           alert("You are not authorized to view this page.");
-          await signOut(auth);
+          signOut(auth);
         }
       } else {
-        // No user is signed in; redirect to login
         window.location.href = "google.html";
       }
     });
