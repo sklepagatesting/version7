@@ -7,46 +7,60 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <meta name="color-scheme" content="light dark" />
   <style>
-    .skeleton { background: linear-gradient(90deg,#eee 25%,#f5f5f5 37%,#eee 63%); background-size: 400% 100%; animation: sh 1.2s ease-in-out infinite; }
+    .skeleton {
+      background: linear-gradient(90deg,#eee 25%,#f5f5f5 37%,#eee 63%);
+      background-size: 400% 100%;
+      animation: sh 1.2s ease-in-out infinite;
+    }
     @keyframes sh { 0%{background-position: 100% 0}100%{background-position: -100% 0} }
   </style>
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
+  <!-- Header -->
   <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <h1 class="text-lg font-semibold">Administrator</h1>
       <div class="flex items-center gap-2">
-        <a href="#" id="adminMessagesLink" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M11.25 4.5a.75.75 0 01.75.75v7.5a.75.75 0 01-1.5 0V5.25a.75.75 0 01.75-.75z" /><path fill-rule="evenodd" d="M9.447 2.106a.75.75 0 01.884-.254l5.65 1.413a.75.75 0 01.554.73l-.007 6.447L18.428 12l.006 8.525c.002.096-.025.188-.073.266a.75.75 0 01-.861.346l-5.65-1.413a.75.75 0 01-.554-.73l.007-6.447L5.572 12l-.006 8.525c-.002.096.025.188.073.266a.75.75 0 01-.861.346l-5.65-1.413A.75.75 0 010 19.349V3.525a.75.75 0 01.73-.73l5.65-1.413a.75.75 0 01.884.254L9.447 2.106zM12 2.25a.75.75 0 01.75.75v6.526l4.24-1.06a.75.75 0 01.88.253L20.2 11.5a.75.75 0 01-.2 1.054l-3.344 2.229c-1.353.902-3.085.842-4.38.167a.75.75 0 01-.762-1.312l.142-.072a.75.75 0 01.884-.254l2.25-.562a.75.75 0 00.554-.73l.007-6.447L13.5 3a.75.75 0 01.75-.75h-2.25z" clip-rule="evenodd" /></svg>
+        <a href="#" id="adminMessagesLink" 
+           class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50 flex items-center gap-2">
+          <i data-lucide="inbox" class="w-5 h-5 sm:hidden"></i>
           <span class="hidden sm:inline">Admin Messages</span>
         </a>
-        <button id="outBtn" class="px-3 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 flex items-center gap-2">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M7.75 16.25a.75.75 0 01-1.5 0V13.5h-1a1 1 0 01-1-1v-2a1 1 0 011-1h1v-.75a.75.75 0 011.5 0v.75h1a.75.75 0 01.75.75v.75a.75.75 0 01-.75.75h-1v.75z" clip-rule="evenodd"></path><path fill-rule="evenodd" d="M7.75 16.25a.75.75 0 01-1.5 0V3.75a.75.75 0 011.5 0V16.25z" clip-rule="evenodd"></path></svg>
-           <span class="hidden sm:inline">Sign out</span>
+        <button id="outBtn" 
+                class="px-3 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 flex items-center gap-2">
+          <i data-lucide="log-out" class="w-5 h-5 sm:hidden"></i>
+          <span class="hidden sm:inline">Sign out</span>
         </button>
       </div>
     </div>
   </header>
 
+  <!-- Main -->
   <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-6">
+
+    <!-- Admin account -->
     <section class="mb-6">
       <h2 class="text-lg font-semibold mb-3">My Admin Account</h2>
-      <div id="adminInfo" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex items-center gap-4">
+      <div id="adminInfo" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex items-center gap-4 overflow-hidden">
         <div class="w-16 h-16 rounded-full overflow-hidden border skeleton"></div>
-        <div class="flex-1">
+        <div class="flex-1 min-w-0">
           <div class="h-5 w-40 rounded skeleton mb-2"></div>
           <div class="h-4 w-64 rounded skeleton"></div>
         </div>
       </div>
     </section>
 
+    <!-- Users header -->
     <section class="mb-4">
       <div class="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
         <h2 class="text-lg font-semibold">User Accounts</h2>
         <div class="flex items-center gap-2">
-          <input id="searchInput" type="search" placeholder="Search name or email" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 p-2.5" />
-          <select id="sortSelect" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+          <input id="searchInput" type="search" placeholder="Search name or email"
+            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 p-2.5" />
+          <select id="sortSelect"
+            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
             <option value="name-asc">Name A–Z</option>
             <option value="name-desc">Name Z–A</option>
             <option value="time-desc">Newest</option>
@@ -54,16 +68,22 @@
           </select>
         </div>
       </div>
-      <p class="text-xs text-gray-500 mt-1">
-        Use the buttons to manage user accounts.
-      </p>
+      <p class="text-xs text-gray-500 mt-1">Use the buttons to manage user accounts.</p>
     </section>
 
+    <!-- Users grid -->
     <section>
       <div id="userList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
+        <!-- Skeleton -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-4">
+          <div class="w-14 h-14 rounded-full skeleton mb-3"></div>
+          <div class="h-5 rounded skeleton w-40 mb-2"></div>
+          <div class="h-4 rounded skeleton w-56 mb-4"></div>
+          <div class="flex gap-2">
+            <div class="h-9 w-24 rounded skeleton"></div>
+            <div class="h-9 w-28 rounded skeleton"></div>
+          </div>
+        </div>
       </div>
 
       <div class="flex justify-center mt-6">
@@ -72,10 +92,14 @@
     </section>
   </main>
 
+  <!-- Toast -->
   <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden">
     <div id="toastBody" class="px-4 py-2 rounded-xl text-white shadow-lg"></div>
   </div>
 
+  <script>
+    lucide.createIcons();
+  </script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
