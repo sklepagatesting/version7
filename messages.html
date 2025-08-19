@@ -1,105 +1,69 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>User Messages</title>
-<link rel="stylesheet" href="font/font.css">
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  :root {
-    --sender-bg: #0084ff;
-    --receiver-bg: #e5e5ea;
-    --body-bg: #f5f5f5;
-  }
-  html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  body { margin: 0; overflow: hidden; }
-  
-  .chat-app { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; overflow: hidden; }
-  .sidebar { width: 40%; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: transform 0.3s ease; z-index: 2; }
-  .sidebar-header { padding: 1rem; border-bottom: 1px solid #ddd; font-size: 1.25rem; font-weight: bold; flex-shrink: 0; }
-  .conversation-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .conversation { padding: 1rem; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
-  .conversation:hover { background: #f9f9f9; }
-  .conversation.active { background-color: #eef5ff; }
-  
-  .chat-panel { flex: 1; display: flex; flex-direction: column; background: white; transition: transform 0.3s ease; z-index: 1; min-width: 0; }
-  .chat-header { padding: 1rem; background: #fff; border-bottom: 1px solid #ddd; font-size: 1.25rem; font-weight: bold; flex-shrink: 0; display: flex; align-items: center; }
-  .back-btn { display: none; margin-right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
-  
-  .messages { flex: 1; min-height: 0; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; word-break: break-word; background-color: white; }
-  .message-row { display: flex; margin-bottom: 0.25rem; }
-  .message-row.sender { justify-content: flex-end; }
-  .message-row.receiver { justify-content: flex-start; }
-  .message-content { display: flex; flex-direction: column; max-width: 80%; }
-  .chat-bubble { padding: 10px 14px; border-radius: 18px; word-wrap: break-word; white-space: pre-wrap; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
-  .chat-bubble.sender { background-color: var(--sender-bg); color: white; }
-  .chat-bubble.receiver { background-color: var(--receiver-bg); color: black; }
-  .message-time { font-size: 0.75rem; color: #6b7280; margin-top: 4px; padding: 0 6px; }
-  .message-row.sender .message-time { align-self: flex-end; }
-  .message-row.receiver .message-time { align-self: flex-start; }
-  
-  .chat-input-wrapper { border-top: 1px solid #ddd; background: var(--body-bg); padding: 0.75rem 1rem; display: flex; align-items: flex-end; gap: 0.75rem; }
-  .chat-input-wrapper textarea { box-sizing: border-box; flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 20px; background: white; outline: none; resize: none; min-height: 42px; max-height: 30vh; overflow-y: auto; font-size: 1rem; line-height: 1.4rem; height: 42px; }
-  .chat-input-wrapper textarea.context::-webkit-scrollbar { display: none; }
-  .chat-input-wrapper button { height: auto; min-height: 42px; padding: 0 12px; border: none; background: var(--sender-bg); color: white; border-radius: 50%; cursor: pointer; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; }
-  
-  .chat-app.no-chat-selected .chat-input-wrapper { display: none; }
-  .chat-app.no-chat-selected .placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #6b7280; text-align: center; font-size: 1.1rem; }
-  .placeholder { display: none; }
-  
-  @media (max-width: 1200px) {
-    .sidebar, .chat-panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-    .sidebar { transform: translateX(0); }
-    .chat-panel { transform: translateX(100%); }
-    .chat-app.show-chat .sidebar { transform: translateX(-100%); }
-    .chat-app.show-chat .chat-panel { transform: translateX(0); }
-    .back-btn { display: inline-block; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Messages</title>
+  <link rel="stylesheet" href="font/font.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --sender-bg: #0084ff;
+      --receiver-bg: #e5e5ea;
+      --body-bg: #f5f5f5;
+    }
+    html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { margin: 0; overflow: hidden; }
+
+    .chat-app { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .chat-header { padding: 1rem; background: #fff; border-bottom: 1px solid #ddd; font-size: 1.25rem; font-weight: bold; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; }
+
+    .messages { flex: 1; min-height: 0; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; word-break: break-word; background-color: var(--body-bg); }
+    .message-row { display: flex; margin-bottom: 0.25rem; }
+    .message-row.sender { justify-content: flex-end; }
+    .message-row.receiver { justify-content: flex-start; }
+    .message-content { display: flex; flex-direction: column; max-width: 80%; }
+    .chat-bubble { padding: 10px 14px; border-radius: 18px; word-wrap: break-word; white-space: pre-wrap; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
+    .chat-bubble.sender { background-color: var(--sender-bg); color: white; }
+    .chat-bubble.receiver { background-color: var(--receiver-bg); color: black; }
+    .message-time { font-size: 0.75rem; color: #6b7280; margin-top: 4px; padding: 0 6px; }
+    .message-row.sender .message-time { align-self: flex-end; }
+    .message-row.receiver .message-time { align-self: flex-start; }
+
+    .chat-input-wrapper { border-top: 1px solid #ddd; background: #fff; padding: 0.75rem 1rem; display: flex; align-items: flex-end; gap: 0.75rem; }
+    .chat-input-wrapper textarea { box-sizing: border-box; flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 20px; background: white; outline: none; resize: none; min-height: 42px; max-height: 30vh; overflow-y: auto; font-size: 1rem; line-height: 1.4rem; height: 42px; }
+    .chat-input-wrapper textarea.context::-webkit-scrollbar { display: none; }
+    .chat-input-wrapper button { height: auto; min-height: 42px; padding: 0 12px; border: none; background: var(--sender-bg); color: white; border-radius: 50%; cursor: pointer; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; }
+
+    .message-placeholder { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #6b7280; }
+  </style>
 </head>
 <body>
-<div class="chat-app no-chat-selected" id="chatApp">
-  <div class="sidebar">
-    <div class="sidebar-header">Admin Messages</div>
-    <div class="conversation-list" id="userList"></div>
-  </div>
-  
-  <div class="chat-panel">
+  <div class="chat-app" id="chatApp">
     <div class="chat-header">
-      <button class="back-btn" id="backBtn">&larr;</button>
-      <div class="flex items-center gap-3">
-        <div id="userAvatar" class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold text-lg" style="background:var(--sender-bg)"></div>
-        <span id="chatTitle" class="font-semibold">Select a conversation</span>
-      </div>
+      <span class="font-semibold">Support Chat</span>
+      <button onclick="logout()" class="text-sm text-red-600">Sign Out</button>
     </div>
     <div class="messages" id="messagesContainer">
-        <div class="placeholder">
-            <div>
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No conversation selected</h3>
-                <p class="mt-1 text-sm text-gray-500">Select a conversation from the list to start chatting.</p>
-            </div>
-        </div>
+      <div class="message-placeholder">
+        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">Start a conversation</h3>
+        <p class="mt-1 text-sm text-gray-500">Send a message to our support team.</p>
+      </div>
     </div>
-    <form id="replyForm" class="chat-input-wrapper">
-      <textarea id="replyInput" placeholder="Type a message..." autocomplete="off" class="context"></textarea>
+    <div class="px-4 text-sm text-gray-500" id="typingIndicator"></div>
+    <form id="messageForm" class="chat-input-wrapper">
+      <textarea id="messageInput" placeholder="Type a message..." autocomplete="off" class="context"></textarea>
       <button type="submit" aria-label="Send Message">&#10148;</button>
     </form>
   </div>
-</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, doc, onSnapshot, updateDoc, arrayUnion, setDoc, where, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-// --- Authentication and Redirect ---
-const activeAccount = JSON.parse(localStorage.getItem("activeAccount"));
-if (!activeAccount) {
-    window.location.href = "authentication.html";
-}
+import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
@@ -113,80 +77,27 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-// User and Admin details
-const userId = activeAccount.uid;
-const userName = activeAccount.name;
-const userEmail = activeAccount.email;
+let currentUser = null;
+let currentConversationRef = null;
 
-const admin = { name: "Dzey Autajay", email: "autajaydzey@gmail.com" };
-
-const chatApp = document.getElementById("chatApp");
-const userList = document.getElementById("userList");
 const messagesContainer = document.getElementById("messagesContainer");
-const replyForm = document.getElementById("replyForm");
-const replyInput = document.getElementById("replyInput");
-const chatTitle = document.getElementById("chatTitle");
-const backBtn = document.getElementById("backBtn");
-const userAvatar = document.getElementById("userAvatar");
+const messageForm = document.getElementById("messageForm");
+const messageInput = document.getElementById("messageInput");
+const typingIndicator = document.getElementById("typingIndicator");
 
-userAvatar.textContent = activeAccount.avatarLetter;
-userAvatar.style.backgroundColor = activeAccount.avatarColor;
-
-let currentConversationId = userId; // Set the conversation ID immediately
-let unsubscribeConversationListener = null;
-
-function escapeHtml(text) {
-  if (typeof text !== 'string') return "";
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+// Helpers
+function escapeHtml(text) { if (typeof text !== 'string') return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+function formatTimestamp(date) {
+  if (!date) return '';
+  const d = date.toDate ? date.toDate() : new Date(date);
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
+function scrollToBottom() { requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }); }
 
-function formatTimestamp(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const timeString = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    if (messageDate.getTime() === today.getTime()) return timeString;
-    if (messageDate.getTime() === yesterday.getTime()) return `Yesterday ${timeString}`;
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
-    if (messageDate.getTime() > oneWeekAgo.getTime()) {
-        const dayString = date.toLocaleDateString('en-US', { weekday: 'long' });
-        return `${dayString} ${timeString}`;
-    }
-    return `${date.toLocaleDateString('en-US')} ${timeString}`;
-}
-
-function formatTimestampForList(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    if (messageDate.getTime() === today.getTime()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    if (messageDate.getTime() === yesterday.getTime()) return 'Yesterday';
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 6);
-    if (messageDate.getTime() > oneWeekAgo.getTime()) return date.toLocaleDateString('en-US', { weekday: 'short' });
-    return date.toLocaleDateString('en-US');
-}
-
-function scrollToBottom() {
-  requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; });
-}
-
-let lastMessageTime = null;
-
-function addMessage(author, text, time) {
-  const isSender = author === userName;
+function addMessage(author, text, time, status) {
+  const isSender = author === currentUser.displayName;
   const row = document.createElement("div");
   row.className = "message-row " + (isSender ? "sender" : "receiver");
 
@@ -196,185 +107,162 @@ function addMessage(author, text, time) {
   const bubble = document.createElement("div");
   bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
   bubble.textContent = text;
+  
+  const timeEl = document.createElement("div");
+  timeEl.className = "message-time flex items-center gap-1";
+  timeEl.textContent = formatTimestamp(time);
 
-  const messageDate = new Date(time);
-  let showTime = true;
-
-  if (lastMessageTime) {
-    const last = new Date(lastMessageTime);
-    if (
-      last.getFullYear() === messageDate.getFullYear() &&
-      last.getMonth() === messageDate.getMonth() &&
-      last.getDate() === messageDate.getDate() &&
-      last.getHours() === messageDate.getHours() &&
-      last.getMinutes() === messageDate.getMinutes()
-    ) {
-      showTime = false;
+  if (isSender) {
+    const icon = document.createElement("div");
+    if (status === 'read') {
+        icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-blue-500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-blue-500 ml-[-8px]"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>`;
+    } else if (status === 'delivered') {
+        icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-gray-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>`;
+    } else {
+        icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-gray-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>`;
     }
+    timeEl.appendChild(icon);
   }
 
-  if (showTime) {
-    const timeEl = document.createElement("div");
-    timeEl.className = "message-time";
-    timeEl.textContent = formatTimestamp(time);
-    content.appendChild(timeEl);
-    lastMessageTime = time;
-  }
-
-  content.insertBefore(bubble, content.firstChild);
+  content.appendChild(bubble);
+  content.appendChild(timeEl);
   row.appendChild(content);
   messagesContainer.appendChild(row);
 }
 
-const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-
-replyInput.addEventListener("wheel", (e) => {
-  const atTop = replyInput.scrollTop === 0;
-  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
-  if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
-});
-
-replyInput.addEventListener("touchstart", e => e.stopPropagation());
-replyInput.addEventListener("touchmove", (e) => {
-  const atTop = replyInput.scrollTop === 0;
-  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
-  if ((e.touches[0].clientY > 0 && atTop) || (e.touches[0].clientY < 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
-});
-
-replyInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    if (!isMobile || e.ctrlKey) {
-      e.preventDefault();
-      replyForm.requestSubmit();
+// Typing Indicator Logic
+let typingTimeout = null;
+messageInput.addEventListener('input', () => {
+    if (currentConversationRef) {
+        updateDoc(currentConversationRef, { userTyping: true });
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            updateDoc(currentConversationRef, { userTyping: false });
+        }, 1500);
     }
-  }
 });
 
-replyInput.addEventListener("input", () => {
-  replyInput.style.height = "42px";
-  replyInput.style.height = replyInput.scrollHeight + "px";
-  scrollToBottom();
-});
-
-function openConversation(conversationId) {
-    currentConversationId = conversationId;
-    chatTitle.textContent = admin.name;
-    chatApp.classList.remove('no-chat-selected');
-    
-    // Clear previous listener if it exists
-    if (unsubscribeConversationListener) unsubscribeConversationListener();
-    
-    // Listen to the document for real-time updates
-    unsubscribeConversationListener = onSnapshot(doc(db, "message", conversationId), (docSnap) => {
-        messagesContainer.innerHTML = "";
-        
-        // If the document exists, display its messages
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            const allMessages = [];
-            // Handle initial message and replies
-            if (data.message && data.time) allMessages.push({ author: data.name, text: data.message, time: data.time });
-            if (data.replies && Array.isArray(data.replies)) allMessages.push(...data.replies);
-            allMessages.sort((a, b) => new Date(a.time) - new Date(b.time));
-            allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
-        } else {
-            // Document doesn't exist, show the placeholder
-            messagesContainer.innerHTML = `<div class="placeholder">
-                <div>
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
-                    </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">Start a new conversation</h3>
-                    <p class="mt-1 text-sm text-gray-500">Type a message below to begin.</p>
-                </div>
-            </div>`;
-        }
-        scrollToBottom();
-    });
-
-    if (window.innerWidth <= 1200) chatApp.classList.add("show-chat");
-}
-
-function loadConversationSidebar() {
-    const docRef = doc(db, "message", userId);
-    onSnapshot(docRef, docSnap => {
-        userList.innerHTML = ""; // Clear list
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            const lastMessage = data.replies?.slice(-1)[0] || { text: data.message, time: data.time };
-            
-            // Create and add the conversation list item
-            const li = document.createElement("div");
-            li.className = "conversation active";
-            li.dataset.id = userId;
-            li.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
-                    <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
-                </div>
-                <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
-            `;
-            li.addEventListener("click", () => openConversation(userId));
-            userList.appendChild(li);
-        } else {
-            // No existing conversation, show "Start new chat"
-            userList.innerHTML = `<div class="conversation active" data-id="${userId}">
-                <div class="flex justify-between items-center">
-                    <strong class="font-semibold text-gray-800">${escapeHtml(admin.name)}</strong>
-                    <span class="text-xs text-gray-500"></span>
-                </div>
-                <p class="text-sm text-gray-600 truncate">Start a new conversation...</p>
-            </div>`;
-            document.querySelector('.conversation').addEventListener('click', () => openConversation(userId));
-        }
-    });
-}
-
-replyForm.addEventListener("submit", async (e) => {
+// Send message
+messageForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const text = replyInput.value.trim();
-  if (!text) return;
-  const now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" }).replace(",", "");
+  const text = messageInput.value.trim();
+  if (!text || !currentConversationRef) return;
   
-  const docRef = doc(db, "message", userId);
-
   try {
-    const docSnap = await getDoc(docRef);
+    const docSnap = await getDoc(currentConversationRef);
+    
+    const newMessage = {
+      author: currentUser.displayName,
+      text: text,
+      time: new Date(),
+      status: 'sent'
+    };
 
-    if (!docSnap.exists()) {
-      // First message from a new user, create the document
-      const newMessage = {
-          message: text,
-          time: now,
-          uid: userId,
-          name: userName,
-          email: userEmail,
-          status: "unread",
-          replies: []
-      };
-      await setDoc(docRef, newMessage);
+    if (docSnap.exists()) {
+      await updateDoc(currentConversationRef, {
+        messages: arrayUnion(newMessage),
+        lastUpdated: serverTimestamp()
+      });
     } else {
-      // Not the first message, update the existing document
-      const reply = { author: userName, text: text, status: "unread", time: now };
-      await updateDoc(docRef, { replies: arrayUnion(reply) });
+      await setDoc(currentConversationRef, {
+        user: {
+          uid: currentUser.uid,
+          name: currentUser.displayName,
+          email: currentUser.email
+        },
+        admin: {
+          name: "Support Admin"
+        },
+        messages: [newMessage],
+        lastUpdated: serverTimestamp(),
+        userTyping: false,
+        adminTyping: false,
+      });
     }
+
+    messageInput.value = "";
+    messageInput.style.height = "42px";
+    scrollToBottom();
   } catch (err) {
     alert("Failed to send message: " + err.message);
   }
-
-  replyInput.value = "";
-  replyInput.style.height = "42px";
-  scrollToBottom();
 });
 
-backBtn.addEventListener("click", () => {
-  chatApp.classList.remove("show-chat");
+function setupUserChat(user) {
+  currentUser = user;
+  const conversationId = `conv_${user.uid}`;
+  currentConversationRef = doc(db, "conversations", conversationId);
+  
+  onSnapshot(currentConversationRef, async (docSnap) => {
+    messagesContainer.innerHTML = "";
+    typingIndicator.textContent = "";
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+
+      if (data.user.name !== user.displayName) {
+          await updateDoc(currentConversationRef, {
+              'user.name': user.displayName,
+          });
+      }
+
+      if (data.adminTyping) {
+        typingIndicator.textContent = `${data.admin.name} is typing...`;
+      }
+
+      const allMessages = data.messages || [];
+      allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time, msg.status));
+
+      const unreadAdminMessages = allMessages.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
+      if (unreadAdminMessages.length > 0) {
+        const updatedMessages = allMessages.map(msg => {
+            if (msg.author !== user.displayName && msg.status !== 'read') {
+                return { ...msg, status: 'read' };
+            }
+            return msg;
+        });
+        updateDoc(currentConversationRef, { messages: updatedMessages });
+      }
+
+    } else {
+        messagesContainer.innerHTML = `<div class="message-placeholder">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" /></svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">Start a conversation</h3>
+            <p class="mt-1 text-sm text-gray-500">Send a message to our support team.</p>
+        </div>`;
+    }
+    scrollToBottom();
+  });
+}
+
+window.logout = async () => {
+  try {
+    await signOut(auth);
+    window.location.href = "authentication.html";
+  } catch (error) {
+    console.error("Sign out error:", error);
+  }
+};
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    setupUserChat(user);
+  } else {
+    window.location.href = "authentication.html";
+  }
 });
 
-// Initialize the chat view on page load
-openConversation(userId);
-loadConversationSidebar();
+messageInput.addEventListener("input", () => {
+  messageInput.style.height = "42px";
+  messageInput.style.height = messageInput.scrollHeight + "px";
+});
 
+messageInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    messageForm.requestSubmit();
+  }
+});
 </script>
 </body>
 </html>
