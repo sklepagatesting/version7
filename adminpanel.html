@@ -9,8 +9,6 @@
   <style>
     .skeleton { background: linear-gradient(90deg,#eee 25%,#f5f5f5 37%,#eee 63%); background-size: 400% 100%; animation: sh 1.2s ease-in-out infinite; }
     @keyframes sh { 0%{background-position: 100% 0}100%{background-position: -100% 0} }
-    /* Custom utility to prevent wrapping on long words, letting it overflow. */
-    .break-words-all { word-break: break-all; }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
@@ -20,11 +18,11 @@
       <h1 class="text-lg font-semibold">Administrator</h1>
       <div class="flex items-center gap-2">
         <a href="#" id="adminMessagesLink" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M3.5 2.75a.75.75 0 00-1.5 0v14.5a.75.75 0 001.5 0v-4.392l1.657-.348a6.441 6.441 0 015.686 0l2.311.482 1.657-.348A6.441 6.441 0 0118 12.25v-2.5a6.441 6.441 0 01-1.843-4.252l-1.657-.348-2.311.482-1.657-.348a6.441 6.441 0 01-5.686 0L3.5 5.142V2.75z"></path></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M11.25 4.5a.75.75 0 01.75.75v7.5a.75.75 0 01-1.5 0V5.25a.75.75 0 01.75-.75z" /><path fill-rule="evenodd" d="M9.447 2.106a.75.75 0 01.884-.254l5.65 1.413a.75.75 0 01.554.73l-.007 6.447L18.428 12l.006 8.525c.002.096-.025.188-.073.266a.75.75 0 01-.861.346l-5.65-1.413a.75.75 0 01-.554-.73l.007-6.447L5.572 12l-.006 8.525c-.002.096.025.188.073.266a.75.75 0 01-.861.346l-5.65-1.413A.75.75 0 010 19.349V3.525a.75.75 0 01.73-.73l5.65-1.413a.75.75 0 01.884.254L9.447 2.106zM12 2.25a.75.75 0 01.75.75v6.526l4.24-1.06a.75.75 0 01.88.253L20.2 11.5a.75.75 0 01-.2 1.054l-3.344 2.229c-1.353.902-3.085.842-4.38.167a.75.75 0 01-.762-1.312l.142-.072a.75.75 0 01.884-.254l2.25-.562a.75.75 0 00.554-.73l.007-6.447L13.5 3a.75.75 0 01.75-.75h-2.25z" clip-rule="evenodd" /></svg>
           <span class="hidden sm:inline">Admin Messages</span>
         </a>
         <button id="outBtn" class="px-3 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 flex items-center gap-2">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z" clip-rule="evenodd"></path><path fill-rule="evenodd" d="M16.72 9.22a.75.75 0 011.06 0l2.25 2.25a.75.75 0 010 1.06l-2.25 2.25a.75.75 0 11-1.06-1.06L17.94 12l-1.22-1.22a.75.75 0 010-1.06z" clip-rule="evenodd"></path></svg>
+           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M7.75 16.25a.75.75 0 01-1.5 0V13.5h-1a1 1 0 01-1-1v-2a1 1 0 011-1h1v-.75a.75.75 0 011.5 0v.75h1a.75.75 0 01.75.75v.75a.75.75 0 01-.75.75h-1v.75z" clip-rule="evenodd"></path><path fill-rule="evenodd" d="M7.75 16.25a.75.75 0 01-1.5 0V3.75a.75.75 0 011.5 0V16.25z" clip-rule="evenodd"></path></svg>
            <span class="hidden sm:inline">Sign out</span>
         </button>
       </div>
@@ -161,8 +159,8 @@
         <img src="${user.photoURL || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(user.displayName || 'A')}"
               class="w-16 h-16 rounded-full border" alt="avatar">
         <div class="min-w-0 flex-1">
-          <h3 class="font-semibold">${user.displayName || "(no name)"}</h3>
-          <p class="text-gray-600">${user.email || ""}</p>
+          <h3 class="font-semibold break-words">${user.displayName || "(no name)"}</h3>
+          <p class="text-gray-600 break-words">${user.email || ""}</p>
         </div>
         <div class="flex flex-col sm:flex-row gap-2">
           <button class="px-3 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50" id="resignBtn">Resign Admin Role</button>
@@ -187,18 +185,21 @@
         const card = document.createElement("div");
         card.className = "bg-white rounded-2xl border border-gray-200 p-4 flex flex-col";
         card.innerHTML = `
-          <div class="flex items-center gap-3 flex-1 mb-4">
-            <img src="${u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || 'U')}" class="w-14 h-14 rounded-full border" alt="avatar">
+          <div class="flex items-start gap-3 flex-1 mb-4 min-w-0">
+            <img src="${u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || 'U')}" class="w-14 h-14 rounded-full border flex-shrink-0" alt="avatar">
             <div class="min-w-0">
-              <p class="font-semibold break-words-all">${u.name || "(no name)"}</p>
-              <p class="text-sm text-gray-600 break-words-all">${u.email || ""}</p>
+              <p class="font-semibold break-words">${u.name || "(no name)"}</p>
+              <p class="text-sm text-gray-600 break-words">${u.email || ""}</p>
               <p class="text-xs text-gray-500 mt-1">Joined: ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</p>
             </div>
           </div>
           <div class="flex gap-2 justify-end">
-            <button class="promoteBtn px-4 py-2 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700">Set as Administrator</button>
+            <button class="promoteBtn px-4 py-2 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700">
+                <span class="hidden sm:inline">Set as Administrator</span>
+                <span class="sm:hidden"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M10 2.5a.5.5 0 00-1 0v.68L6.46 4.39A4.484 4.484 0 003.75 6.75v3.193a3.75 3.75 0 01-1.5 2.909v1.073c0 .26.17.47.41.53l.138.032c.866.204 1.764.296 2.662.296H10a8.25 8.25 0 003.553-.862l1.378-1.004c.14-.102.26-.22.365-.356A1.5 1.5 0 0016.25 11.5a.75.75 0 001.5 0c0-.46-.144-.898-.396-1.25L15 8.248V6.75a4.484 4.484 0 00-2.71-2.36L11 3.18V2.5a.5.5 0 00-1 0z" /></svg></span>
+            </button>
             <button title="Send Message" class="messageBtn w-9 h-9 grid place-items-center rounded-lg border hover:bg-gray-50">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M3.5 2A1.5 1.5 0 002 3.5v1.143a1.5 1.5 0 00.75 1.309l6.5 4.333c.414.275.986.275 1.4 0l6.5-4.333A1.5 1.5 0 0018 4.643V3.5A1.5 1.5 0 0016.5 2h-13z" /><path d="M2 8.252V16.5A1.5 1.5 0 003.5 18h13a1.5 1.5 0 001.5-1.5V8.252l-6.522 4.348a2.502 2.502 0 01-2.956 0L2 8.252z" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M.05 4.95A.75.75 0 01.75 4h18.5a.75.75 0 010 1.5H.75a.75.75 0 01-.7-.8zM.05 10.95a.75.75 0 01.75-.75h18.5a.75.75 0 010 1.5H.75a.75.75 0 01-.75-.75zM.05 16.95a.75.75 0 01.75-.75h18.5a.75.75 0 010 1.5H.75a.75.75 0 01-.75-.75z" /><path fill-rule="evenodd" d="M3.75 4h12.5A1.75 1.75 0 0118 5.75v8.5A1.75 1.75 0 0116.25 16H3.75A1.75 1.75 0 012 14.25v-8.5A1.75 1.75 0 013.75 4zm0 1.5A.25.25 0 003.5 5.75v8.5c0 .138.112.25.25.25h12.5a.25.25 0 00.25-.25v-8.5a.25.25 0 00-.25-.25H3.75z" clip-rule="evenodd" /></svg>
             </button>
             <button title="Delete User" class="deleteBtn w-9 h-9 grid place-items-center rounded-lg text-red-600 border border-red-200 hover:bg-red-50">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193v-.443A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd" /></svg>
