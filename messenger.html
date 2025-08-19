@@ -147,19 +147,39 @@ messageForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = messageInput.value.trim();
   if (!text || !currentConversationRef) return;
-
-  const newMessage = {
-    author: currentUser.displayName,
-    text: text,
-    time: new Date(),
-    status: 'sent'
-  };
-
+  
   try {
-    await updateDoc(currentConversationRef, {
-      messages: arrayUnion(newMessage),
-      lastUpdated: serverTimestamp()
-    });
+    const docSnap = await getDoc(currentConversationRef);
+    
+    const newMessage = {
+      author: currentUser.displayName,
+      text: text,
+      time: new Date(),
+      status: 'sent'
+    };
+
+    if (docSnap.exists()) {
+      await updateDoc(currentConversationRef, {
+        messages: arrayUnion(newMessage),
+        lastUpdated: serverTimestamp()
+      });
+    } else {
+      await setDoc(currentConversationRef, {
+        user: {
+          uid: currentUser.uid,
+          name: currentUser.displayName,
+          email: currentUser.email
+        },
+        admin: {
+          name: "Support Admin" // A generic name for the admin
+        },
+        messages: [newMessage],
+        lastUpdated: serverTimestamp(),
+        userTyping: false,
+        adminTyping: false,
+      });
+    }
+
     messageInput.value = "";
     messageInput.style.height = "42px";
     scrollToBottom();
@@ -215,7 +235,6 @@ function setupUserChat(user) {
   });
 }
 
-// Sign out function
 window.logout = async () => {
   try {
     await signOut(auth);
@@ -233,13 +252,11 @@ onAuthStateChanged(auth, user => {
   }
 });
 
-// Auto-resize textarea
 messageInput.addEventListener("input", () => {
   messageInput.style.height = "42px";
   messageInput.style.height = messageInput.scrollHeight + "px";
 });
 
-// Enter key behavior
 messageInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
