@@ -55,7 +55,7 @@
         </div>
       </div>
       <p class="text-xs text-gray-500 mt-1">
-        Use the buttons to manage user accounts. The shield icon promotes a user to an admin.
+        Use the buttons to manage user accounts.
       </p>
     </section>
 
@@ -129,24 +129,24 @@
         if (!activeAdmin || !confirm("Are you sure you want to resign your admin role? You will be signed out and will lose access to this panel.")) return;
         
         try {
-            const adminRef = doc(db, "admin", activeAdmin.uid);
-            const adminSnap = await getDoc(adminRef);
-            if (!adminSnap.exists()) throw new Error("Admin document not found.");
+          const adminRef = doc(db, "admin", activeAdmin.uid);
+          const adminSnap = await getDoc(adminRef);
+          if (!adminSnap.exists()) throw new Error("Admin document not found.");
 
-            const adminData = adminSnap.data();
-            const accountData = {
-                uid: adminData.uid,
-                name: adminData.name || activeAdmin.displayName || "",
-                email: adminData.email || activeAdmin.email || "",
-                avatar: adminData.avatar || activeAdmin.photoURL || "",
-                createdAt: adminData.createdAt || new Date().toISOString(),
-            };
-            
-            await setDoc(doc(db, "accounts", activeAdmin.uid), accountData);
-            await deleteDoc(adminRef);
+          const adminData = adminSnap.data();
+          const accountData = {
+              uid: adminData.uid,
+              name: adminData.name || activeAdmin.displayName || "",
+              email: adminData.email || activeAdmin.email || "",
+              avatar: adminData.avatar || activeAdmin.photoURL || "",
+              createdAt: adminData.createdAt || new Date().toISOString(),
+          };
+          
+          await setDoc(doc(db, "accounts", activeAdmin.uid), accountData);
+          await deleteDoc(adminRef);
 
-            toast("Admin role resigned. Signing out...");
-            setTimeout(() => signOut(auth), 1500);
+          toast("Admin role resigned. Signing out...");
+          setTimeout(() => signOut(auth), 1500);
         } catch (e) {
             console.error("Failed to resign admin role:", e);
             toast("An error occurred. Could not resign admin role.", "error");
@@ -157,21 +157,15 @@
       adminMessagesLink.href = `messages.html?user=${user.uid}`;
       adminInfoDiv.innerHTML = `
         <img src="${user.photoURL || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(user.displayName || 'A')}"
-             class="w-16 h-16 rounded-full border" alt="avatar">
+              class="w-16 h-16 rounded-full border" alt="avatar">
         <div class="min-w-0 flex-1">
           <h3 class="font-semibold truncate">${user.displayName || "(no name)"}</h3>
           <p class="text-gray-600 truncate">${user.email || ""}</p>
-          <p class="text-xs text-gray-500 mt-1">UID: <span class="font-mono">${user.uid}</span></p>
         </div>
         <div class="flex flex-col sm:flex-row gap-2">
-          <button class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50" id="copyUidBtn">Copy UID</button>
           <button class="px-3 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50" id="resignBtn">Resign Admin Role</button>
         </div>
       `;
-      document.getElementById("copyUidBtn").onclick = () => {
-        navigator.clipboard.writeText(user.uid);
-        toast("UID copied");
-      };
       document.getElementById("resignBtn").onclick = resignAdminRole;
     }
 
@@ -191,18 +185,16 @@
         const card = document.createElement("div");
         card.className = "bg-white rounded-2xl border border-gray-200 p-4 flex flex-col";
         card.innerHTML = `
-          <div class="flex items-center gap-3 flex-1">
+          <div class="flex items-center gap-3 flex-1 mb-4">
             <img src="${u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || 'U')}" class="w-14 h-14 rounded-full border" alt="avatar">
             <div class="min-w-0">
-              <p class="font-semibold truncate">${u.name || "(no name)"}</p>
-              <p class="text-sm text-gray-600 truncate">${u.email || ""}</p>
+              <p class="font-semibold">${u.name || "(no name)"}</p>
+              <p class="text-sm text-gray-600">${u.email || ""}</p>
               <p class="text-xs text-gray-500 mt-1">Joined: ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</p>
             </div>
           </div>
-          <div class="mt-4 pt-4 border-t flex items-center justify-end gap-2">
-            <button title="Promote to Admin" class="promoteBtn w-9 h-9 grid place-items-center rounded-lg text-white bg-green-600 hover:bg-green-700">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>
-            </button>
+          <div class="flex gap-2 justify-end">
+            <button class="promoteBtn px-4 py-2 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700">Set as Administrator</button>
             <button title="Send Message" class="messageBtn w-9 h-9 grid place-items-center rounded-lg border hover:bg-gray-50">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M3.5 2A1.5 1.5 0 002 3.5v1.143a1.5 1.5 0 00.75 1.309l6.5 4.333c.414.275.986.275 1.4 0l6.5-4.333A1.5 1.5 0 0018 4.643V3.5A1.5 1.5 0 0016.5 2h-13z" /><path d="M2 8.252V16.5A1.5 1.5 0 003.5 18h13a1.5 1.5 0 001.5-1.5V8.252l-6.522 4.348a2.502 2.502 0 01-2.956 0L2 8.252z" /></svg>
             </button>
