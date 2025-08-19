@@ -199,13 +199,30 @@ function addMessage(author, text, time, status) {
 
 const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
+// Prevent textarea scroll from bubbling to body
+replyInput.addEventListener("wheel", (e) => {
+  const atTop = replyInput.scrollTop === 0;
+  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
+  if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
+});
+replyInput.addEventListener("touchstart", e => e.stopPropagation());
+replyInput.addEventListener("touchmove", (e) => {
+  const atTop = replyInput.scrollTop === 0;
+  const atBottom = replyInput.scrollHeight - replyInput.scrollTop === replyInput.clientHeight;
+  if ((e.touches[0].clientY > 0 && atTop) || (e.touches[0].clientY < 0 && atBottom)) { e.stopPropagation(); e.preventDefault(); }
+});
+
+// Enter key behavior
 replyInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !isMobile) {
-    e.preventDefault();
-    replyForm.requestSubmit();
+  if (e.key === "Enter") {
+    if (!isMobile || e.ctrlKey) {
+      e.preventDefault();
+      replyForm.requestSubmit();
+    }
   }
 });
 
+// Auto-resize textarea
 replyInput.addEventListener("input", () => {
   replyInput.style.height = "auto";
   replyInput.style.height = replyInput.scrollHeight + "px";
@@ -258,7 +275,6 @@ function openConversation(conversationId) {
 }
 
 function loadConversationSidebar() {
-    // Only shows the conversation with the current user, as an admin would see all of them.
     const docRef = doc(db, "conversations", userId);
     onSnapshot(docRef, docSnap => {
         userList.innerHTML = ""; // Clear list
@@ -297,10 +313,11 @@ replyForm.addEventListener("submit", async (e) => {
   
   const conversationRef = doc(db, "conversations", userId);
 
+  // Use a client-side timestamp for the message within the array
   const messagePayload = {
       author: userName,
       text: text,
-      time: serverTimestamp(),
+      time: new Date(), // Use client-side date object
       uid: userId,
       status: 'sent'
   };
@@ -312,12 +329,12 @@ replyForm.addEventListener("submit", async (e) => {
       await setDoc(conversationRef, {
           user: { uid: userId, name: userName, email: userEmail },
           messages: [messagePayload],
-          lastUpdated: serverTimestamp()
+          lastUpdated: serverTimestamp() // Use serverTimestamp for the top-level field
       });
     } else {
       await updateDoc(conversationRef, { 
         messages: arrayUnion(messagePayload),
-        lastUpdated: serverTimestamp()
+        lastUpdated: serverTimestamp() // Use serverTimestamp for the top-level field
       });
     }
   } catch (err) {
