@@ -42,7 +42,7 @@
   <div class="chat-app" id="chatApp">
     <div class="chat-header">
       <span class="font-semibold">Support Chat</span>
-      <button onclick="logoutLocal()" class="text-sm text-red-600">Sign Out</button>
+      <button onclick="logout()" class="text-sm text-red-600">Sign Out</button>
     </div>
     <div class="messages" id="messagesContainer">
       <div class="message-placeholder">
@@ -151,14 +151,14 @@ messageForm.addEventListener("submit", async (e) => {
   const newMessage = {
     author: currentUser.displayName,
     text: text,
-    time: new Date(), // **Corrected: Using a client-side timestamp**
+    time: new Date(),
     status: 'sent'
   };
 
   try {
     await updateDoc(currentConversationRef, {
       messages: arrayUnion(newMessage),
-      lastUpdated: serverTimestamp() // **Correctly using serverTimestamp for a top-level field**
+      lastUpdated: serverTimestamp()
     });
     messageInput.value = "";
     messageInput.style.height = "42px";
@@ -173,7 +173,6 @@ function setupUserChat(user) {
   const conversationId = `conv_${user.uid}`;
   currentConversationRef = doc(db, "conversations", conversationId);
   
-  // Set up listener for the conversation
   onSnapshot(currentConversationRef, async (docSnap) => {
     messagesContainer.innerHTML = "";
     typingIndicator.textContent = "";
@@ -181,23 +180,19 @@ function setupUserChat(user) {
     if (docSnap.exists()) {
       const data = docSnap.data();
 
-      // Check if user name needs to be updated
       if (data.user.name !== user.displayName) {
           await updateDoc(currentConversationRef, {
               'user.name': user.displayName,
           });
       }
 
-      // Display typing indicator for admin
       if (data.adminTyping) {
         typingIndicator.textContent = `${data.admin.name} is typing...`;
       }
 
-      // Add messages to the display
       const allMessages = data.messages || [];
       allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time, msg.status));
 
-      // Update read status for messages from the admin
       const unreadAdminMessages = allMessages.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
       if (unreadAdminMessages.length > 0) {
         const updatedMessages = allMessages.map(msg => {
@@ -210,7 +205,6 @@ function setupUserChat(user) {
       }
 
     } else {
-        // Conversation doesn't exist, create it on first message
         messagesContainer.innerHTML = `<div class="message-placeholder">
             <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" /></svg>
             <h3 class="mt-2 text-sm font-medium text-gray-900">Start a conversation</h3>
@@ -222,17 +216,15 @@ function setupUserChat(user) {
 }
 
 // Sign out function
-window.logoutLocal = async () => {
+window.logout = async () => {
   try {
     await signOut(auth);
-    localStorage.removeItem("activeAccount");
     window.location.href = "authentication.html";
   } catch (error) {
     console.error("Sign out error:", error);
   }
 };
 
-// **Corrected: Check for authenticated user on page load**
 onAuthStateChanged(auth, user => {
   if (user) {
     setupUserChat(user);
@@ -254,7 +246,6 @@ messageInput.addEventListener("keydown", (e) => {
     messageForm.requestSubmit();
   }
 });
-
 </script>
 </body>
 </html>
