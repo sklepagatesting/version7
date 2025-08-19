@@ -84,6 +84,7 @@
             </div>
         </div>
     </div>
+    <div class="px-4 text-sm text-gray-500" id="typingIndicator"></div>
     <form id="replyForm" class="chat-input-wrapper">
       <textarea id="replyInput" placeholder="Type a message..." autocomplete="off" class="context"></textarea>
       <button type="submit" aria-label="Send Message">&#10148;</button>
@@ -93,7 +94,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, doc, onSnapshot, updateDoc, arrayUnion, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, updateDoc, arrayUnion, setDoc, getDoc, collection, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 // --- Authentication and Redirect ---
 const activeAccount = JSON.parse(localStorage.getItem("activeAccount"));
@@ -127,6 +128,7 @@ const replyInput = document.getElementById("replyInput");
 const chatTitle = document.getElementById("chatTitle");
 const backBtn = document.getElementById("backBtn");
 const userAvatar = document.getElementById("userAvatar");
+const typingIndicator = document.getElementById("typingIndicator");
 
 userAvatar.textContent = "A"; // Generic avatar for 'Admin'
 
@@ -138,34 +140,30 @@ function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-function formatTimestamp(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+function formatTimestamp(date) {
+    if (!date) return '';
+    const d = date.toDate ? date.toDate() : new Date(date);
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-function formatTimestampForList(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
+function formatTimestampForList(date) {
+    if (!date) return '';
+    const d = date.toDate ? date.toDate() : new Date(date);
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    if (messageDate.getTime() === today.getTime()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const messageDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    if (messageDate.getTime() === today.getTime()) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     if (messageDate.getTime() === yesterday.getTime()) return 'Yesterday';
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function scrollToBottom() {
   requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; });
 }
 
-function addMessage(author, text, time) {
-  // A message is from the "sender" if the author name matches the logged-in user's name.
-  // Any other author (e.g., an admin's name) is treated as the "receiver".
+function addMessage(author, text, time, status) {
   const isSender = author === userName;
   const row = document.createElement("div");
   row.className = "message-row " + (isSender ? "sender" : "receiver");
@@ -178,8 +176,20 @@ function addMessage(author, text, time) {
   bubble.textContent = text;
   
   const timeEl = document.createElement("div");
-  timeEl.className = "message-time";
+  timeEl.className = "message-time flex items-center gap-1";
   timeEl.textContent = formatTimestamp(time);
+
+  if (isSender) {
+      const icon = document.createElement("div");
+      if (status === 'read') {
+          icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-blue-500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-blue-500 ml-[-8px]"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>`;
+      } else if (status === 'delivered') {
+          icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-gray-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>`;
+      } else {
+          icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-gray-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>`;
+      }
+      timeEl.appendChild(icon);
+  }
 
   content.appendChild(bubble);
   content.appendChild(timeEl);
@@ -201,6 +211,16 @@ replyInput.addEventListener("input", () => {
   replyInput.style.height = replyInput.scrollHeight + "px";
 });
 
+// Typing Indicator Logic
+let typingTimeout = null;
+replyInput.addEventListener('input', () => {
+    updateDoc(doc(db, "conversations", currentConversationId), { userTyping: true });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+        updateDoc(doc(db, "conversations", currentConversationId), { userTyping: false });
+    }, 1500);
+});
+
 function openConversation(conversationId) {
     currentConversationId = conversationId;
     chatApp.classList.remove('no-chat-selected');
@@ -211,11 +231,17 @@ function openConversation(conversationId) {
     
     unsubscribeConversationListener = onSnapshot(conversationRef, (docSnap) => {
         messagesContainer.innerHTML = "";
-        
+        typingIndicator.textContent = "";
+
         if (docSnap.exists()) {
             const data = docSnap.data();
             const allMessages = data.messages || [];
-            allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time));
+            allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time, msg.status));
+            
+            // Display typing indicator for admin
+            if (data.adminTyping) {
+                typingIndicator.textContent = "Admin is typing...";
+            }
         } else {
             messagesContainer.innerHTML = `<div class="placeholder flex items-center justify-center h-full text-center">
                 <div>
@@ -232,6 +258,7 @@ function openConversation(conversationId) {
 }
 
 function loadConversationSidebar() {
+    // Only shows the conversation with the current user, as an admin would see all of them.
     const docRef = doc(db, "conversations", userId);
     onSnapshot(docRef, docSnap => {
         userList.innerHTML = ""; // Clear list
@@ -267,32 +294,30 @@ replyForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = replyInput.value.trim();
   if (!text) return;
-  const now = new Date().toISOString();
   
   const conversationRef = doc(db, "conversations", userId);
 
   const messagePayload = {
       author: userName,
       text: text,
-      time: now,
-      uid: userId
+      time: serverTimestamp(),
+      uid: userId,
+      status: 'sent'
   };
 
   try {
     const docSnap = await getDoc(conversationRef);
 
     if (!docSnap.exists()) {
-      // First message, create the document
       await setDoc(conversationRef, {
           user: { uid: userId, name: userName, email: userEmail },
           messages: [messagePayload],
-          lastUpdated: now
+          lastUpdated: serverTimestamp()
       });
     } else {
-      // Conversation exists, update it with the new message
       await updateDoc(conversationRef, { 
         messages: arrayUnion(messagePayload),
-        lastUpdated: now
+        lastUpdated: serverTimestamp()
       });
     }
   } catch (err) {
@@ -311,7 +336,6 @@ backBtn.addEventListener("click", () => {
 // Initialize the chat view on page load
 openConversation(userId);
 loadConversationSidebar();
-
 </script>
 </body>
 </html>
