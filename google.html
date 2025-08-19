@@ -94,9 +94,8 @@
       saved.forEach(u => {
         const card = document.createElement("button");
         const isActive = currentUser && currentUser.uid === u.uid;
-        
         card.className = `flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left relative ${isActive ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-200'}`;
-        
+
         const verifiedCheckmarkSVG = `
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-blue-500 ml-1">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
@@ -113,10 +112,9 @@
           </div>
           <span class="ml-auto flex items-center text-[10px] px-2 py-1 rounded-full ${u.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
             <span>${u.type==='admin'?'Admin':'User'}</span>
-            ${verifiedCheckmarkSVG}
+            ${isActive ? verifiedCheckmarkSVG : ''}
           </span>
         `;
-
         // Click behavior
         card.onclick = async () => {
           if (isActive) {
@@ -129,7 +127,7 @@
         profilesGrid.appendChild(card);
       });
     };
-    
+
     // --- Core flows ---
     async function getUserProfile(user) {
         const profile = {
@@ -172,8 +170,7 @@
         window.location.href = "adminpanel.html";
         return;
       }
-      
-      const accRef = doc(db, "accounts", profile.uid);
+            const accRef = doc(db, "accounts", profile.uid);
       try {
         const accSnap = await getDoc(accRef);
         if (!accSnap.exists()) {
@@ -241,9 +238,6 @@
         </button>
         <button id="not-you" class="text-red-600 text-sm hover:underline mt-2">Sign out</button>
       </div>
-      <p class="text-[11px] text-gray-500 text-center mt-3">
-        Switch account
-      </p>
     </div>
   </div>
 
@@ -255,6 +249,5 @@
       </div>
     </div>
   </div>
-
 </body>
 </html>
