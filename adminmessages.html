@@ -251,7 +251,6 @@ function openConversation(conversationId, otherName) {
       const userMessages = allMessages.filter(msg => msg.author !== admin.name);
       const unreadUserMessages = userMessages.filter(msg => msg.status !== 'read');
       if (unreadUserMessages.length > 0) {
-        // Mark as read only if the admin is actively viewing the conversation
         const updatedMessages = allMessages.map(msg => {
             if (msg.author !== admin.name && msg.status !== 'read') {
                 return { ...msg, status: 'read' };
@@ -294,7 +293,6 @@ function loadUsers() {
       li.className = "conversation";
       li.dataset.id = id;
 
-      // Add unread indicator if the last message is from the user and unread
       const isUnread = lastMessage.author !== admin.name && lastMessage.status !== 'read';
       const unreadClass = isUnread ? 'bg-red-500 rounded-full w-2 h-2 mr-2' : 'hidden';
 
@@ -326,7 +324,7 @@ replyForm.addEventListener("submit", async (e) => {
   const reply = {
       author: admin.name,
       text: text,
-      time: serverTimestamp(),
+      time: new Date(),
       status: 'sent'
   };
   
