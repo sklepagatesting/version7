@@ -151,14 +151,14 @@ messageForm.addEventListener("submit", async (e) => {
   const newMessage = {
     author: currentUser.displayName,
     text: text,
-    time: new Date(), // Corrected: Using a client-side timestamp
+    time: new Date(), // **Corrected: Using a client-side timestamp**
     status: 'sent'
   };
 
   try {
     await updateDoc(currentConversationRef, {
       messages: arrayUnion(newMessage),
-      lastUpdated: serverTimestamp() // Correctly using serverTimestamp for a top-level field
+      lastUpdated: serverTimestamp() // **Correctly using serverTimestamp for a top-level field**
     });
     messageInput.value = "";
     messageInput.style.height = "42px";
@@ -232,16 +232,10 @@ window.logoutLocal = async () => {
   }
 };
 
-// Check for authenticated user on page load
+// **Corrected: Check for authenticated user on page load**
 onAuthStateChanged(auth, user => {
   if (user) {
-    const activeAccount = JSON.parse(localStorage.getItem("activeAccount"));
-    if (activeAccount && activeAccount.uid === user.uid) {
-      setupUserChat(user);
-    } else {
-      localStorage.removeItem("activeAccount");
-      window.location.href = "authentication.html";
-    }
+    setupUserChat(user);
   } else {
     window.location.href = "authentication.html";
   }
