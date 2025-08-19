@@ -76,12 +76,12 @@ const addLoginPageUser = (user) => {
 const renderProfiles = () => {
   const saved = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
   if (saved.length === 0) {
-    mainHeader.textContent = "Create an account"; // Change: Dynamic header
+    mainHeader.textContent = "Create an account";
     profilesSection.classList.add("hidden");
     loginSection.classList.remove("hidden");
     return;
   }
-  mainHeader.textContent = "Sign in with Google"; // Change: Dynamic header
+  mainHeader.textContent = "Sign in with Google";
   loginSection.classList.add("hidden");
   profilesSection.classList.remove("hidden");
   profilesGrid.innerHTML = "";
@@ -94,19 +94,16 @@ const renderProfiles = () => {
     profilesGrid.appendChild(createProfileCard(activeUser, true));
   }
 
-  // Change: New container for inactive users
+  // Changed: Keep header and add profiles directly
   if (otherUsers.length > 0) {
-    const inactiveContainer = document.createElement("div");
-    inactiveContainer.className = "flex flex-col gap-3 border border-gray-200 rounded-xl p-4 mt-4";
     const header = document.createElement("h2");
-    header.className = "text-gray-700 font-semibold mb-2";
+    header.className = "text-gray-700 font-semibold mb-2 mt-4";
     header.textContent = "Switch account";
-    inactiveContainer.appendChild(header);
+    profilesGrid.appendChild(header);
 
     otherUsers.forEach(u => {
-      inactiveContainer.appendChild(createProfileCard(u, false));
+      profilesGrid.appendChild(createProfileCard(u, false));
     });
-    profilesGrid.appendChild(inactiveContainer);
   }
 };
 
@@ -122,9 +119,10 @@ const createProfileCard = (user, isActive) => {
       <div class="text-xs text-gray-500 truncate" title="${user.email||""}">${user.email||""}</div>
     </div>
     <div class="ml-auto flex items-center gap-1">
-      ${isActive ? `<span class="text-blue-600 font-bold text-lg">✓</span>` : ''} <span class="text-[10px] px-2 py-1 rounded-full ${user.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
+      <span class="text-[10px] px-2 py-1 rounded-full ${user.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
         ${user.type==='admin'?'Admin':'User'}
       </span>
+      ${isActive ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-blue-500"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" /></svg>` : ''}
     </div>
   `;
 
@@ -192,15 +190,15 @@ async function doSignOut() {
 window.login = login;
 window.logoutLocal = doSignOut;
 notYouBtn.addEventListener("click", doSignOut);
-modalCancel.addEventListener("click", () => rechooseModal.classList.add("hidden")); // Change: Modal behavior
+modalCancel.addEventListener("click", () => rechooseModal.classList.add("hidden"));
 modalContinue.addEventListener("click", () => {
     rechooseModal.classList.add("hidden");
     login();
-}); // Change: Modal behavior
+});
 
 renderProfiles();
 
-onAuthStateChanged(auth, async (user) => { // Change: Correct role labeling logic
+onAuthStateChanged(auth, async (user) => {
   if (user) {
     const adminRef = doc(db, "admin", user.uid);
     const adminSnap = await getDoc(adminRef);
