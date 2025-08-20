@@ -123,7 +123,7 @@
             padding: 10px 14px;
             border-radius: 18px;
             word-wrap: break-word;
-            white-space: normal; /* Fix for extra space */
+            white-space: normal;
             box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
         }
         .chat-bubble.sender {
@@ -229,6 +229,16 @@
             .back-btn {
                 display: inline-block;
             }
+        }
+
+        .unread-badge {
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            font-size: 0.75rem; /* text-xs */
+            font-weight: bold;
+            line-height: 1;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px; /* full rounded */
         }
     </style>
 </head>
@@ -465,17 +475,18 @@
                         text: "Start a conversation...",
                         time: data.lastUpdated
                     };
+                    
+                    // Count unread messages
+                    const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
+                    const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
+
                     const li = document.createElement("div");
                     li.className = "conversation";
                     li.dataset.id = id;
 
-                    const isUnread = lastMessage.author !== currentUser.displayName && lastMessage.status !== 'read';
-                    const unreadClass = isUnread ? 'bg-red-500 rounded-full w-2 h-2 absolute -left-1' : 'hidden';
-
                     li.innerHTML = `
                         <div class="relative">
                             <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
-                            <span class="${unreadClass}"></span>
                         </div>
                         <div class="flex-1">
                             <div class="flex justify-between items-center">
@@ -483,6 +494,9 @@
                                 <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
                             </div>
                             <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
+                        </div>
+                        <div class="flex-shrink-0 ml-auto">
+                            ${unreadBadge}
                         </div>
                     `;
                     li.addEventListener("click", () => openConversation(id, userName));
