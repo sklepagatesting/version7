@@ -126,10 +126,12 @@
         .chat-bubble.sender {
             background-color: var(--sender-bg);
             color: white;
+            align-self: flex-end;
         }
         .chat-bubble.receiver {
             background-color: var(--receiver-bg);
             color: black;
+            align-self: flex-start;
         }
         .message-time {
             font-size: 0.75rem;
@@ -220,7 +222,7 @@
             .chat-app.show-chat .chat-panel {
                 transform: translateX(0);
             }
-            .back-btn {
+            .chat-app.show-chat .back-btn {
                 display: inline-block;
             }
         }
@@ -238,6 +240,19 @@
             height: 2.5rem;
             border-radius: 9999px;
             margin-right: 0.75rem;
+        }
+        .typing-indicator span {
+            animation: bounce 0.6s infinite alternate;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-4px); }
         }
     </style>
 </head>
@@ -346,12 +361,12 @@
             });
         }
         
-        // Simplified checkmark icons
-        const sentIcon = `<svg class="w-4 h-4 text-gray-400 dark:text-gray-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+        // Updated checkmark icons
+        const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
         </svg>`;
-        const readIcon = `<svg class="w-4 h-4 text-blue-500 dark:text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+        const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
         </svg>`;
 
         function addMessage(author, text, time, status) {
@@ -384,7 +399,7 @@
             messagesContainer.appendChild(row);
         }
 
-        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+        const isMobile = window.innerWidth <= 1200;
 
         replyInput.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
@@ -401,17 +416,23 @@
 
         let typingTimeout = null;
         replyInput.addEventListener('input', () => {
-            if (currentConversationId) {
+            if (!currentConversationId) return;
+
+            // Set adminTyping to true on first input, but only once
+            if (typingTimeout === null) {
                 updateDoc(doc(db, "conversations", currentConversationId), {
                     adminTyping: true
                 });
-                clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(() => {
-                    updateDoc(doc(db, "conversations", currentConversationId), {
-                        adminTyping: false
-                    });
-                }, 1500);
             }
+
+            // Clear the old timeout and set a new one
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                updateDoc(doc(db, "conversations", currentConversationId), {
+                    adminTyping: false
+                });
+                typingTimeout = null;
+            }, 1500);
         });
 
         function openConversation(conversationId, otherName, otherAvatar) {
@@ -432,7 +453,7 @@
 
             unsubscribeConversationListener = onSnapshot(doc(db, "conversations", conversationId), (docSnap) => {
                 messagesContainer.innerHTML = "";
-                typingIndicator.textContent = "";
+                typingIndicator.innerHTML = "";
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
@@ -440,7 +461,7 @@
                     allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time, msg.status));
 
                     if (data.userTyping) {
-                        typingIndicator.textContent = `${data.user.name} is typing...`;
+                        typingIndicator.innerHTML = `<span class="typing-indicator text-gray-500">is typing<span>.</span><span>.</span><span>.</span></span>`;
                     }
 
                     const userMessages = allMessages.filter(msg => msg.author !== currentUser.displayName);
@@ -470,7 +491,7 @@
                 }
                 scrollToBottom();
             });
-            if (window.innerWidth <= 1200) chatApp.classList.add("show-chat");
+            if (isMobile) chatApp.classList.add("show-chat");
         }
 
         function loadUsers() {
@@ -511,7 +532,7 @@
                             </div>
                             <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
                         </div>
-                        <div class="flex-shrink-0 ml-auto">
+                        <div class="flex-shrink-0 ml-auto flex items-center">
                             ${unreadBadge}
                         </div>
                     `;
