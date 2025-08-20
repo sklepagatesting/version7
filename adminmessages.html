@@ -486,4 +486,95 @@
                     const data = docSnap.data();
                     const id = docSnap.id;
                     const userName = data.user?.name || "Unknown User";
-                    const userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURICompo
+                    const userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(userName)}`;
+
+                    const lastMessage = data.messages?.slice(-1)[0] || {
+                        text: "Start a conversation...",
+                        time: data.lastUpdated
+                    };
+
+                    const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
+                    const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
+
+                    const li = document.createElement("div");
+                    li.className = "conversation";
+                    li.dataset.id = id;
+
+                    li.innerHTML = `
+                        <div class="relative">
+                            <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center">
+                                <strong class="font-semibold text-gray-800 truncate">${escapeHtml(userName)}</strong>
+                                <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
+                        </div>
+                        <div class="flex-shrink-0 ml-auto">
+                            ${unreadBadge}
+                        </div>
+                    `;
+                    li.addEventListener("click", () => openConversation(id, userName, userAvatar));
+                    userList.appendChild(li);
+                });
+            });
+        }
+
+        replyForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!currentConversationId) return;
+            const text = replyInput.value.trim();
+            if (!text) return;
+
+            const reply = {
+                author: currentUser.displayName,
+                text: text,
+                time: new Date(),
+                status: 'sent'
+            };
+
+            try {
+                await updateDoc(doc(db, "conversations", currentConversationId), {
+                    messages: arrayUnion(reply),
+                    lastUpdated: serverTimestamp()
+                });
+                replyInput.value = "";
+                replyInput.style.height = "42px";
+                scrollToBottom();
+            } catch (err) {
+                alert("Failed to send reply: " + err.message);
+            }
+        });
+
+        backBtn.addEventListener("click", () => {
+            chatApp.classList.remove("show-chat");
+            chatTitle.style.display = 'block';
+            chatHeaderProfile.style.display = 'none';
+        });
+
+        window.logout = async () => {
+            try {
+                await signOut(auth);
+                window.location.href = "index.html";
+            } catch (error) {
+                console.error("Sign out error:", error);
+            }
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const adminDoc = await getDoc(doc(db, "admin", user.uid));
+                if (adminDoc.exists()) {
+                    currentUser = { displayName: adminDoc.data().name || user.displayName, uid: user.uid };
+                    loadUsers();
+                } else {
+                    window.location.href = "messages.html";
+                }
+            } else {
+                window.location.href = "index.html";
+            }
+        });
+    </script>
+</body>
+</html>
