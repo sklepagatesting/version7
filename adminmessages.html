@@ -19,7 +19,6 @@
             margin: 0;
             overflow: hidden;
         }
-
         .chat-app {
             position: fixed;
             top: 0;
@@ -65,7 +64,6 @@
         .conversation.active {
             background-color: #eef5ff;
         }
-
         .chat-panel {
             flex: 1;
             display: flex;
@@ -90,10 +88,8 @@
             margin-right: 1rem;
             background: none;
             border: none;
-            font-size: 1.5rem;
             cursor: pointer;
         }
-
         .messages {
             flex: 1;
             min-height: 0;
@@ -123,8 +119,9 @@
             padding: 10px 14px;
             border-radius: 18px;
             word-wrap: break-word;
-            white-space: normal;
+            white-space: pre-wrap;
             box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+            max-width: fit-content;
         }
         .chat-bubble.sender {
             background-color: var(--sender-bg);
@@ -146,7 +143,6 @@
         .message-row.receiver .message-time {
             align-self: flex-start;
         }
-
         .chat-input-wrapper {
             border-top: 1px solid #ddd;
             background: var(--body-bg);
@@ -188,7 +184,6 @@
             align-items: center;
             justify-content: center;
         }
-
         .chat-app.no-chat-selected .chat-input-wrapper {
             display: none;
         }
@@ -204,7 +199,6 @@
         .placeholder {
             display: none;
         }
-
         @media (max-width: 1200px) {
             .sidebar,
             .chat-panel {
@@ -230,7 +224,6 @@
                 display: inline-block;
             }
         }
-
         .unread-badge {
             background-color: #ef4444; /* red-500 */
             color: white;
@@ -239,6 +232,12 @@
             line-height: 1;
             padding: 0.25rem 0.5rem;
             border-radius: 9999px; /* full rounded */
+        }
+        .chat-profile-avatar {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 9999px;
+            margin-right: 0.75rem;
         }
     </style>
 </head>
@@ -254,8 +253,16 @@
 
         <div class="chat-panel">
             <div class="chat-header">
-                <button class="back-btn" id="backBtn">&larr;</button>
-                <span id="chatTitle">Select a conversation</span>
+                <button class="back-btn" id="backBtn">
+                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12l4-4m-4 4 4 4"/>
+                    </svg>
+                </button>
+                <div id="chatHeaderProfile" class="flex items-center" style="display: none;">
+                    <img id="chatHeaderAvatar" class="chat-profile-avatar" src="" alt="User Avatar" />
+                    <span id="chatHeaderName" class="font-semibold text-gray-800"></span>
+                </div>
+                <span id="chatTitle" class="flex-grow">Select a conversation</span>
             </div>
             <div class="messages" id="messagesContainer">
                 <div class="placeholder">
@@ -308,6 +315,9 @@
         const chatTitle = document.getElementById("chatTitle");
         const backBtn = document.getElementById("backBtn");
         const typingIndicator = document.getElementById("typingIndicator");
+        const chatHeaderProfile = document.getElementById("chatHeaderProfile");
+        const chatHeaderAvatar = document.getElementById("chatHeaderAvatar");
+        const chatHeaderName = document.getElementById("chatHeaderName");
 
         function escapeHtml(text) {
             if (typeof text !== 'string') return "";
@@ -335,6 +345,14 @@
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             });
         }
+        
+        // Simplified checkmark icons
+        const sentIcon = `<svg class="w-4 h-4 text-gray-400 dark:text-gray-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+        </svg>`;
+        const readIcon = `<svg class="w-4 h-4 text-blue-500 dark:text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+        </svg>`;
 
         function addMessage(author, text, time, status) {
             const isSender = author === currentUser.displayName;
@@ -351,17 +369,13 @@
             const timeEl = document.createElement("div");
             timeEl.className = "message-time flex items-center gap-1";
             timeEl.textContent = formatTimestamp(time);
-
+            
             if (isSender) {
-                const icon = document.createElement("div");
                 if (status === 'read') {
-                    icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-blue-500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-blue-500 ml-[-8px]"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>`;
-                } else if (status === 'delivered') {
-                    icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-gray-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>`;
+                    timeEl.innerHTML += readIcon;
                 } else {
-                    icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-gray-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>`;
+                    timeEl.innerHTML += sentIcon;
                 }
-                timeEl.appendChild(icon);
             }
 
             content.appendChild(bubble);
@@ -400,10 +414,13 @@
             }
         });
 
-        function openConversation(conversationId, otherName) {
+        function openConversation(conversationId, otherName, otherAvatar) {
             currentConversationId = conversationId;
             currentUserName = otherName;
-            chatTitle.textContent = escapeHtml(otherName);
+            chatTitle.style.display = 'none';
+            chatHeaderProfile.style.display = 'flex';
+            chatHeaderAvatar.src = escapeHtml(otherAvatar);
+            chatHeaderName.textContent = escapeHtml(otherName);
             chatApp.classList.remove('no-chat-selected');
             document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
             document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
@@ -469,94 +486,4 @@
                     const data = docSnap.data();
                     const id = docSnap.id;
                     const userName = data.user?.name || "Unknown User";
-                    const userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(userName)}`;
-
-                    const lastMessage = data.messages?.slice(-1)[0] || {
-                        text: "Start a conversation...",
-                        time: data.lastUpdated
-                    };
-                    
-                    // Count unread messages
-                    const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
-                    const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
-
-                    const li = document.createElement("div");
-                    li.className = "conversation";
-                    li.dataset.id = id;
-
-                    li.innerHTML = `
-                        <div class="relative">
-                            <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
-                        </div>
-                        <div class="flex-1">
-                            <div class="flex justify-between items-center">
-                                <strong class="font-semibold text-gray-800">${escapeHtml(userName)}</strong>
-                                <span class="text-xs text-gray-500">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
-                            </div>
-                            <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
-                        </div>
-                        <div class="flex-shrink-0 ml-auto">
-                            ${unreadBadge}
-                        </div>
-                    `;
-                    li.addEventListener("click", () => openConversation(id, userName));
-                    userList.appendChild(li);
-                });
-            });
-        }
-
-        replyForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            if (!currentConversationId) return;
-            const text = replyInput.value.trim();
-            if (!text) return;
-
-            const reply = {
-                author: currentUser.displayName,
-                text: text,
-                time: new Date(),
-                status: 'sent'
-            };
-
-            try {
-                await updateDoc(doc(db, "conversations", currentConversationId), {
-                    messages: arrayUnion(reply),
-                    lastUpdated: serverTimestamp()
-                });
-                replyInput.value = "";
-                replyInput.style.height = "42px";
-                scrollToBottom();
-            } catch (err) {
-                alert("Failed to send reply: " + err.message);
-            }
-        });
-
-        backBtn.addEventListener("click", () => {
-            chatApp.classList.remove("show-chat");
-        });
-
-        window.logout = async () => {
-            try {
-                await signOut(auth);
-                window.location.href = "index.html";
-            } catch (error) {
-                console.error("Sign out error:", error);
-            }
-        };
-
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                const adminDoc = await getDoc(doc(db, "admin", user.uid));
-                if (adminDoc.exists()) {
-                    currentUser = { displayName: adminDoc.data().name || user.displayName, uid: user.uid };
-                    loadUsers();
-                } else {
-                    window.location.href = "messages.html";
-                }
-            } else {
-                window.location.href = "index.html";
-            }
-        });
-    </script>
-</body>
-</html>
+                    const userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURICompo
