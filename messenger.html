@@ -12,7 +12,7 @@
             --receiver-bg: #e5e5ea;
             --body-bg: #f5f5f5;
         }
-
+        
         html {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
@@ -87,11 +87,13 @@
         .chat-bubble.sender {
             background-color: var(--sender-bg);
             color: white;
+            align-self: flex-end;
         }
 
         .chat-bubble.receiver {
             background-color: var(--receiver-bg);
             color: black;
+            align-self: flex-start;
         }
 
         .message-time {
@@ -196,14 +198,12 @@
             from {
                 transform: translateY(0);
             }
-
             to {
                 transform: translateY(-4px);
             }
         }
     </style>
 </head>
-
 <body>
     <div class="chat-app" id="chatApp">
         <div class="chat-header">
@@ -219,7 +219,6 @@
                 <p class="mt-1 text-sm text-gray-500">Send a message to our support team.</p>
             </div>
         </div>
-        <div class="px-4 text-sm text-gray-500" id="typingIndicator"></div>
         <form id="messageForm" class="chat-input-wrapper">
             <textarea id="messageInput" placeholder="Type a message..." autocomplete="off" class="context"></textarea>
             <button type="submit" aria-label="Send Message">&#10148;</button>
@@ -250,9 +249,7 @@
         const messagesContainer = document.getElementById("messagesContainer");
         const messageForm = document.getElementById("messageForm");
         const messageInput = document.getElementById("messageInput");
-        const typingIndicator = document.getElementById("typingIndicator");
 
-        // Helpers
         function escapeHtml(text) {
             if (typeof text !== 'string') return "";
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -269,7 +266,7 @@
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             });
         }
-        
+
         const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
         const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
@@ -284,14 +281,14 @@
             const bubble = document.createElement("div");
             bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
             bubble.textContent = text;
-            
+
             content.appendChild(bubble);
 
             if (showTime || (isSender && isLastMessage)) {
                 const timeEl = document.createElement("div");
                 timeEl.className = "message-time flex items-center gap-1";
                 timeEl.textContent = formatTimestamp(time);
-                
+
                 if (isSender && isLastMessage) {
                     if (status === 'read') {
                         timeEl.innerHTML += readIcon;
@@ -305,7 +302,6 @@
             messagesContainer.appendChild(row);
         }
 
-        // Typing Indicator Logic
         let typingTimeout = null;
         messageInput.addEventListener('input', () => {
             if (currentConversationRef) {
@@ -317,7 +313,6 @@
             }
         });
 
-        // Send message
         messageForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             const text = messageInput.value.trim();
@@ -369,7 +364,6 @@
 
             onSnapshot(currentConversationRef, async (docSnap) => {
                 messagesContainer.innerHTML = "";
-                typingIndicator.innerHTML = "";
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
@@ -379,7 +373,7 @@
                             'user.name': user.displayName,
                         });
                     }
-
+                    
                     if (data.adminTyping) {
                         const typingBubble = document.createElement("div");
                         typingBubble.className = "message-row receiver";
