@@ -140,6 +140,7 @@
             overflow-wrap: break-word;
             white-space: pre-wrap;
             box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+            word-break: break-all;
         }
 
         .chat-bubble.sender {
@@ -279,6 +280,16 @@
             border-radius: 9999px;
             margin-right: 0.75rem;
         }
+        
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            background-color: var(--receiver-bg);
+            color: black;
+            padding: 8px 14px;
+            border-radius: 18px;
+            width: fit-content;
+        }
 
         .typing-indicator span {
             animation: bounce 0.6s infinite alternate;
@@ -413,12 +424,8 @@
             });
         }
 
-        const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-        </svg>`;
-        const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-            <path fill="currentColor" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-        </svg>`;
+        const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
+        const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
         function addMessage(author, text, time, status, isLastMessage, showTime) {
             const isSender = author === currentUser.displayName;
@@ -522,7 +529,7 @@
                     });
 
                     if (data.userTyping) {
-                        typingIndicator.innerHTML = `<span class="typing-indicator text-gray-500">is typing<span>.</span><span>.</span><span>.</span></span>`;
+                        typingIndicator.innerHTML = `<div class="typing-indicator text-gray-500"><span>.</span><span>.</span><span>.</span></div>`;
                     }
 
                     const userMessages = allMessages.filter(msg => msg.author !== currentUser.displayName);
