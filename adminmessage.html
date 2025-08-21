@@ -340,6 +340,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="chat-app no-chat-selected" id="chatApp">
         <div class="sidebar">
@@ -403,6 +404,7 @@
         let currentUserName = null;
         let currentUserAvatar = null;
         let unsubscribeConversationListener = null;
+        let unsubscribeConversationsList = null;
         let lastDoc = null;
         let isLoading = false;
         const CONVERSATIONS_PER_LOAD = 20;
@@ -593,80 +595,62 @@
             if (isMobile) chatApp.classList.add("show-chat");
         }
 
-        async function loadConversations(loadMore = false) {
-            if (isLoading) return;
-            isLoading = true;
-
-            let q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"), limit(CONVERSATIONS_PER_LOAD));
-            if (loadMore && lastDoc) {
-                q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"), startAfter(lastDoc), limit(CONVERSATIONS_PER_LOAD));
+        function renderConversations(docs) {
+            userList.innerHTML = "";
+            if (docs.length === 0) {
+                userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
+                return;
             }
 
-            try {
-                const snapshot = await getDocs(q);
-                if (snapshot.empty) {
-                    isLoading = false;
-                    if (!loadMore) {
-                        userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
-                    }
-                    return;
+            docs.forEach(docSnap => {
+                const data = docSnap.data();
+                const id = docSnap.id;
+                const userName = data.user?.name || "Unknown User";
+                const userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(userName)}`;
+
+                const lastMessage = data.messages?.slice(-1)[0] || {
+                    text: "Start a conversation...",
+                    time: data.lastUpdated
+                };
+                
+                const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
+                const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
+                const timestamp = formatTimestampForList(lastMessage.time);
+
+                const li = document.createElement("div");
+                li.className = "conversation";
+                li.dataset.id = id;
+
+                li.innerHTML = `
+                    <div class="relative">
+                        <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
+                    </div>
+                    <div class="conversation-info">
+                        <div class="flex justify-between items-center">
+                            <strong class="font-semibold text-gray-800 truncate">${escapeHtml(userName)}</strong>
+                            <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${escapeHtml(timestamp)}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
+                    </div>
+                    <div class="unread-badge-container">
+                         ${unreadBadge}
+                    </div>
+                `;
+                li.addEventListener("click", () => openConversation(id, userName, userAvatar));
+                userList.appendChild(li);
+
+                if (currentConversationId === id) {
+                    li.classList.add('active');
                 }
-
-                if (!loadMore) {
-                    userList.innerHTML = "";
-                }
-
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const id = docSnap.id;
-                    const userName = data.user?.name || "Unknown User";
-                    const userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(userName)}`;
-
-                    const lastMessage = data.messages?.slice(-1)[0] || {
-                        text: "Start a conversation...",
-                        time: data.lastUpdated
-                    };
-
-                    const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
-                    const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
-                    const timestamp = formatTimestampForList(lastMessage.time);
-
-                    const li = document.createElement("div");
-                    li.className = "conversation";
-                    li.dataset.id = id;
-
-                    li.innerHTML = `
-                        <div class="relative">
-                            <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
-                        </div>
-                        <div class="conversation-info">
-                            <div class="flex justify-between items-center">
-                                <strong class="font-semibold text-gray-800 truncate">${escapeHtml(userName)}</strong>
-                                <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${escapeHtml(timestamp)}</span>
-                            </div>
-                            <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
-                        </div>
-                        <div class="unread-badge-container">
-                             ${unreadBadge}
-                        </div>
-                    `;
-                    li.addEventListener("click", () => openConversation(id, userName, userAvatar));
-                    userList.appendChild(li);
-                });
-
-                lastDoc = snapshot.docs[snapshot.docs.length - 1];
-            } catch (error) {
-                console.error("Error loading conversations:", error);
-            } finally {
-                isLoading = false;
-            }
+            });
         }
 
-        userList.addEventListener('scroll', () => {
-            if (userList.scrollTop + userList.clientHeight >= userList.scrollHeight - 50) {
-                loadConversations(true);
-            }
-        });
+        function setupConversationsListener() {
+            const q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"));
+            unsubscribeConversationsList = onSnapshot(q, (querySnapshot) => {
+                renderConversations(querySnapshot.docs);
+            });
+        }
 
         replyForm.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -702,6 +686,8 @@
 
         window.logout = async () => {
             try {
+                if (unsubscribeConversationListener) unsubscribeConversationListener();
+                if (unsubscribeConversationsList) unsubscribeConversationsList();
                 await signOut(auth);
                 window.location.href = "index.html";
             } catch (error) {
@@ -714,7 +700,7 @@
                 const adminDoc = await getDoc(doc(db, "admin", user.uid));
                 if (adminDoc.exists()) {
                     currentUser = { displayName: adminDoc.data().name || user.displayName, uid: user.uid };
-                    loadConversations();
+                    setupConversationsListener();
                 } else {
                     window.location.href = "messages.html";
                 }
