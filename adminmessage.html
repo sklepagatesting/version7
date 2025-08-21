@@ -219,8 +219,8 @@
         .chat-app.no-chat-selected .chat-input-wrapper {
             display: none;
         }
-        /* END: INPUT WRAPPER STYLES */
 
+        /* END: INPUT WRAPPER STYLES */
         .chat-app.no-chat-selected .placeholder {
             display: flex;
             align-items: center;
@@ -265,7 +265,7 @@
                 display: inline-block;
             }
         }
-        
+
         .conversation-info {
             flex: 1;
             min-width: 0;
@@ -294,14 +294,14 @@
             border-radius: 9999px;
             margin-top: 0.25rem;
         }
-        
+
         .chat-profile-avatar {
             width: 2.5rem;
             height: 2.5rem;
             border-radius: 9999px;
             margin-right: 0.75rem;
         }
-        
+
         .typing-indicator {
             display: flex;
             align-items: center;
@@ -313,6 +313,12 @@
         }
 
         .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #666;
+            border-radius: 50%;
+            margin: 0 2px;
             animation: bounce 0.6s infinite alternate;
         }
 
@@ -328,7 +334,6 @@
             from {
                 transform: translateY(0);
             }
-
             to {
                 transform: translateY(-4px);
             }
@@ -352,7 +357,6 @@
                     </svg>
                 </button>
                 <div id="chatHeaderProfile" class="flex items-center" style="display: none;">
-                    <img id="chatHeaderAvatar" class="chat-profile-avatar" src="" alt="User Avatar" />
                     <span id="chatHeaderName" class="font-semibold text-gray-800"></span>
                 </div>
                 <span id="chatTitle" class="flex-grow">Select a conversation</span>
@@ -412,7 +416,6 @@
         const backBtn = document.getElementById("backBtn");
         const typingIndicator = document.getElementById("typingIndicator");
         const chatHeaderProfile = document.getElementById("chatHeaderProfile");
-        const chatHeaderAvatar = document.getElementById("chatHeaderAvatar");
         const chatHeaderName = document.getElementById("chatHeaderName");
 
         function escapeHtml(text) {
@@ -521,7 +524,6 @@
 
             chatTitle.style.display = 'none';
             chatHeaderProfile.style.display = 'flex';
-            chatHeaderAvatar.src = escapeHtml(otherAvatar);
             chatHeaderName.textContent = escapeHtml(otherName);
             chatApp.classList.remove('no-chat-selected');
 
@@ -550,7 +552,14 @@
                     });
 
                     if (data.userTyping) {
-                        typingIndicator.innerHTML = `<div class="typing-indicator text-gray-500"><span>.</span><span>.</span><span>.</span></div>`;
+                        const typingBubble = document.createElement("div");
+                        typingBubble.className = "message-row receiver";
+                        typingBubble.innerHTML = `<div class="message-content">
+                            <div class="chat-bubble receiver typing-indicator">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>`;
+                        messagesContainer.appendChild(typingBubble);
                     }
 
                     const userMessages = allMessages.filter(msg => msg.author !== currentUser.displayName);
@@ -583,7 +592,7 @@
 
             if (isMobile) chatApp.classList.add("show-chat");
         }
-        
+
         async function loadConversations(loadMore = false) {
             if (isLoading) return;
             isLoading = true;
@@ -617,7 +626,7 @@
                         text: "Start a conversation...",
                         time: data.lastUpdated
                     };
-                    
+
                     const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
                     const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
                     const timestamp = formatTimestampForList(lastMessage.time);
@@ -644,7 +653,7 @@
                     li.addEventListener("click", () => openConversation(id, userName, userAvatar));
                     userList.appendChild(li);
                 });
-                
+
                 lastDoc = snapshot.docs[snapshot.docs.length - 1];
             } catch (error) {
                 console.error("Error loading conversations:", error);
@@ -658,7 +667,6 @@
                 loadConversations(true);
             }
         });
-
 
         replyForm.addEventListener("submit", async (e) => {
             e.preventDefault();
