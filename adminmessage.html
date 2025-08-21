@@ -345,7 +345,7 @@
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, query, orderBy, doc, getDoc, getDocs, onSnapshot, updateDoc, arrayUnion, serverTimestamp, limit, startAfter } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, query, orderBy, doc, getDoc, onSnapshot, updateDoc, arrayUnion, serverTimestamp, limit, startAfter } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -369,7 +369,7 @@
         let unsubscribeConversationListener = null;
         let lastDoc = null;
         let isLoading = false;
-        const CONVERSATIONS_PER_LOAD = 20;
+        const MESSAGES_PER_LOAD = 20;
 
         const chatApp = document.getElementById("chatApp");
         const userList = document.getElementById("userList");
@@ -420,7 +420,7 @@
             <path fill="currentColor" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
         </svg>`;
 
-        function addMessage(author, text, time, status, isLastMessage, showTime) {
+        function addMessage(author, text, time, status, isLastMessage) {
             const isSender = author === currentUser.displayName;
             const row = document.createElement("div");
             row.className = "message-row " + (isSender ? "sender" : "receiver");
@@ -432,23 +432,20 @@
             bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
             bubble.textContent = text;
 
-            content.appendChild(bubble);
+            const timeEl = document.createElement("div");
+            timeEl.className = "message-time flex items-center gap-1";
+            timeEl.textContent = formatTimestamp(time);
 
-            if (showTime || (isSender && isLastMessage)) {
-                const timeEl = document.createElement("div");
-                timeEl.className = "message-time flex items-center gap-1";
-                timeEl.textContent = formatTimestamp(time);
-
-                if (isSender && isLastMessage) {
-                    if (status === 'read') {
-                        timeEl.innerHTML += readIcon;
-                    } else {
-                        timeEl.innerHTML += sentIcon;
-                    }
+            if (isSender && isLastMessage) {
+                if (status === 'read') {
+                    timeEl.innerHTML += readIcon;
+                } else {
+                    timeEl.innerHTML += sentIcon;
                 }
-                content.appendChild(timeEl);
             }
 
+            content.appendChild(bubble);
+            content.appendChild(timeEl);
             row.appendChild(content);
             messagesContainer.appendChild(row);
         }
@@ -461,7 +458,7 @@
                 replyForm.requestSubmit();
             }
         });
-
+        
         replyInput.addEventListener("input", () => {
             replyInput.style.height = "auto";
             replyInput.style.height = replyInput.scrollHeight + "px";
@@ -490,16 +487,13 @@
             currentConversationId = conversationId;
             currentUserName = otherName;
             currentUserAvatar = otherAvatar;
-
             chatTitle.style.display = 'none';
             chatHeaderProfile.style.display = 'flex';
             chatHeaderAvatar.src = escapeHtml(otherAvatar);
             chatHeaderName.textContent = escapeHtml(otherName);
             chatApp.classList.remove('no-chat-selected');
-
             document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
             document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
-
             replyInput.value = "";
             replyInput.style.height = "42px";
             typingIndicator.textContent = "";
@@ -509,7 +503,7 @@
             unsubscribeConversationListener = onSnapshot(doc(db, "conversations", conversationId), (docSnap) => {
                 messagesContainer.innerHTML = "";
                 typingIndicator.innerHTML = "";
-
+                
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     const allMessages = data.messages || [];
@@ -517,8 +511,8 @@
                     let lastMessageTime = null;
                     allMessages.forEach((msg, index) => {
                         const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 300000);
-                        addMessage(msg.author, msg.text, msg.time, msg.status, index === allMessages.length - 1, showTime);
-                        lastMessageTime = msg.time.toDate();
+                        addMessage(msg.author, msg.text, showTime ? msg.time : null, msg.status, index === allMessages.length - 1);
+                        if (showTime) lastMessageTime = msg.time.toDate();
                     });
 
                     if (data.userTyping) {
@@ -560,68 +554,63 @@
             if (isLoading) return;
             isLoading = true;
 
-            let q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"), limit(CONVERSATIONS_PER_LOAD));
+            let q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"), limit(20));
             if (loadMore && lastDoc) {
-                q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"), startAfter(lastDoc), limit(CONVERSATIONS_PER_LOAD));
+                q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"), startAfter(lastDoc), limit(20));
             }
 
-            try {
-                const snapshot = await getDocs(q);
-                if (snapshot.empty) {
-                    isLoading = false;
-                    if (!loadMore) {
-                        userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
-                    }
-                    return;
-                }
-
-                if (!loadMore) {
-                    userList.innerHTML = "";
-                }
-
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const id = docSnap.id;
-                    const userName = data.user?.name || "Unknown User";
-                    const userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(userName)}`;
-
-                    const lastMessage = data.messages?.slice(-1)[0] || {
-                        text: "Start a conversation...",
-                        time: data.lastUpdated
-                    };
-                    
-                    const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
-                    const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
-
-                    const li = document.createElement("div");
-                    li.className = "conversation";
-                    li.dataset.id = id;
-
-                    li.innerHTML = `
-                        <div class="relative">
-                            <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex justify-between items-center">
-                                <strong class="font-semibold text-gray-800 truncate">${escapeHtml(userName)}</strong>
-                                <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
-                            </div>
-                            <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
-                        </div>
-                        <div class="flex-shrink-0 ml-auto flex items-center">
-                            ${unreadBadge}
-                        </div>
-                    `;
-                    li.addEventListener("click", () => openConversation(id, userName, userAvatar));
-                    userList.appendChild(li);
-                });
-                
-                lastDoc = snapshot.docs[snapshot.docs.length - 1];
-            } catch (error) {
-                console.error("Error loading conversations:", error);
-            } finally {
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) {
                 isLoading = false;
+                if (!loadMore) {
+                    userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
+                }
+                return;
             }
+
+            if (!loadMore) {
+                userList.innerHTML = "";
+            }
+
+            snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                const id = docSnap.id;
+                const userName = data.user?.name || "Unknown User";
+                const userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(userName)}`;
+
+                const lastMessage = data.messages?.slice(-1)[0] || {
+                    text: "Start a conversation...",
+                    time: data.lastUpdated
+                };
+                
+                const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
+                const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
+
+                const li = document.createElement("div");
+                li.className = "conversation";
+                li.dataset.id = id;
+
+                li.innerHTML = `
+                    <div class="relative">
+                        <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-center">
+                            <strong class="font-semibold text-gray-800 truncate">${escapeHtml(userName)}</strong>
+                            <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${escapeHtml(formatTimestampForList(lastMessage.time))}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
+                    </div>
+                    <div class="flex-shrink-0 ml-auto flex items-center">
+                        ${unreadBadge}
+                    </div>
+                `;
+                li.addEventListener("click", () => openConversation(id, userName, userAvatar));
+                userList.appendChild(li);
+            });
+            
+            lastDoc = snapshot.docs[snapshot.docs.length - 1];
+            isLoading = false;
         }
 
         userList.addEventListener('scroll', () => {
