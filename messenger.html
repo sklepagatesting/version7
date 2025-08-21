@@ -196,6 +196,7 @@
             from {
                 transform: translateY(0);
             }
+
             to {
                 transform: translateY(-4px);
             }
@@ -224,7 +225,6 @@
             <button type="submit" aria-label="Send Message">&#10148;</button>
         </form>
     </div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
@@ -269,11 +269,11 @@
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             });
         }
-
+        
         const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
         const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
-        
-        function addMessage(author, text, time, status) {
+
+        function addMessage(author, text, time, status, isLastMessage, showTime) {
             const isSender = author === currentUser.displayName;
             const row = document.createElement("div");
             row.className = "message-row " + (isSender ? "sender" : "receiver");
@@ -287,19 +287,20 @@
             
             content.appendChild(bubble);
 
-            const timeEl = document.createElement("div");
-            timeEl.className = "message-time flex items-center gap-1";
-            timeEl.textContent = formatTimestamp(time);
-            
-            if (isSender) {
-                if (status === 'read') {
-                    timeEl.innerHTML += readIcon;
-                } else {
-                    timeEl.innerHTML += sentIcon;
+            if (showTime || (isSender && isLastMessage)) {
+                const timeEl = document.createElement("div");
+                timeEl.className = "message-time flex items-center gap-1";
+                timeEl.textContent = formatTimestamp(time);
+                
+                if (isSender && isLastMessage) {
+                    if (status === 'read') {
+                        timeEl.innerHTML += readIcon;
+                    } else {
+                        timeEl.innerHTML += sentIcon;
+                    }
                 }
+                content.appendChild(timeEl);
             }
-
-            content.appendChild(timeEl);
             row.appendChild(content);
             messagesContainer.appendChild(row);
         }
@@ -380,18 +381,23 @@
                     }
 
                     if (data.adminTyping) {
-                         const typingBubble = document.createElement("div");
-                         typingBubble.className = "message-row receiver";
-                         typingBubble.innerHTML = `<div class="message-content">
-                             <div class="chat-bubble receiver typing-indicator">
-                                 <span></span><span></span><span></span>
-                             </div>
-                         </div>`;
-                         messagesContainer.appendChild(typingBubble);
+                        const typingBubble = document.createElement("div");
+                        typingBubble.className = "message-row receiver";
+                        typingBubble.innerHTML = `<div class="message-content">
+                            <div class="chat-bubble receiver typing-indicator">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>`;
+                        messagesContainer.appendChild(typingBubble);
                     }
 
                     const allMessages = data.messages || [];
-                    allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time, msg.status));
+                    let lastMessageTime = null;
+                    allMessages.forEach((msg, index) => {
+                        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate().getTime() > 300000);
+                        addMessage(msg.author, msg.text, msg.time, msg.status, index === allMessages.length - 1, showTime);
+                        lastMessageTime = msg.time;
+                    });
 
                     const unreadAdminMessages = allMessages.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
                     if (unreadAdminMessages.length > 0) {
@@ -403,7 +409,6 @@
                         });
                         updateDoc(currentConversationRef, { messages: updatedMessages });
                     }
-
                 } else {
                     messagesContainer.innerHTML = `<div class="message-placeholder">
                         <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" /></svg>
