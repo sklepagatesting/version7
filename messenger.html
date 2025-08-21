@@ -1,160 +1,448 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>User Messages</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import {
-      getFirestore,
-      doc,
-      getDoc,
-      setDoc,
-      addDoc,
-      updateDoc,
-      collection,
-      query,
-      orderBy,
-      onSnapshot,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Messages</title>
+    <link rel="stylesheet" href="font/font.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --sender-bg: #0084ff;
+            --receiver-bg: #e5e5ea;
+            --body-bg: #f5f5f5;
+        }
 
-    // ------------------ FIREBASE INIT ------------------
-    const firebaseConfig = {
-  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-  authDomain: "sklepaga-8790e.firebaseapp.com",
-  projectId: "sklepaga-8790e",
-  storageBucket: "sklepaga-8790e.appspot.com",
-  messagingSenderId: "815409129057",
-  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-  measurementId: "G-9GH707G2WZ"
-};
+        html {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
 
-    // ------------------ AUTH GUARD ------------------
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        window.location.href = "index.html"; // force login
-        return;
-      }
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
 
-      // check if user is admin
-      const adminDoc = await getDoc(doc(db, "admins", user.uid));
-      if (adminDoc.exists()) {
-        // block admin from user chat
-        await signOut(auth);
-        window.location.href = "index.html";
-        return;
-      }
+        .chat-app {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
-      currentUser = user;
+        .chat-header {
+            padding: 1rem;
+            background: #fff;
+            border-bottom: 1px solid #ddd;
+            font-size: 1.25rem;
+            font-weight: bold;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
 
-      // Get/create conversation with system (admin support chat)
-      conversationId = await getOrCreateConversation(currentUser.uid);
+        .messages {
+            flex: 1;
+            min-height: 0;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            -webkit-overflow-scrolling: touch;
+            word-break: break-word;
+            background-color: var(--body-bg);
+        }
 
-      // Start listening to messages
-      listenForMessages(conversationId);
-    });
+        .message-row {
+            display: flex;
+            margin-bottom: 0.25rem;
+        }
 
-    // ------------------ CONVERSATION HANDLER ------------------
-    async function getOrCreateConversation(userId) {
-      const convRef = doc(db, "conversations", userId); // 1-to-1 user<->admin conv, using userId as id
-      const convSnap = await getDoc(convRef);
+        .message-row.sender {
+            justify-content: flex-end;
+        }
 
-      if (!convSnap.exists()) {
-        await setDoc(convRef, {
-          participants: [userId, "admin"], // track participants
-          lastMessage: "",
-          lastUpdated: serverTimestamp()
-        });
-      }
-      return convRef.id;
-    }
+        .message-row.receiver {
+            justify-content: flex-start;
+        }
 
-    // ------------------ MESSAGE SENDING ------------------
-    async function sendMessage() {
-      const input = document.getElementById("message-input");
-      const text = input.value.trim();
-      if (!text || !currentUser) return;
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            max-width: 80%;
+        }
 
-      const messagesRef = collection(db, "conversations", conversationId, "messages");
+        .chat-bubble {
+            padding: 10px 14px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+        }
 
-      // create new message
-      const newMsg = {
-        senderId: currentUser.uid,
-        text,
-        status: "sent",
-        timestamp: serverTimestamp()
-      };
+        .chat-bubble.sender {
+            background-color: var(--sender-bg);
+            color: white;
+        }
 
-      const msgRef = await addDoc(messagesRef, newMsg);
+        .chat-bubble.receiver {
+            background-color: var(--receiver-bg);
+            color: black;
+        }
 
-      // update conversation last message
-      await updateDoc(doc(db, "conversations", conversationId), {
-        lastMessage: text,
-        lastUpdated: serverTimestamp()
-      });
+        .message-time {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 4px;
+            padding: 0 6px;
+        }
 
-      input.value = "";
-    }
+        .message-row.sender .message-time {
+            align-self: flex-end;
+        }
 
-    // ------------------ LISTENER ------------------
-    function listenForMessages(conversationId) {
-      const messagesRef = collection(db, "conversations", conversationId, "messages");
-      const q = query(messagesRef, orderBy("timestamp", "asc"));
+        .message-row.receiver .message-time {
+            align-self: flex-start;
+        }
 
-      onSnapshot(q, (snapshot) => {
-        const chatBox = document.getElementById("chat-box");
-        chatBox.innerHTML = ""; // clear and re-render (or could append)
-        snapshot.forEach((doc) => {
-          const msg = doc.data();
-          const div = document.createElement("div");
+        .chat-input-wrapper {
+            border-top: 1px solid #ddd;
+            background: #fff;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: flex-end;
+            gap: 0.75rem;
+        }
 
-          const isMe = msg.senderId === currentUser.uid;
-          div.className = `p-2 my-1 rounded-lg max-w-[70%] ${
-            isMe ? "ml-auto bg-blue-500 text-white" : "mr-auto bg-gray-200 text-gray-800"
-          }`;
+        .chat-input-wrapper textarea {
+            box-sizing: border-box;
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            background: white;
+            outline: none;
+            resize: none;
+            min-height: 42px;
+            max-height: 30vh;
+            overflow-y: auto;
+            font-size: 1rem;
+            line-height: 1.4rem;
+            height: 42px;
+        }
 
-          div.textContent = msg.text;
-          chatBox.appendChild(div);
-        });
+        .chat-input-wrapper textarea.context::-webkit-scrollbar {
+            display: none;
+        }
 
-        // scroll to bottom
-        chatBox.scrollTop = chatBox.scrollHeight;
-      });
-    }
-  </script>
+        .chat-input-wrapper button {
+            height: auto;
+            min-height: 42px;
+            padding: 0 12px;
+            border: none;
+            background: var(--sender-bg);
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .message-placeholder {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #6b7280;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            background-color: var(--receiver-bg);
+            color: black;
+            padding: 8px 14px;
+            border-radius: 18px;
+            width: fit-content;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #666;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: bounce 0.6s infinite alternate;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            from {
+                transform: translateY(0);
+            }
+            to {
+                transform: translateY(-4px);
+            }
+        }
+    </style>
 </head>
-<body class="bg-gray-100 h-screen flex flex-col">
-  <!-- Header -->
-  <header class="bg-white shadow p-4 flex justify-between items-center">
-    <h1 class="text-xl font-semibold">Messages</h1>
-    <button onclick="signOut(auth)" class="text-red-500 font-medium">Logout</button>
-  </header>
 
-  <!-- Chat Messages -->
-  <main id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50"></main>
+<body>
+    <div class="chat-app" id="chatApp">
+        <div class="chat-header">
+            <span class="font-semibold">Support Chat</span>
+            <button onclick="logout()" class="text-sm text-red-600">Sign Out</button>
+        </div>
+        <div class="messages" id="messagesContainer">
+            <div class="message-placeholder">
+                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">Start a conversation</h3>
+                <p class="mt-1 text-sm text-gray-500">Send a message to our support team.</p>
+            </div>
+        </div>
+        <div class="px-4 text-sm text-gray-500" id="typingIndicator"></div>
+        <form id="messageForm" class="chat-input-wrapper">
+            <textarea id="messageInput" placeholder="Type a message..." autocomplete="off" class="context"></textarea>
+            <button type="submit" aria-label="Send Message">&#10148;</button>
+        </form>
+    </div>
 
-  <!-- Chat Input Wrapper (untouched but functional) -->
-  <div class="bg-white p-3 border-t flex items-center space-x-2">
-    <input
-      id="message-input"
-      type="text"
-      placeholder="Type a message..."
-      class="flex-1 border rounded-full px-4 py-2 focus:outline-none focus:ring focus:ring-blue-300"
-    />
-    <button
-      onclick="sendMessage()"
-      class="bg-blue-500 text-white rounded-full px-4 py-2 hover:bg-blue-600 transition"
-    >
-      Send
-    </button>
-  </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+            authDomain: "sklepaga-8790e.firebaseapp.com",
+            projectId: "sklepaga-8790e",
+            storageBucket: "sklepaga-8790e.appspot.com",
+            messagingSenderId: "815409129057",
+            appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+            measurementId: "G-9GH707G2WZ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let currentUser = null;
+        let currentConversationRef = null;
+
+        const messagesContainer = document.getElementById("messagesContainer");
+        const messageForm = document.getElementById("messageForm");
+        const messageInput = document.getElementById("messageInput");
+        const typingIndicator = document.getElementById("typingIndicator");
+
+        // Helpers
+        function escapeHtml(text) {
+            if (typeof text !== 'string') return "";
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+        }
+
+        function formatTimestamp(date) {
+            if (!date) return '';
+            const d = date.toDate ? date.toDate() : new Date(date);
+            return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+
+        function scrollToBottom() {
+            requestAnimationFrame(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
+        }
+
+        const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
+        const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
+        
+        function addMessage(author, text, time, status) {
+            const isSender = author === currentUser.displayName;
+            const row = document.createElement("div");
+            row.className = "message-row " + (isSender ? "sender" : "receiver");
+
+            const content = document.createElement("div");
+            content.className = "message-content";
+
+            const bubble = document.createElement("div");
+            bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
+            bubble.textContent = text;
+            
+            content.appendChild(bubble);
+
+            const timeEl = document.createElement("div");
+            timeEl.className = "message-time flex items-center gap-1";
+            timeEl.textContent = formatTimestamp(time);
+            
+            if (isSender) {
+                if (status === 'read') {
+                    timeEl.innerHTML += readIcon;
+                } else {
+                    timeEl.innerHTML += sentIcon;
+                }
+            }
+
+            content.appendChild(timeEl);
+            row.appendChild(content);
+            messagesContainer.appendChild(row);
+        }
+
+        // Typing Indicator Logic
+        let typingTimeout = null;
+        messageInput.addEventListener('input', () => {
+            if (currentConversationRef) {
+                updateDoc(currentConversationRef, { userTyping: true });
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    updateDoc(currentConversationRef, { userTyping: false });
+                }, 1500);
+            }
+        });
+
+        // Send message
+        messageForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const text = messageInput.value.trim();
+            if (!text || !currentConversationRef) return;
+
+            try {
+                const docSnap = await getDoc(currentConversationRef);
+                const newMessage = {
+                    author: currentUser.displayName,
+                    text: text,
+                    time: new Date(),
+                    status: 'sent'
+                };
+
+                if (docSnap.exists()) {
+                    await updateDoc(currentConversationRef, {
+                        messages: arrayUnion(newMessage),
+                        lastUpdated: serverTimestamp()
+                    });
+                } else {
+                    await setDoc(currentConversationRef, {
+                        user: {
+                            uid: currentUser.uid,
+                            name: currentUser.displayName,
+                            email: currentUser.email
+                        },
+                        admin: {
+                            name: "Support Admin"
+                        },
+                        messages: [newMessage],
+                        lastUpdated: serverTimestamp(),
+                        userTyping: false,
+                        adminTyping: false,
+                    });
+                }
+
+                messageInput.value = "";
+                messageInput.style.height = "42px";
+                scrollToBottom();
+            } catch (err) {
+                alert("Failed to send message: " + err.message);
+            }
+        });
+
+        function setupUserChat(user) {
+            currentUser = user;
+            const conversationId = `conv_${user.uid}`;
+            currentConversationRef = doc(db, "conversations", conversationId);
+
+            onSnapshot(currentConversationRef, async (docSnap) => {
+                messagesContainer.innerHTML = "";
+                typingIndicator.innerHTML = "";
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+
+                    if (data.user.name !== user.displayName) {
+                        await updateDoc(currentConversationRef, {
+                            'user.name': user.displayName,
+                        });
+                    }
+
+                    if (data.adminTyping) {
+                         const typingBubble = document.createElement("div");
+                         typingBubble.className = "message-row receiver";
+                         typingBubble.innerHTML = `<div class="message-content">
+                             <div class="chat-bubble receiver typing-indicator">
+                                 <span></span><span></span><span></span>
+                             </div>
+                         </div>`;
+                         messagesContainer.appendChild(typingBubble);
+                    }
+
+                    const allMessages = data.messages || [];
+                    allMessages.forEach(msg => addMessage(msg.author, msg.text, msg.time, msg.status));
+
+                    const unreadAdminMessages = allMessages.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
+                    if (unreadAdminMessages.length > 0) {
+                        const updatedMessages = allMessages.map(msg => {
+                            if (msg.author !== user.displayName && msg.status !== 'read') {
+                                return { ...msg, status: 'read' };
+                            }
+                            return msg;
+                        });
+                        updateDoc(currentConversationRef, { messages: updatedMessages });
+                    }
+
+                } else {
+                    messagesContainer.innerHTML = `<div class="message-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" /></svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">Start a conversation</h3>
+                        <p class="mt-1 text-sm text-gray-500">Send a message to our support team.</p>
+                    </div>`;
+                }
+                scrollToBottom();
+            });
+        }
+
+        window.logout = async () => {
+            try {
+                await signOut(auth);
+                window.location.href = "authentication.html";
+            } catch (error) {
+                console.error("Sign out error:", error);
+            }
+        };
+
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                setupUserChat(user);
+            } else {
+                window.location.href = "authentication.html";
+            }
+        });
+
+        messageInput.addEventListener("input", () => {
+            messageInput.style.height = "42px";
+            messageInput.style.height = messageInput.scrollHeight + "px";
+        });
+
+        messageInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                messageForm.requestSubmit();
+            }
+        });
+    </script>
 </body>
 </html>
