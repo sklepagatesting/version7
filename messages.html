@@ -10,7 +10,6 @@
         :root {
             --sender-bg: #0084ff;
             --receiver-bg: #e5e5ea;
-            --gemini-bg: #800080; /* Purple color for Gemini */
             --body-bg: #f5f5f5;
         }
         
@@ -20,7 +19,7 @@
 
         body {
             margin: 0;
-            overflow: hidden;
+            background: var(--body-bg);
         }
 
         .chat-app {
@@ -31,7 +30,6 @@
             bottom: 0;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
         }
 
         .chat-header {
@@ -96,11 +94,15 @@
             color: black;
             align-self: flex-start;
         }
-
-        .chat-bubble.gemini {
-            background-color: var(--gemini-bg);
-            color: white;
-            align-self: flex-start;
+        /* Typing indicator bubble */
+        .chat-bubble.typing-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 4px;
+            min-height: 40px;
+            padding: 10px 14px;
+            box-sizing: border-box;
         }
 
         .message-time {
@@ -181,6 +183,7 @@
             padding: 8px 14px;
             border-radius: 18px;
             width: fit-content;
+            margin-bottom: 0.25rem;
         }
 
         .typing-indicator span {
@@ -225,17 +228,18 @@
                 <h3 class="mt-2 text-sm font-medium text-gray-900">Start a conversation</h3>
                 <p class="mt-1 text-sm text-gray-500">Send a message to our support team.</p>
             </div>
+            <div id="typingIndicatorContainer"></div>
         </div>
         <form id="messageForm" class="chat-input-wrapper">
             <textarea id="messageInput" placeholder="Type a message..." autocomplete="off" class="context"></textarea>
             <button type="submit" aria-label="Send Message">&#10148;</button>
         </form>
     </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
@@ -253,71 +257,43 @@
 
         let currentUser = null;
         let currentConversationRef = null;
-        let geminiAPIKey = null;
-        let geminiTimeout = null;
 
         const messagesContainer = document.getElementById("messagesContainer");
         const messageForm = document.getElementById("messageForm");
         const messageInput = document.getElementById("messageInput");
+        const typingIndicatorContainer = document.getElementById("typingIndicatorContainer");
+        const messagesPlaceholder = document.querySelector('.message-placeholder');
 
-        // --- Gemini Integration Logic (Insecure Client-Side) ---
-        async function getGeminiKey() {
-            try {
-                const docSnap = await getDoc(doc(db, "geminiapi", "my-api-key")); // NOTE: This is insecure
-                if (docSnap.exists()) {
-                    return docSnap.data().apiKey;
-                }
-                console.error("Gemini API key not found in Firestore.");
-                return null;
-            } catch (error) {
-                console.error("Error fetching Gemini API key:", error);
-                return null;
-            }
-        }
-
-        async function sendGeminiReply(userMessage) {
-            if (!geminiAPIKey) {
-                geminiAPIKey = await getGeminiKey();
-                if (!geminiAPIKey) return;
-            }
-
-            try {
-                const genAI = new GoogleGenerativeAI(geminiAPIKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
-                const prompt = `You are a helpful support assistant. The user's last message is: "${userMessage}". Please provide a concise and helpful response.`;
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
-                const text = response.text();
-
-                const newGeminiMessage = {
-                    author: 'Gemini AI',
-                    text: text,
-                    time: new Date(),
-                    status: 'sent',
-                };
-
-                await updateDoc(currentConversationRef, {
-                    messages: arrayUnion(newGeminiMessage),
-                    lastUpdated: serverTimestamp()
-                });
-
-            } catch (error) {
-                console.error("Error generating Gemini response:", error);
-            }
-        }
-
-        // --- Original Functions (Modified) ---
         function escapeHtml(text) {
             if (typeof text !== 'string') return "";
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         }
 
-        function formatTimestamp(date) {
+        // --- UPDATED FUNCTION FOR DYNAMIC DATE DISPLAY ---
+        function formatRelativeTimestamp(date) {
             if (!date) return '';
+
             const d = date.toDate ? date.toDate() : new Date(date);
-            return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+            
+            const messageDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            
+            const timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+            
+            if (messageDate.getTime() === today.getTime()) {
+                return d.toLocaleTimeString('en-US', timeOptions);
+            }
+            
+            if (messageDate.getTime() === yesterday.getTime()) {
+                return `Yesterday, ${d.toLocaleTimeString('en-US', timeOptions)}`;
+            }
+            
+            const dateOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+            return `${d.toLocaleDateString('en-US', dateOptions)}, ${d.toLocaleTimeString('en-US', timeOptions)}`;
         }
+        // --- END OF UPDATED FUNCTION ---
 
         function scrollToBottom() {
             requestAnimationFrame(() => {
@@ -328,38 +304,57 @@
         const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
         const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
-        function addMessage(author, text, time, status, isLastMessage, showTime) {
-            const isSender = author === currentUser.displayName;
-            const isGemini = author === 'Gemini AI';
-            const row = document.createElement("div");
-            row.className = "message-row " + (isSender ? "sender" : "receiver");
+        // --- UPDATED RENDER MESSAGES FUNCTION ---
+        function renderMessages(allMessages) {
+            // Clear all messages before re-rendering
+            messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el => el.remove());
 
-            const content = document.createElement("div");
-            content.className = "message-content";
+            const fragment = document.createDocumentFragment();
 
-            const bubble = document.createElement("div");
-            bubble.className = "chat-bubble " + (isSender ? "sender" : isGemini ? "gemini" : "receiver");
-            bubble.textContent = text;
+            for (let i = 0; i < allMessages.length; i++) {
+                const msg = allMessages[i];
+                const isSender = msg.author === currentUser.displayName;
+                const row = document.createElement("div");
+                row.className = "message-row " + (isSender ? "sender" : "receiver");
 
-            content.appendChild(bubble);
+                const content = document.createElement("div");
+                content.className = "message-content";
 
-            if (showTime || (isSender && isLastMessage)) {
-                const timeEl = document.createElement("div");
-                timeEl.className = "message-time flex items-center gap-1";
-                timeEl.textContent = formatTimestamp(time);
+                const bubble = document.createElement("div");
+                bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
+                bubble.textContent = msg.text;
 
-                if (isSender && isLastMessage) {
-                    if (status === 'read') {
-                        timeEl.innerHTML += readIcon;
-                    } else {
-                        timeEl.innerHTML += sentIcon;
-                    }
+                content.appendChild(bubble);
+
+                const isLastMessage = (i === allMessages.length - 1);
+                let lastMessageDate = null;
+                if (i > 0) {
+                    lastMessageDate = allMessages[i - 1].time;
                 }
-                content.appendChild(timeEl);
+                
+                const showTime = !lastMessageDate || (msg.time.toDate().getTime() - lastMessageDate.toDate().getTime() > 300000);
+
+                if (showTime || (isSender && isLastMessage)) {
+                    const timeEl = document.createElement("div");
+                    timeEl.className = "message-time flex items-center gap-1";
+                    timeEl.textContent = formatRelativeTimestamp(msg.time);
+
+                    if (isSender && isLastMessage) {
+                        if (msg.status === 'read') {
+                            timeEl.innerHTML += readIcon;
+                        } else {
+                            timeEl.innerHTML += sentIcon;
+                        }
+                    }
+                    content.appendChild(timeEl);
+                }
+                row.appendChild(content);
+                fragment.appendChild(row);
             }
-            row.appendChild(content);
-            messagesContainer.appendChild(row);
+            messagesContainer.insertBefore(fragment, typingIndicatorContainer);
         }
+        // --- END OF UPDATED RENDER MESSAGES FUNCTION ---
+
 
         let typingTimeout = null;
         messageInput.addEventListener('input', () => {
@@ -411,21 +406,6 @@
                 messageInput.value = "";
                 messageInput.style.height = "42px";
                 scrollToBottom();
-
-                // --- Gemini trigger after sending message ---
-                if (geminiTimeout) clearTimeout(geminiTimeout);
-                geminiTimeout = setTimeout(async () => {
-                    const latestDocSnap = await getDoc(currentConversationRef);
-                    const messages = latestDocSnap.data().messages;
-                    const lastMessage = messages[messages.length - 1];
-                    const isLastMessageFromUser = lastMessage.author === currentUser.displayName;
-                    const hasAdminReplied = messages.some(msg => msg.author !== currentUser.displayName);
-
-                    if (isLastMessageFromUser && !hasAdminReplied) {
-                        sendGeminiReply(lastMessage.text);
-                    }
-                }, 5000); // 5 seconds delay
-
             } catch (err) {
                 alert("Failed to send message: " + err.message);
             }
@@ -435,41 +415,37 @@
             currentUser = user;
             const conversationId = `conv_${user.uid}`;
             currentConversationRef = doc(db, "conversations", conversationId);
-
+            
             onSnapshot(currentConversationRef, async (docSnap) => {
-                messagesContainer.innerHTML = "";
+                if (messagesPlaceholder) {
+                    if (docSnap.exists() && (docSnap.data().messages?.length > 0)) {
+                        messagesPlaceholder.style.display = 'none';
+                    } else {
+                        messagesPlaceholder.style.display = 'flex';
+                    }
+                }
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
+                    renderMessages(data.messages || []);
 
-                    if (data.user.name !== user.displayName) {
-                        await updateDoc(currentConversationRef, {
-                            'user.name': user.displayName,
-                        });
-                    }
-                    
                     if (data.adminTyping) {
-                        const typingBubble = document.createElement("div");
-                        typingBubble.className = "message-row receiver";
-                        typingBubble.innerHTML = `<div class="message-content">
-                            <div class="chat-bubble receiver typing-indicator">
-                                <span></span><span></span><span></span>
+                        typingIndicatorContainer.innerHTML = `
+                            <div class="message-row receiver">
+                                <div class="message-content">
+                                    <div class="chat-bubble receiver typing-indicator">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>`;
-                        messagesContainer.appendChild(typingBubble);
+                        `;
+                    } else {
+                        typingIndicatorContainer.innerHTML = "";
                     }
 
-                    const allMessages = data.messages || [];
-                    let lastMessageTime = null;
-                    allMessages.forEach((msg, index) => {
-                        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate().getTime() > 300000);
-                        addMessage(msg.author, msg.text, msg.time, msg.status, index === allMessages.length - 1, showTime);
-                        lastMessageTime = msg.time;
-                    });
-
-                    const unreadAdminMessages = allMessages.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
+                    const unreadAdminMessages = (data.messages || []).filter(msg => msg.author !== user.displayName && msg.status !== 'read');
                     if (unreadAdminMessages.length > 0) {
-                        const updatedMessages = allMessages.map(msg => {
+                        const updatedMessages = (data.messages || []).map(msg => {
                             if (msg.author !== user.displayName && msg.status !== 'read') {
                                 return { ...msg, status: 'read' };
                             }
@@ -477,12 +453,6 @@
                         });
                         updateDoc(currentConversationRef, { messages: updatedMessages });
                     }
-                } else {
-                    messagesContainer.innerHTML = `<div class="message-placeholder">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" /></svg>
-                        <h3 class="mt-2 text-sm font-medium text-gray-900">Start a conversation</h3>
-                        <p class="mt-1 text-sm text-gray-500">Send a message to our support team.</p>
-                    </div>`;
                 }
                 scrollToBottom();
             });
