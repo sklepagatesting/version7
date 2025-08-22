@@ -290,14 +290,8 @@ function renderMessages(allMessages) {
   for (let i = startIndex; i < allMessages.length; i++) {
     const msg = allMessages[i];
     const isSender = msg.author === currentUser.displayName;
-
-    // ✅ If the admin just sent a message, clear typing indicator immediately
-    if (!isSender) {
-      typingIndicatorContainer.innerHTML = "";
-    }
-
     const row = document.createElement("div");
-    row.className = "message-row " + (isSender ? "sender" : "receiver");
+
 
         content.className = "message-content";
 
