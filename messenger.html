@@ -285,49 +285,53 @@
     const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
     const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
-    function renderMessages(allMessages) {
-      const existingMessages = messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)');
-      const startIndex = existingMessages.length;
-      
-      for (let i = startIndex; i < allMessages.length; i++) {
-        const msg = allMessages[i];
-        const isSender = msg.author === currentUser.displayName;
-        const row = document.createElement("div");
-        row.className = "message-row " + (isSender ? "sender" : "receiver");
+function renderMessages(allMessages) {
+        // Clear all messages before re-rendering
+        messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el => el.remove());
 
-        const content = document.createElement("div");
-        content.className = "message-content";
+        const fragment = document.createDocumentFragment();
 
-        const bubble = document.createElement("div");
-        bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
-        bubble.textContent = msg.text;
+        for (let i = 0; i < allMessages.length; i++) {
+            const msg = allMessages[i];
+            const isSender = msg.author === currentUser.displayName;
+            const row = document.createElement("div");
+            row.className = "message-row " + (isSender ? "sender" : "receiver");
 
-        content.appendChild(bubble);
+            const content = document.createElement("div");
+            content.className = "message-content";
 
-        const isLastMessage = (i === allMessages.length - 1);
-        let lastMessageTime = null;
-        if (i > 0) {
-          lastMessageTime = allMessages[i-1].time;
-        }
-        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate().getTime() > 300000);
+            const bubble = document.createElement("div");
+            bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
+            bubble.textContent = msg.text;
 
-        if (showTime || (isSender && isLastMessage)) {
-          const timeEl = document.createElement("div");
-          timeEl.className = "message-time flex items-center gap-1";
-          timeEl.textContent = formatTimestamp(msg.time);
+            content.appendChild(bubble);
 
-          if (isSender && isLastMessage) {
-            if (msg.status === 'read') {
-              timeEl.innerHTML += readIcon;
-            } else {
-              timeEl.innerHTML += sentIcon;
+            const isLastMessage = (i === allMessages.length - 1);
+            let lastMessageTime = null;
+            if (i > 0) {
+                lastMessageTime = allMessages[i - 1].time;
             }
-          }
-          content.appendChild(timeEl);
+            const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate().getTime() > 300000);
+
+            if (showTime || (isSender && isLastMessage)) {
+                const timeEl = document.createElement("div");
+                timeEl.className = "message-time flex items-center gap-1";
+                timeEl.textContent = formatTimestamp(msg.time);
+
+                if (isSender && isLastMessage) {
+                    if (msg.status === 'read') {
+                        timeEl.innerHTML += readIcon;
+                    } else {
+                        timeEl.innerHTML += sentIcon;
+                    }
+                }
+                content.appendChild(timeEl);
+            }
+            row.appendChild(content);
+            fragment.appendChild(row);
         }
-        row.appendChild(content);
-        messagesContainer.insertBefore(row, typingIndicatorContainer);
-      }
+        messagesContainer.insertBefore(fragment, typingIndicatorContainer);
+    }
     }
 
     let typingTimeout = null;
