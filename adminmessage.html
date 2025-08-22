@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
@@ -155,12 +154,13 @@
             color: black;
             align-self: flex-start;
         }
+
         .chat-bubble.typing-indicator {
             display: flex;
             align-items: center;
             justify-content: flex-start;
             gap: 4px;
-            min-height: 40px; 
+            min-height: 40px;
             padding: 10px 14px;
             box-sizing: border-box;
         }
@@ -435,24 +435,47 @@
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         }
 
+        // --- NEW formatTimestamp FUNCTION ---
         function formatTimestamp(date) {
             if (!date) return '';
             const d = date.toDate ? date.toDate() : new Date(date);
-            return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const optionsTime = { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' };
+            const optionsDateOnly = { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'Asia/Manila' };
+            const todayPH = new Date(new Date().toLocaleDateString('en-US', optionsDateOnly));
+            const dPH = new Date(d.toLocaleDateString('en-US', optionsDateOnly));
+            const yesterdayPH = new Date(todayPH);
+            yesterdayPH.setDate(todayPH.getDate() - 1);
+            const isToday = dPH.getTime() === todayPH.getTime();
+            const isYesterday = dPH.getTime() === yesterdayPH.getTime();
+            if (isToday) {
+                return d.toLocaleTimeString('en-US', optionsTime);
+            } else if (isYesterday) {
+                return 'Yesterday, ' + d.toLocaleTimeString('en-US', optionsTime);
+            } else {
+                const optionsFullDate = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' };
+                return d.toLocaleDateString('en-US', optionsFullDate) + ', ' + d.toLocaleTimeString('en-US', optionsTime);
+            }
         }
+        // --- END NEW formatTimestamp FUNCTION ---
 
+        // --- UPDATED formatTimestampForList FUNCTION ---
         function formatTimestampForList(date) {
             if (!date) return '';
             const d = date.toDate ? date.toDate() : new Date(date);
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            const messageDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-            if (messageDate.getTime() === today.getTime()) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-            if (messageDate.getTime() === yesterday.getTime()) return 'Yesterday';
-            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const optionsDateOnly = { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'Asia/Manila' };
+            const todayPH = new Date(new Date().toLocaleDateString('en-US', optionsDateOnly));
+            const dPH = new Date(d.toLocaleDateString('en-US', optionsDateOnly));
+            const yesterdayPH = new Date(todayPH);
+            yesterdayPH.setDate(todayPH.getDate() - 1);
+            if (dPH.getTime() === todayPH.getTime()) {
+                return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' });
+            }
+            if (dPH.getTime() === yesterdayPH.getTime()) {
+                return 'Yesterday';
+            }
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' });
         }
+        // --- END UPDATED formatTimestampForList FUNCTION ---
 
         function scrollToBottom() {
             requestAnimationFrame(() => {
@@ -617,12 +640,10 @@
                 const id = docSnap.id;
                 const userName = data.user?.name || "Unknown User";
                 const userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(userName)}`;
-
                 const lastMessage = data.messages?.slice(-1)[0] || {
                     text: "Start a conversation...",
                     time: data.lastUpdated
                 };
-                
                 const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
                 const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
                 const timestamp = formatTimestampForList(lastMessage.time);
