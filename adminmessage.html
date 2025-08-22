@@ -391,7 +391,7 @@
         </div>
     </div>
     <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, query, orderBy, doc, getDoc, getDocs, onSnapshot, updateDoc, arrayUnion, serverTimestamp, limit, startAfter } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
@@ -562,6 +562,14 @@ async function openConversation(conversationId, otherName, otherAvatar) {
     chatHeaderName.textContent = escapeHtml(otherName);
     chatApp.classList.remove('no-chat-selected');
 
+    // Update the chat header to display the user's avatar
+    chatHeaderProfile.innerHTML = `
+        <img src="${escapeHtml(otherAvatar)}" alt="${escapeHtml(otherName)}'s avatar" class="w-10 h-10 rounded-full" />
+        <div class="ml-3">
+            <h3 class="font-semibold text-gray-800">${escapeHtml(otherName)}</h3>
+        </div>
+    `;
+
     document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
     document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
 
@@ -671,12 +679,14 @@ async function renderConversations(docs) {
             <div class="conversation-info">
                 <div class="flex justify-between items-center">
                     <strong class="font-semibold text-gray-800 truncate">${escapeHtml(userName)}</strong>
-                    <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${escapeHtml(timestamp)}</span>
+                    <div class="flex items-center gap-1">
+                        <span class="text-xs text-gray-500 flex-shrink-0">${escapeHtml(timestamp)}</span>
+                        <div class="unread-badge-container">
+                             ${unreadBadge}
+                        </div>
+                    </div>
                 </div>
                 <p class="text-sm text-gray-600 truncate">${escapeHtml(lastMessage.text)}</p>
-            </div>
-            <div class="unread-badge-container">
-                 ${unreadBadge}
             </div>
         `;
         li.addEventListener("click", () => openConversation(id, userName, userAvatar));
