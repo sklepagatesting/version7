@@ -18,7 +18,7 @@
     }
 
     body {
-      margin: 0; /* ✅ removed overflow:hidden */
+      margin: 0;
       background: var(--body-bg);
     }
 
@@ -95,16 +95,15 @@
       align-self: flex-start;
     }
     /* Typing indicator bubble */
-.chat-bubble.typing-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 4px;
-  min-height: 40px;     /* 👈 same height as a short message */
-  padding: 10px 14px;   /* 👈 match normal bubble padding */
-  box-sizing: border-box;
-}
-
+    .chat-bubble.typing-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 4px;
+      min-height: 40px;
+      padding: 10px 14px;
+      box-sizing: border-box;
+    }
 
     .message-time {
       font-size: 0.75rem;
@@ -229,7 +228,6 @@
         <h3 class="mt-2 text-sm font-medium text-gray-900">Start a conversation</h3>
         <p class="mt-1 text-sm text-gray-500">Send a message to our support team.</p>
       </div>
-      <!-- ✅ Typing indicator container -->
       <div id="typingIndicatorContainer"></div>
     </div>
     <form id="messageForm" class="chat-input-wrapper">
@@ -264,6 +262,7 @@
     const messageForm = document.getElementById("messageForm");
     const messageInput = document.getElementById("messageInput");
     const typingIndicatorContainer = document.getElementById("typingIndicatorContainer");
+    const messagesPlaceholder = document.querySelector('.message-placeholder');
 
     function escapeHtml(text) {
       if (typeof text !== 'string') return "";
@@ -285,53 +284,52 @@
     const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
     const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
-function renderMessages(allMessages) {
-        // Clear all messages before re-rendering
-        messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el => el.remove());
+    function renderMessages(allMessages) {
+      // Clear all messages before re-rendering
+      messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el => el.remove());
 
-        const fragment = document.createDocumentFragment();
+      const fragment = document.createDocumentFragment();
 
-        for (let i = 0; i < allMessages.length; i++) {
-            const msg = allMessages[i];
-            const isSender = msg.author === currentUser.displayName;
-            const row = document.createElement("div");
-            row.className = "message-row " + (isSender ? "sender" : "receiver");
+      for (let i = 0; i < allMessages.length; i++) {
+        const msg = allMessages[i];
+        const isSender = msg.author === currentUser.displayName;
+        const row = document.createElement("div");
+        row.className = "message-row " + (isSender ? "sender" : "receiver");
 
-            const content = document.createElement("div");
-            content.className = "message-content";
+        const content = document.createElement("div");
+        content.className = "message-content";
 
-            const bubble = document.createElement("div");
-            bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
-            bubble.textContent = msg.text;
+        const bubble = document.createElement("div");
+        bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
+        bubble.textContent = msg.text;
 
-            content.appendChild(bubble);
+        content.appendChild(bubble);
 
-            const isLastMessage = (i === allMessages.length - 1);
-            let lastMessageTime = null;
-            if (i > 0) {
-                lastMessageTime = allMessages[i - 1].time;
-            }
-            const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate().getTime() > 300000);
-
-            if (showTime || (isSender && isLastMessage)) {
-                const timeEl = document.createElement("div");
-                timeEl.className = "message-time flex items-center gap-1";
-                timeEl.textContent = formatTimestamp(msg.time);
-
-                if (isSender && isLastMessage) {
-                    if (msg.status === 'read') {
-                        timeEl.innerHTML += readIcon;
-                    } else {
-                        timeEl.innerHTML += sentIcon;
-                    }
-                }
-                content.appendChild(timeEl);
-            }
-            row.appendChild(content);
-            fragment.appendChild(row);
+        const isLastMessage = (i === allMessages.length - 1);
+        let lastMessageTime = null;
+        if (i > 0) {
+            lastMessageTime = allMessages[i - 1].time;
         }
-        messagesContainer.insertBefore(fragment, typingIndicatorContainer);
-    }
+        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate().getTime() > 300000);
+
+        if (showTime || (isSender && isLastMessage)) {
+            const timeEl = document.createElement("div");
+            timeEl.className = "message-time flex items-center gap-1";
+            timeEl.textContent = formatTimestamp(msg.time);
+
+            if (isSender && isLastMessage) {
+                if (msg.status === 'read') {
+                    timeEl.innerHTML += readIcon;
+                } else {
+                    timeEl.innerHTML += sentIcon;
+                }
+            }
+            content.appendChild(timeEl);
+        }
+        row.appendChild(content);
+        fragment.appendChild(row);
+      }
+      messagesContainer.insertBefore(fragment, typingIndicatorContainer);
     }
 
     let typingTimeout = null;
@@ -393,17 +391,21 @@ function renderMessages(allMessages) {
       currentUser = user;
       const conversationId = `conv_${user.uid}`;
       currentConversationRef = doc(db, "conversations", conversationId);
-      const messagesPlaceholder = document.querySelector('.message-placeholder');
-
+      
       onSnapshot(currentConversationRef, async (docSnap) => {
+        if (messagesPlaceholder) {
+            if (docSnap.exists() && (docSnap.data().messages?.length > 0)) {
+                messagesPlaceholder.style.display = 'none';
+            } else {
+                messagesPlaceholder.style.display = 'flex';
+            }
+        }
+
         if (docSnap.exists()) {
           const data = docSnap.data();
-
-          if (messagesPlaceholder) messagesPlaceholder.style.display = 'none';
-
           renderMessages(data.messages || []);
 
-          // ✅ Proper typing indicator rendering
+          // Proper typing indicator rendering
           if (data.adminTyping) {
             typingIndicatorContainer.innerHTML = `
               <div class="message-row receiver">
@@ -429,12 +431,6 @@ function renderMessages(allMessages) {
             });
             updateDoc(currentConversationRef, { messages: updatedMessages });
           }
-        } else {
-          messagesContainer.innerHTML = `<div class="message-placeholder">
-            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" /></svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">Start a conversation</h3>
-            <p class="mt-1 text-sm text-gray-500">Send a message to our support team.</p>
-          </div>`;
         }
         scrollToBottom();
       });
