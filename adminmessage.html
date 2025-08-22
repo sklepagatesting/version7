@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
@@ -391,7 +392,7 @@
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, query, orderBy, doc, getDoc, getDocs, onSnapshot, upDoc, arrayUnion, serverTimestamp, limit, startAfter } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, query, orderBy, doc, getDoc, getDocs, onSnapshot, updateDoc, arrayUnion, serverTimestamp, limit, startAfter } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -434,56 +435,24 @@
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         }
 
-function formatTimestamp(date) {
-  if (!date) return '';
-  const d = date.toDate ? date.toDate() : new Date(date);
+        function formatTimestamp(date) {
+            if (!date) return '';
+            const d = date.toDate ? date.toDate() : new Date(date);
+            return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        }
 
-  // Always format in Asia/Manila (PHT)
-  const optionsTime = { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' };
-  const optionsDate = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' };
-
-  const today = new Date();
-  const todayPH = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-  const dPH = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-
-  const isToday = dPH.toDateString() === todayPH.toDateString();
-
-  const yesterdayPH = new Date(todayPH);
-  yesterdayPH.setDate(todayPH.getDate() - 1);
-  const isYesterday = dPH.toDateString() === yesterdayPH.toDateString();
-
-  if (isToday) {
-    return dPH.toLocaleTimeString('en-US', optionsTime);
-  } else if (isYesterday) {
-    return 'Yesterday, ' + dPH.toLocaleTimeString('en-US', optionsTime);
-  } else {
-    return dPH.toLocaleDateString('en-US', optionsDate) + ', ' + dPH.toLocaleTimeString('en-US', optionsTime);
-  }
-}
-
-
-function formatTimestampForList(date) {
-    if (!date) return '';
-    const d = date.toDate ? date.toDate() : new Date(date);
-    const now = new Date();
-
-    // Create dates for today and yesterday with time set to midnight
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const messageDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-
-    if (messageDate.getTime() === today.getTime()) {
-        return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    }
-    
-    if (messageDate.getTime() === yesterday.getTime()) {
-        return 'Yesterday';
-    }
-    
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
+        function formatTimestampForList(date) {
+            if (!date) return '';
+            const d = date.toDate ? date.toDate() : new Date(date);
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const messageDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            if (messageDate.getTime() === today.getTime()) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            if (messageDate.getTime() === yesterday.getTime()) return 'Yesterday';
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
 
         function scrollToBottom() {
             requestAnimationFrame(() => {
