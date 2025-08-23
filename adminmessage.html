@@ -686,51 +686,21 @@
 
         function setupConversationsListener() {
             const q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"));
-            unsubscribeConversationsList = onSnapshot(q, (querySnapshot) => {
+            unsubscribeConversationsList = onSnapshot(q, async (querySnapshot) => {
                 if (querySnapshot.docs.length === 0) {
                     userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
                     return;
-                } else if (userList.querySelector('.p-4')) {
-                    userList.innerHTML = ""; // Remove the "no conversations" message
                 }
                 
-                // Keep track of rendered IDs to avoid re-rendering existing items
-                const renderedIds = new Set();
-                const newOrder = [];
-
-                // Process all documents for the correct order
-                querySnapshot.docs.forEach(async (docSnap) => {
-                    const docId = docSnap.id;
-                    const existingElement = userList.querySelector(`[data-id="${docId}"]`);
-                    
-                    const data = docSnap.data();
-                    const messages = data.messages || [];
-                    const isTypingUpdate = messages.length > 0 && messages[messages.length - 1].author !== currentUser.displayName && data.userTyping === true;
-                    
-                    if (isTypingUpdate && existingElement) {
-                        // If it's just a typing update, do nothing to the conversation list order.
-                        return;
-                    }
-
-                    if (existingElement) {
-                        // If element exists, update its content and prepare to move it to the top.
-                        const newElement = await createConversationElement(docSnap);
-                        userList.replaceChild(newElement, existingElement);
-                        if (currentConversationId === docId) {
-                            newElement.classList.add('active');
-                        }
-                        newOrder.push(newElement);
-                    } else {
-                        // If element is new, create it and add to new order array
-                        const newElement = await createConversationElement(docSnap);
-                        newOrder.push(newElement);
-                    }
-                    renderedIds.add(docId);
-                });
-                
-                // Clear the list and re-append in the correct order
                 userList.innerHTML = "";
-                newOrder.forEach(el => userList.appendChild(el));
+                const promises = querySnapshot.docs.map(docSnap => createConversationElement(docSnap));
+                const elements = await Promise.all(promises);
+                elements.forEach(el => userList.appendChild(el));
+                
+                // Re-apply the active state for the current conversation if it exists
+                if (currentConversationId) {
+                    document.querySelector(`[data-id="${currentConversationId}"]`)?.classList.add('active');
+                }
             });
         }
 
