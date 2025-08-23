@@ -691,15 +691,26 @@
                     userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
                     return;
                 }
-                
-                userList.innerHTML = "";
-                const promises = querySnapshot.docs.map(docSnap => createConversationElement(docSnap));
-                const elements = await Promise.all(promises);
-                elements.forEach(el => userList.appendChild(el));
-                
-                // Re-apply the active state for the current conversation if it exists
+
+                const newElements = [];
+                for (const docSnap of querySnapshot.docs) {
+                    const newElement = await createConversationElement(docSnap);
+                    newElements.push(newElement);
+                }
+
+                // Temporarily detach list elements to prevent reflow issues
+                const fragment = document.createDocumentFragment();
+                newElements.forEach(el => fragment.appendChild(el));
+
+                userList.innerHTML = '';
+                userList.appendChild(fragment);
+
+                // Re-apply active class if it was the current chat
                 if (currentConversationId) {
-                    document.querySelector(`[data-id="${currentConversationId}"]`)?.classList.add('active');
+                    const activeElement = userList.querySelector(`[data-id="${currentConversationId}"]`);
+                    if (activeElement) {
+                        activeElement.classList.add('active');
+                    }
                 }
             });
         }
