@@ -361,7 +361,7 @@ function formatTimestamp(date) {
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(() => {
           updateDoc(currentConversationRef, { userTyping: false });
-        }, 1500);
+        }, 800);
       }
     });
 
@@ -471,7 +471,7 @@ function formatTimestamp(date) {
       if (user) {
         setupUserChat(user);
       } else {
-        window.location.href = "authentication.html";
+        window.location.href = "index.html";
       }
     });
 
