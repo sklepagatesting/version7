@@ -419,9 +419,6 @@
         let currentUserAvatar = null;
         let unsubscribeConversationListener = null;
         let unsubscribeConversationsList = null;
-        let lastDoc = null;
-        let isLoading = false;
-        const CONVERSATIONS_PER_LOAD = 10;
         
         const chatApp = document.getElementById("chatApp");
         const userList = document.getElementById("userList");
@@ -430,7 +427,6 @@
         const replyInput = document.getElementById("replyInput");
         const chatTitle = document.getElementById("chatTitle");
         const backBtn = document.getElementById("backBtn");
-        const typingIndicator = document.getElementById("typingIndicator");
         const chatHeaderProfile = document.getElementById("chatHeaderProfile");
         const chatHeaderName = document.getElementById("chatHeaderName");
 
@@ -599,19 +595,25 @@
 
                     const userMessages = allMessages.filter(msg => msg.author !== currentUser.displayName);
                     const unreadUserMessages = userMessages.filter(msg => msg.status !== 'read');
+                    
                     if (unreadUserMessages.length > 0) {
-                        const updatedMessages = allMessages.map(msg => {
-                            if (msg.author !== currentUser.displayName && msg.status !== 'read') {
-                                return {
-                                    ...msg,
-                                    status: 'read'
-                                };
-                            }
-                            return msg;
-                        });
-                        updateDoc(doc(db, "conversations", conversationId), {
-                            messages: updatedMessages
-                        });
+                         // Check if the chat panel is visible before marking as read
+                        const chatPanelVisible = !isMobile || chatApp.classList.contains("show-chat");
+
+                        if (chatPanelVisible) {
+                            const updatedMessages = allMessages.map(msg => {
+                                if (msg.author !== currentUser.displayName && msg.status !== 'read') {
+                                    return {
+                                        ...msg,
+                                        status: 'read'
+                                    };
+                                }
+                                return msg;
+                            });
+                            updateDoc(doc(db, "conversations", conversationId), {
+                                messages: updatedMessages
+                            });
+                        }
                     }
                 } else {
                     messagesContainer.innerHTML = `<div class="placeholder flex items-center justify-center h-full text-center">
@@ -685,37 +687,32 @@
 
         function setupConversationsListener() {
             const q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"));
-            unsubscribeConversationsList = onSnapshot(q, (querySnapshot) => {
+            unsubscribeConversationsList = onSnapshot(q, async (querySnapshot) => {
                 if (querySnapshot.docs.length === 0) {
                     userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
                     return;
-                } else if (userList.querySelector('.p-4')) {
-                    userList.innerHTML = ""; // Remove the "no conversations" message
                 }
 
-                querySnapshot.docChanges().forEach(async (change) => {
-                    if (change.type === "added") {
-                        const newElement = await createConversationElement(change.doc);
-                        userList.prepend(newElement);
+                const newElements = [];
+                for (const docSnap of querySnapshot.docs) {
+                    const newElement = await createConversationElement(docSnap);
+                    newElements.push(newElement);
+                }
+
+                // Temporarily detach list elements to prevent reflow issues
+                const fragment = document.createDocumentFragment();
+                newElements.forEach(el => fragment.appendChild(el));
+
+                userList.innerHTML = '';
+                userList.appendChild(fragment);
+
+                // Re-apply active class if it was the current chat
+                if (currentConversationId) {
+                    const activeElement = userList.querySelector(`[data-id="${currentConversationId}"]`);
+                    if (activeElement) {
+                        activeElement.classList.add('active');
                     }
-                    if (change.type === "modified") {
-                        const updatedElement = userList.querySelector(`[data-id="${change.doc.id}"]`);
-                        if (updatedElement) {
-                             const newElement = await createConversationElement(change.doc);
-                             userList.replaceChild(newElement, updatedElement);
-                             // Re-apply active class if it was the current chat
-                             if (currentConversationId === change.doc.id) {
-                                newElement.classList.add('active');
-                             }
-                        }
-                    }
-                    if (change.type === "removed") {
-                        const removedElement = userList.querySelector(`[data-id="${change.doc.id}"]`);
-                        if (removedElement) {
-                            removedElement.remove();
-                        }
-                    }
-                });
+                }
             });
         }
 
