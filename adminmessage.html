@@ -422,7 +422,7 @@
         let unsubscribeConversationsList = null;
         let lastDoc = null;
         let isLoading = false;
-        const CONVERSATIONS_PER_LOAD = 20;
+        const CONVERSATIONS_PER_LOAD = 10;
 
         const chatApp = document.getElementById("chatApp");
         const userList = document.getElementById("userList");
@@ -555,7 +555,7 @@
                     adminTyping: false
                 });
                 typingTimeout = null;
-            }, 1500);
+            }, 800);
         });
 
         async function openConversation(conversationId, otherName, otherAvatar) {
