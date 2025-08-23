@@ -521,14 +521,6 @@
 
         const isMobile = window.innerWidth <= 1200;
 
-        // Removing keydown listener to allow new lines on mobile keyboards
-        // replyInput.addEventListener("keydown", (e) => {
-        //     if (e.key === "Enter" && !e.shiftKey) {
-        //         e.preventDefault();
-        //         replyForm.requestSubmit();
-        //     }
-        // });
-
         replyInput.addEventListener("input", () => {
             replyInput.style.height = "42px";
             replyInput.style.height = replyInput.scrollHeight + "px";
@@ -580,42 +572,20 @@
 
             unsubscribeConversationListener = onSnapshot(doc(db, "conversations", conversationId), async (docSnap) => {
                 
-                // Clear all messages on initial load, but check if we're dealing with new messages after that
-                const isInitialLoad = messagesContainer.childElementCount === 0;
-                if(isInitialLoad) {
-                    messagesContainer.innerHTML = "";
-                }
+                messagesContainer.innerHTML = ""; // This is safe now because we only render one conversation at a time.
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     const allMessages = data.messages || [];
                     
-                    if (isInitialLoad) {
-                        let lastMessageTime = null;
-                        allMessages.forEach((msg, index) => {
-                            const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 60000);
-                            addMessage(msg.author, msg.text, msg.time, msg.status, index === allMessages.length - 1, showTime);
-                            lastMessageTime = msg.time.toDate();
-                        });
-                    } else {
-                        // Append only new messages
-                        const lastRenderedMessage = messagesContainer.querySelector('.message-row:last-of-type .message-time');
-                        const lastRenderedTime = lastRenderedMessage ? new Date(lastRenderedMessage.textContent) : null;
-                        const newMessages = allMessages.filter(msg => !lastRenderedTime || msg.time.toDate().getTime() > lastRenderedTime.getTime());
-
-                        let lastMessageTime = lastRenderedTime;
-                        newMessages.forEach((msg, index) => {
-                            const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 60000);
-                            addMessage(msg.author, msg.text, msg.time, msg.status, (index + (allMessages.length - newMessages.length)) === allMessages.length - 1, showTime);
-                            lastMessageTime = msg.time.toDate();
-                        });
-                    }
+                    let lastMessageTime = null;
+                    allMessages.forEach((msg, index) => {
+                        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 60000);
+                        addMessage(msg.author, msg.text, msg.time, msg.status, index === allMessages.length - 1, showTime);
+                        lastMessageTime = msg.time.toDate();
+                    });
 
                     // Handle typing indicator separately
-                    const existingTypingIndicator = messagesContainer.querySelector('.typing-indicator');
-                    if (existingTypingIndicator) {
-                        existingTypingIndicator.parentElement.parentElement.remove();
-                    }
                     if (data.userTyping) {
                         const typingBubble = document.createElement("div");
                         typingBubble.className = "message-row receiver";
@@ -627,6 +597,7 @@
                         messagesContainer.appendChild(typingBubble);
                     }
 
+                    // Mark unread messages as read only when the chat is opened
                     const userMessages = allMessages.filter(msg => msg.author !== currentUser.displayName);
                     const unreadUserMessages = userMessages.filter(msg => msg.status !== 'read');
                     if (unreadUserMessages.length > 0) {
@@ -661,74 +632,102 @@
             }
         }
 
-        async function renderConversations(docs) {
-            userList.innerHTML = "";
-            if (docs.length === 0) {
-                userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
-                return;
+        async function createConversationElement(docSnap) {
+            const data = docSnap.data();
+            const id = docSnap.id;
+            const userName = data.user?.name || "Unknown User";
+            const userId = data.user?.uid;
+
+            let userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(userName)}`;
+
+            if (userId) {
+                const userProfileRef = doc(db, "accounts", userId);
+                const userProfileSnap = await getDoc(userProfileRef);
+                if (userProfileSnap.exists() && userProfileSnap.data().avatar) {
+                    userAvatar = userProfileSnap.data().avatar;
+                }
             }
 
-            docs.forEach(async docSnap => {
-                const data = docSnap.data();
-                const id = docSnap.id;
-                const userName = data.user?.name || "Unknown User";
-                const userId = data.user?.uid;
+            const lastMessage = data.messages?.slice(-1)[0] || {
+                text: "Start a conversation...",
+                time: data.lastUpdated
+            };
 
-                let userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(userName)}`;
+            const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
+            const hasUnread = unreadCount > 0;
 
-                if (userId) {
-                    const userProfileRef = doc(db, "accounts", userId);
-                    const userProfileSnap = await getDoc(userProfileRef);
-                    if (userProfileSnap.exists() && userProfileSnap.data().avatar) {
-                        userAvatar = userProfileSnap.data().avatar;
-                    }
-                }
+            const nameClasses = hasUnread ? "font-bold text-gray-900 truncate" : "font-semibold text-gray-800 truncate";
+            const messageClasses = hasUnread ? "text-sm text-gray-800 font-medium truncate" : "text-sm text-gray-600 truncate";
+            const timestampClasses = hasUnread ? "text-xs text-gray-800 font-bold flex-shrink-0" : "text-xs text-gray-500 flex-shrink-0";
+            const unreadBadge = hasUnread ? `<span class="unread-badge">${unreadCount}</span>` : '';
+            const timestamp = formatTimestampForList(lastMessage.time);
 
-                const lastMessage = data.messages?.slice(-1)[0] || {
-                    text: "Start a conversation...",
-                    time: data.lastUpdated
-                };
+            const li = document.createElement("div");
+            li.className = "conversation";
+            li.dataset.id = id;
 
-                const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
-                const hasUnread = unreadCount > 0;
-
-                const nameClasses = hasUnread ? "font-bold text-gray-900 truncate" : "font-semibold text-gray-800 truncate";
-                const messageClasses = hasUnread ? "text-sm text-gray-800 font-medium truncate" : "text-sm text-gray-600 truncate";
-                const timestampClasses = hasUnread ? "text-xs text-gray-800 font-bold flex-shrink-0" : "text-xs text-gray-500 flex-shrink-0";
-                const unreadBadge = hasUnread ? `<span class="unread-badge">${unreadCount}</span>` : '';
-                const timestamp = formatTimestampForList(lastMessage.time);
-
-                const li = document.createElement("div");
-                li.className = "conversation";
-                li.dataset.id = id;
-
-                li.innerHTML = `
-                    <div class="relative flex-shrink-0">
-                        <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
-                        ${unreadBadge}
+            li.innerHTML = `
+                <div class="relative flex-shrink-0">
+                    <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
+                    ${unreadBadge}
+                </div>
+                <div class="conversation-info">
+                    <div class="flex justify-between items-center">
+                        <strong class="${nameClasses}">${escapeHtml(userName)}</strong>
+                        <span class="${timestampClasses}">${escapeHtml(timestamp)}</span>
                     </div>
-                    <div class="conversation-info">
-                        <div class="flex justify-between items-center">
-                            <strong class="${nameClasses}">${escapeHtml(userName)}</strong>
-                            <span class="${timestampClasses}">${escapeHtml(timestamp)}</span>
-                        </div>
-                        <p class="${messageClasses}">${escapeHtml(lastMessage.text)}</p>
-                    </div>
-                `;
+                    <p class="${messageClasses}">${escapeHtml(lastMessage.text)}</p>
+                </div>
+            `;
 
-                li.addEventListener("click", () => openConversation(id, userName, userAvatar));
-                userList.appendChild(li);
-
-                if (currentConversationId === id) {
-                    li.classList.add('active');
-                }
-            });
+            li.addEventListener("click", () => openConversation(id, userName, userAvatar));
+            return li;
         }
 
         function setupConversationsListener() {
             const q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"));
             unsubscribeConversationsList = onSnapshot(q, (querySnapshot) => {
-                renderConversations(querySnapshot.docs);
+                if (querySnapshot.docs.length === 0) {
+                    userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
+                    return;
+                } else if (userList.querySelector('.p-4')) {
+                    userList.innerHTML = ""; // Remove the "no conversations" message
+                }
+
+                querySnapshot.docChanges().forEach(async (change) => {
+                    const docId = change.doc.id;
+                    const existingElement = userList.querySelector(`[data-id="${docId}"]`);
+
+                    // Check if the change is a modification that's not a typing indicator
+                    const data = change.doc.data();
+                    const messages = data.messages || [];
+                    const isTypingUpdate = messages.length > 0 && messages[messages.length - 1].author !== currentUser.displayName && data.userTyping === true && change.type === "modified";
+                    if(isTypingUpdate) {
+                        return; // Ignore updates caused by typing indicators
+                    }
+
+                    if (change.type === "added") {
+                        const newElement = await createConversationElement(change.doc);
+                        userList.prepend(newElement);
+                    }
+                    if (change.type === "modified") {
+                        if (existingElement) {
+                            const newElement = await createConversationElement(change.doc);
+                            userList.replaceChild(newElement, existingElement);
+                            // Re-apply active class if it was the current chat
+                            if (currentConversationId === change.doc.id) {
+                                newElement.classList.add('active');
+                            }
+                            // Move the modified element to the top
+                            userList.prepend(newElement);
+                        }
+                    }
+                    if (change.type === "removed") {
+                        if (existingElement) {
+                            existingElement.remove();
+                        }
+                    }
+                });
             });
         }
 
