@@ -84,12 +84,9 @@
             min-width: 0;
         }
 
-        /* --- MODIFICATION START: Header opacity --- */
         .chat-header {
             padding: 1rem;
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: #fff;
             border-bottom: 1px solid #ddd;
             font-size: 1.25rem;
             font-weight: bold;
@@ -97,7 +94,6 @@
             display: flex;
             align-items: center;
         }
-        /* --- MODIFICATION END --- */
 
         .back-btn {
             display: none;
@@ -184,18 +180,15 @@
             align-self: flex-start;
         }
 
-        /* --- MODIFICATION START: Input wrapper opacity --- */
+        /* START: INPUT WRAPPER STYLES */
         .chat-input-wrapper {
             border-top: 1px solid #ddd;
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: #fff;
             padding: 0.75rem 1rem;
             display: flex;
             align-items: flex-end;
             gap: 0.75rem;
         }
-        /* --- MODIFICATION END --- */
 
         .chat-input-wrapper textarea {
             box-sizing: border-box;
@@ -237,6 +230,7 @@
             display: none;
         }
 
+        /* END: INPUT WRAPPER STYLES */
         .chat-app.no-chat-selected .placeholder {
             display: flex;
             align-items: center;
@@ -367,7 +361,7 @@
         <div class="chat-panel">
             <div class="chat-header">
                 <button class="back-btn" id="backBtn">
-                    <svg class="w-6 h-6 text-gray-800" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="m15 19-7-7 7-7"/>
                     </svg>
                     </button>
@@ -422,7 +416,9 @@
         let unsubscribeConversationsList = null;
         let lastDoc = null;
         let isLoading = false;
-        const CONVERSATIONS_PER_LOAD = 20;
+        // --- MODIFICATION START: Changed conversations to load to 10 ---
+        const CONVERSATIONS_PER_LOAD = 10;
+        // --- MODIFICATION END ---
 
         const chatApp = document.getElementById("chatApp");
         const userList = document.getElementById("userList");
@@ -484,8 +480,11 @@
             });
         }
 
+        // --- MODIFICATION START: Updated read icon ---
         const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
-        const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
+        const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm13.707-1.293a1 1 0 0 0-1.414-1.414L11 12.586l-1.793-1.793a1 1 0 0 0-1.414 1.414l2.5 2.5a1 1 0 0 0 1.414 0l4-4Z" clip-rule="evenodd"/></svg>`;
+        // --- MODIFICATION END ---
+
 
         function addMessage(author, text, time, status, isLastMessage, showTime) {
             const isSender = author === currentUser.displayName;
@@ -501,8 +500,7 @@
 
             content.appendChild(bubble);
             if (showTime || (isSender && isLastMessage)) {
-                const timeEl = document.createElement("div");
-                timeEl.className = "message-time flex items-center gap-1";
+                const timeEl = document.createElement("div");                timeEl.className = "message-time flex items-center gap-1";
                 timeEl.textContent = formatTimestamp(time);
 
                 if (isSender && isLastMessage) {
@@ -532,12 +530,6 @@
             replyInput.style.height = "42px";
             replyInput.style.height = replyInput.scrollHeight + "px";
         });
-        
-        // --- MODIFICATION START: Fix keyboard blocking input on initial focus ---
-        replyInput.addEventListener('focus', () => {
-             setTimeout(scrollToBottom, 150);
-        });
-        // --- MODIFICATION END ---
 
         let typingTimeout = null;
         replyInput.addEventListener('input', () => {
@@ -565,13 +557,14 @@
 
             chatTitle.style.display = 'none';
             chatHeaderProfile.style.display = 'flex';
+            // chatHeaderName.textContent = escapeHtml(otherName); // This line is redundant
             chatApp.classList.remove('no-chat-selected');
 
-            // --- MODIFICATION START: Header now supports text wrapping ---
+            // --- MODIFICATION START: Added truncate for long names in header ---
             chatHeaderProfile.innerHTML = `
-                <img src="${escapeHtml(otherAvatar)}" alt="${escapeHtml(otherName)}'s avatar" class="w-10 h-10 rounded-full flex-shrink-0" />
+                <img src="${escapeHtml(otherAvatar)}" alt="${escapeHtml(otherName)}'s avatar" class="w-10 h-10 rounded-full" />
                 <div class="ml-3 min-w-0">
-                    <h3 class="font-semibold text-gray-800 leading-tight">${escapeHtml(otherName)}</h3>
+                    <h3 class="font-semibold text-gray-800 truncate">${escapeHtml(otherName)}</h3>
                 </div>
             `;
             // --- MODIFICATION END ---
@@ -595,7 +588,9 @@
 
                     let lastMessageTime = null;
                     allMessages.forEach((msg, index) => {
-                        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 300000);
+                        // --- MODIFICATION START: Changed timestamp threshold to 1 minute ---
+                        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 60000);
+                        // --- MODIFICATION END ---
                         addMessage(msg.author, msg.text, msg.time, msg.status, index === allMessages.length - 1, showTime);
                         lastMessageTime = msg.time.toDate();
                     });
@@ -669,23 +664,24 @@
                     text: "Start a conversation...",
                     time: data.lastUpdated
                 };
-                
+
                 const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
                 const hasUnread = unreadCount > 0;
 
-                // --- MODIFICATION START: Added conditional classes for timestamp ---
                 const nameClasses = hasUnread ? "font-bold text-gray-900 truncate" : "font-semibold text-gray-800 truncate";
                 const messageClasses = hasUnread ? "text-sm text-gray-800 font-medium truncate" : "text-sm text-gray-600 truncate";
-                const timeClasses = hasUnread ? "text-xs text-gray-800 font-bold flex-shrink-0" : "text-xs text-gray-500 flex-shrink-0";
-                const unreadBadge = hasUnread ? `<span class="unread-badge">${unreadCount}</span>` : '';
+                // --- MODIFICATION START: Added bold class for unread timestamp ---
+                const timestampClasses = hasUnread ? "text-xs text-gray-800 font-bold flex-shrink-0" : "text-xs text-gray-500 flex-shrink-0";
                 // --- MODIFICATION END ---
-
+                const unreadBadge = hasUnread ? `<span class="unread-badge">${unreadCount}</span>` : '';
+                
                 const timestamp = formatTimestampForList(lastMessage.time);
 
                 const li = document.createElement("div");
                 li.className = "conversation";
                 li.dataset.id = id;
-                
+
+                // --- MODIFICATION START: Updated innerHTML with bold timestamp class ---
                 li.innerHTML = `
                     <div class="relative flex-shrink-0">
                         <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
@@ -694,12 +690,13 @@
                     <div class="conversation-info">
                         <div class="flex justify-between items-center">
                             <strong class="${nameClasses}">${escapeHtml(userName)}</strong>
-                            <span class="${timeClasses}">${escapeHtml(timestamp)}</span>
+                            <span class="${timestampClasses}">${escapeHtml(timestamp)}</span>
                         </div>
                         <p class="${messageClasses}">${escapeHtml(lastMessage.text)}</p>
                     </div>
                 `;
-                
+                // --- MODIFICATION END ---
+
                 li.addEventListener("click", () => openConversation(id, userName, userAvatar));
                 userList.appendChild(li);
 
