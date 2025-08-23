@@ -176,12 +176,12 @@ async function routeUser(user) {
       createdAt: new Date().toISOString()
     });
   }
-  window.location.href = "messages.html";
+  window.location.href = "messenger.html";
 }
 
 async function doSignOut() {
   try { await signOut(auth); } catch (e) { console.warn("Sign out error:", e); }
-  window.location.href = "home.html";
+  window.location.href = "index.html";
 }
 
 // --- Events ---
