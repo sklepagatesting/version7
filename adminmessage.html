@@ -84,12 +84,12 @@
             min-width: 0;
         }
 
-        /* --- MODIFICATION START: Header opacity --- */
+        /* --- MODIFICATION START: Updated blur effect --- */
         .chat-header {
             padding: 1rem;
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid #ddd;
             font-size: 1.25rem;
             font-weight: bold;
@@ -184,12 +184,12 @@
             align-self: flex-start;
         }
 
-        /* --- MODIFICATION START: Input wrapper opacity --- */
+        /* --- MODIFICATION START: Updated blur effect --- */
         .chat-input-wrapper {
             border-top: 1px solid #ddd;
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             padding: 0.75rem 1rem;
             display: flex;
             align-items: flex-end;
@@ -370,7 +370,7 @@
                     <svg class="w-6 h-6 text-gray-800" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="m15 19-7-7 7-7"/>
                     </svg>
-                    </button>
+                </button>
                 <div id="chatHeaderProfile" class="flex items-center" style="display: none;">
                     <span id="chatHeaderName" class="font-semibold text-gray-800"></span>
                 </div>
@@ -533,11 +533,9 @@
             replyInput.style.height = replyInput.scrollHeight + "px";
         });
         
-        // --- MODIFICATION START: Fix keyboard blocking input on initial focus ---
         replyInput.addEventListener('focus', () => {
              setTimeout(scrollToBottom, 150);
         });
-        // --- MODIFICATION END ---
 
         let typingTimeout = null;
         replyInput.addEventListener('input', () => {
@@ -550,12 +548,14 @@
             }
 
             clearTimeout(typingTimeout);
+            // --- MODIFICATION START: Typing indicator timeout updated to 1 second ---
             typingTimeout = setTimeout(() => {
                 updateDoc(doc(db, "conversations", currentConversationId), {
                     adminTyping: false
                 });
                 typingTimeout = null;
-            }, 1500);
+            }, 1000);
+            // --- MODIFICATION END ---
         });
 
         async function openConversation(conversationId, otherName, otherAvatar) {
@@ -567,11 +567,11 @@
             chatHeaderProfile.style.display = 'flex';
             chatApp.classList.remove('no-chat-selected');
 
-            // --- MODIFICATION START: Header now supports text wrapping ---
+            // --- MODIFICATION START: Header now truncates long names ---
             chatHeaderProfile.innerHTML = `
                 <img src="${escapeHtml(otherAvatar)}" alt="${escapeHtml(otherName)}'s avatar" class="w-10 h-10 rounded-full flex-shrink-0" />
                 <div class="ml-3 min-w-0">
-                    <h3 class="font-semibold text-gray-800 leading-tight">${escapeHtml(otherName)}</h3>
+                    <h3 class="font-semibold text-gray-800 truncate">${escapeHtml(otherName)}</h3>
                 </div>
             `;
             // --- MODIFICATION END ---
@@ -595,7 +595,9 @@
 
                     let lastMessageTime = null;
                     allMessages.forEach((msg, index) => {
-                        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 300000);
+                        // --- MODIFICATION START: Timestamp increment updated to 1 minute ---
+                        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 60000);
+                        // --- MODIFICATION END ---
                         addMessage(msg.author, msg.text, msg.time, msg.status, index === allMessages.length - 1, showTime);
                         lastMessageTime = msg.time.toDate();
                     });
@@ -673,12 +675,10 @@
                 const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
                 const hasUnread = unreadCount > 0;
 
-                // --- MODIFICATION START: Added conditional classes for timestamp ---
                 const nameClasses = hasUnread ? "font-bold text-gray-900 truncate" : "font-semibold text-gray-800 truncate";
                 const messageClasses = hasUnread ? "text-sm text-gray-800 font-medium truncate" : "text-sm text-gray-600 truncate";
                 const timeClasses = hasUnread ? "text-xs text-gray-800 font-bold flex-shrink-0" : "text-xs text-gray-500 flex-shrink-0";
                 const unreadBadge = hasUnread ? `<span class="unread-badge">${unreadCount}</span>` : '';
-                // --- MODIFICATION END ---
 
                 const timestamp = formatTimestampForList(lastMessage.time);
 
