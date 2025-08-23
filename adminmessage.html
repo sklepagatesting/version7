@@ -693,41 +693,44 @@
                 } else if (userList.querySelector('.p-4')) {
                     userList.innerHTML = ""; // Remove the "no conversations" message
                 }
+                
+                // Keep track of rendered IDs to avoid re-rendering existing items
+                const renderedIds = new Set();
+                const newOrder = [];
 
-                querySnapshot.docChanges().forEach(async (change) => {
-                    const docId = change.doc.id;
+                // Process all documents for the correct order
+                querySnapshot.docs.forEach(async (docSnap) => {
+                    const docId = docSnap.id;
                     const existingElement = userList.querySelector(`[data-id="${docId}"]`);
-
-                    // Check if the change is a modification that's not a typing indicator
-                    const data = change.doc.data();
+                    
+                    const data = docSnap.data();
                     const messages = data.messages || [];
-                    const isTypingUpdate = messages.length > 0 && messages[messages.length - 1].author !== currentUser.displayName && data.userTyping === true && change.type === "modified";
-                    if(isTypingUpdate) {
-                        return; // Ignore updates caused by typing indicators
+                    const isTypingUpdate = messages.length > 0 && messages[messages.length - 1].author !== currentUser.displayName && data.userTyping === true;
+                    
+                    if (isTypingUpdate && existingElement) {
+                        // If it's just a typing update, do nothing to the conversation list order.
+                        return;
                     }
 
-                    if (change.type === "added") {
-                        const newElement = await createConversationElement(change.doc);
-                        userList.prepend(newElement);
-                    }
-                    if (change.type === "modified") {
-                        if (existingElement) {
-                            const newElement = await createConversationElement(change.doc);
-                            userList.replaceChild(newElement, existingElement);
-                            // Re-apply active class if it was the current chat
-                            if (currentConversationId === change.doc.id) {
-                                newElement.classList.add('active');
-                            }
-                            // Move the modified element to the top
-                            userList.prepend(newElement);
+                    if (existingElement) {
+                        // If element exists, update its content and prepare to move it to the top.
+                        const newElement = await createConversationElement(docSnap);
+                        userList.replaceChild(newElement, existingElement);
+                        if (currentConversationId === docId) {
+                            newElement.classList.add('active');
                         }
+                        newOrder.push(newElement);
+                    } else {
+                        // If element is new, create it and add to new order array
+                        const newElement = await createConversationElement(docSnap);
+                        newOrder.push(newElement);
                     }
-                    if (change.type === "removed") {
-                        if (existingElement) {
-                            existingElement.remove();
-                        }
-                    }
+                    renderedIds.add(docId);
                 });
+                
+                // Clear the list and re-append in the correct order
+                userList.innerHTML = "";
+                newOrder.forEach(el => userList.appendChild(el));
             });
         }
 
