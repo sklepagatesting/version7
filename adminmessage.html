@@ -231,6 +231,7 @@
         }
 
         /* END: INPUT WRAPPER STYLES */
+
         .chat-app.no-chat-selected .placeholder {
             display: flex;
             align-items: center;
@@ -270,9 +271,14 @@
             .chat-app.show-chat .chat-panel {
                 transform: translateX(0);
             }
-
+            
+            /* Show/Hide back button on mobile based on class */
             .chat-app.show-chat .back-btn {
                 display: inline-block;
+            }
+
+            .chat-app:not(.show-chat) .back-btn {
+                display: none;
             }
         }
 
@@ -364,8 +370,8 @@
                     <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="m15 19-7-7 7-7"/>
                     </svg>
-                    </button>
-                <div id="chatHeaderProfile" class="flex items-center" style="display: none;">
+                </button>
+                <div id="chatHeaderProfile" class="flex items-center">
                     <span id="chatHeaderName" class="font-semibold text-gray-800"></span>
                 </div>
                 <span id="chatTitle" class="flex-grow">Select a conversation</span>
@@ -403,7 +409,6 @@
             measurementId: "G-9GH707G2WZ"
         };
 
-
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
@@ -416,10 +421,8 @@
         let unsubscribeConversationsList = null;
         let lastDoc = null;
         let isLoading = false;
-        // --- MODIFICATION START: Changed conversations to load to 10 ---
         const CONVERSATIONS_PER_LOAD = 10;
-        // --- MODIFICATION END ---
-
+        
         const chatApp = document.getElementById("chatApp");
         const userList = document.getElementById("userList");
         const messagesContainer = document.getElementById("messagesContainer");
@@ -479,12 +482,9 @@
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             });
         }
-
-        // --- MODIFICATION START: Updated read icon ---
+        
         const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
         const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm13.707-1.293a1 1 0 0 0-1.414-1.414L11 12.586l-1.793-1.793a1 1 0 0 0-1.414 1.414l2.5 2.5a1 1 0 0 0 1.414 0l4-4Z" clip-rule="evenodd"/></svg>`;
-        // --- MODIFICATION END ---
-
 
         function addMessage(author, text, time, status, isLastMessage, showTime) {
             const isSender = author === currentUser.displayName;
@@ -499,8 +499,10 @@
             bubble.textContent = text;
 
             content.appendChild(bubble);
+
             if (showTime || (isSender && isLastMessage)) {
-                const timeEl = document.createElement("div");                timeEl.className = "message-time flex items-center gap-1";
+                const timeEl = document.createElement("div");
+                timeEl.className = "message-time flex items-center gap-1";
                 timeEl.textContent = formatTimestamp(time);
 
                 if (isSender && isLastMessage) {
@@ -519,12 +521,13 @@
 
         const isMobile = window.innerWidth <= 1200;
 
-        replyInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                replyForm.requestSubmit();
-            }
-        });
+        // Removing keydown listener to allow new lines on mobile keyboards
+        // replyInput.addEventListener("keydown", (e) => {
+        //     if (e.key === "Enter" && !e.shiftKey) {
+        //         e.preventDefault();
+        //         replyForm.requestSubmit();
+        //     }
+        // });
 
         replyInput.addEventListener("input", () => {
             replyInput.style.height = "42px";
@@ -557,44 +560,62 @@
 
             chatTitle.style.display = 'none';
             chatHeaderProfile.style.display = 'flex';
-            // chatHeaderName.textContent = escapeHtml(otherName); // This line is redundant
             chatApp.classList.remove('no-chat-selected');
 
-            // --- MODIFICATION START: Added truncate for long names in header ---
+            // Set header profile content
             chatHeaderProfile.innerHTML = `
                 <img src="${escapeHtml(otherAvatar)}" alt="${escapeHtml(otherName)}'s avatar" class="w-10 h-10 rounded-full" />
                 <div class="ml-3 min-w-0">
                     <h3 class="font-semibold text-gray-800 truncate">${escapeHtml(otherName)}</h3>
                 </div>
             `;
-            // --- MODIFICATION END ---
 
             document.querySelectorAll('.conversation').forEach(c => c.classList.remove('active'));
             document.querySelector(`[data-id="${conversationId}"]`)?.classList.add('active');
 
             replyInput.value = "";
             replyInput.style.height = "42px";
-            typingIndicator.textContent = "";
 
             if (unsubscribeConversationListener) unsubscribeConversationListener();
 
-            unsubscribeConversationListener = onSnapshot(doc(db, "conversations", conversationId), (docSnap) => {
-                messagesContainer.innerHTML = "";
-                typingIndicator.innerHTML = "";
+            unsubscribeConversationListener = onSnapshot(doc(db, "conversations", conversationId), async (docSnap) => {
+                
+                // Clear all messages on initial load, but check if we're dealing with new messages after that
+                const isInitialLoad = messagesContainer.childElementCount === 0;
+                if(isInitialLoad) {
+                    messagesContainer.innerHTML = "";
+                }
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     const allMessages = data.messages || [];
+                    
+                    if (isInitialLoad) {
+                        let lastMessageTime = null;
+                        allMessages.forEach((msg, index) => {
+                            const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 60000);
+                            addMessage(msg.author, msg.text, msg.time, msg.status, index === allMessages.length - 1, showTime);
+                            lastMessageTime = msg.time.toDate();
+                        });
+                    } else {
+                        // Append only new messages
+                        const lastRenderedMessage = messagesContainer.querySelector('.message-row:last-of-type .message-time');
+                        const lastRenderedTime = lastRenderedMessage ? new Date(lastRenderedMessage.textContent) : null;
+                        const newMessages = allMessages.filter(msg => !lastRenderedTime || msg.time.toDate().getTime() > lastRenderedTime.getTime());
 
-                    let lastMessageTime = null;
-                    allMessages.forEach((msg, index) => {
-                        // --- MODIFICATION START: Changed timestamp threshold to 1 minute ---
-                        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 60000);
-                        // --- MODIFICATION END ---
-                        addMessage(msg.author, msg.text, msg.time, msg.status, index === allMessages.length - 1, showTime);
-                        lastMessageTime = msg.time.toDate();
-                    });
+                        let lastMessageTime = lastRenderedTime;
+                        newMessages.forEach((msg, index) => {
+                            const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 60000);
+                            addMessage(msg.author, msg.text, msg.time, msg.status, (index + (allMessages.length - newMessages.length)) === allMessages.length - 1, showTime);
+                            lastMessageTime = msg.time.toDate();
+                        });
+                    }
 
+                    // Handle typing indicator separately
+                    const existingTypingIndicator = messagesContainer.querySelector('.typing-indicator');
+                    if (existingTypingIndicator) {
+                        existingTypingIndicator.parentElement.parentElement.remove();
+                    }
                     if (data.userTyping) {
                         const typingBubble = document.createElement("div");
                         typingBubble.className = "message-row receiver";
@@ -631,10 +652,13 @@
                         </div>
                     </div>`;
                 }
+
                 scrollToBottom();
             });
 
-            if (isMobile) chatApp.classList.add("show-chat");
+            if (isMobile) {
+                chatApp.classList.add("show-chat");
+            }
         }
 
         async function renderConversations(docs) {
@@ -670,18 +694,14 @@
 
                 const nameClasses = hasUnread ? "font-bold text-gray-900 truncate" : "font-semibold text-gray-800 truncate";
                 const messageClasses = hasUnread ? "text-sm text-gray-800 font-medium truncate" : "text-sm text-gray-600 truncate";
-                // --- MODIFICATION START: Added bold class for unread timestamp ---
                 const timestampClasses = hasUnread ? "text-xs text-gray-800 font-bold flex-shrink-0" : "text-xs text-gray-500 flex-shrink-0";
-                // --- MODIFICATION END ---
                 const unreadBadge = hasUnread ? `<span class="unread-badge">${unreadCount}</span>` : '';
-                
                 const timestamp = formatTimestampForList(lastMessage.time);
 
                 const li = document.createElement("div");
                 li.className = "conversation";
                 li.dataset.id = id;
 
-                // --- MODIFICATION START: Updated innerHTML with bold timestamp class ---
                 li.innerHTML = `
                     <div class="relative flex-shrink-0">
                         <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
@@ -695,7 +715,6 @@
                         <p class="${messageClasses}">${escapeHtml(lastMessage.text)}</p>
                     </div>
                 `;
-                // --- MODIFICATION END ---
 
                 li.addEventListener("click", () => openConversation(id, userName, userAvatar));
                 userList.appendChild(li);
