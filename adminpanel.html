@@ -196,8 +196,8 @@
         }
 
         async function loadAdminInfo(user) {
-            adminMessagesLink.href = `adminmessages.html?user=${user.uid}`;
-            adminMessagesLinkMobile.href = `adminmessages.html?user=${user.uid}`;
+            adminMessagesLink.href = `adminmessage.html?user=${user.uid}`;
+            adminMessagesLinkMobile.href = `adminmessage.html?user=${user.uid}`;
             adminInfoDiv.innerHTML = `
                 <img src="${user.photoURL || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(user.displayName || 'A')}"
                     class="w-16 h-16 rounded-full border" alt="avatar">
