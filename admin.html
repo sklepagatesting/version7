@@ -196,8 +196,8 @@
         }
 
         async function loadAdminInfo(user) {
-            adminMessagesLink.href = `adminmessages.html?user=${user.uid}`;
-            adminMessagesLinkMobile.href = `adminmessages.html?user=${user.uid}`;
+            adminMessagesLink.href = `adminmessage.html?user=${user.uid}`;
+            adminMessagesLinkMobile.href = `adminmessage.html?user=${user.uid}`;
             adminInfoDiv.innerHTML = `
                 <img src="${user.photoURL || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(user.displayName || 'A')}"
                     class="w-16 h-16 rounded-full border" alt="avatar">
@@ -228,7 +228,7 @@
                 const card = document.createElement("div");
                 card.className = "bg-white rounded-2xl border border-gray-200 p-4 flex flex-col";
                 card.innerHTML = `
-                    <div class="flex items-start gap-3 flex-1 mb-4">
+                    <div class="flex items-center gap-3 flex-1 mb-4">
                         <img src="${u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || 'U')}" class="w-14 h-14 rounded-full border" alt="avatar">
                         <div class="min-w-0">
                             <p class="font-semibold truncate">${u.name || "(no name)"}</p>
@@ -236,8 +236,8 @@
                             <p class="text-xs text-gray-500 mt-1">Joined: ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</p>
                         </div>
                     </div>
-                    <div class="flex gap-2 justify-end">
-                        <button class="promoteBtn px-4 py-2 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700">Set as Administrator</button>
+                    <div class="flex gap-2 mt-auto">
+                        <button class="promoteBtn px-4 py-2 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700 flex-1">Set as Administrator</button>
                         <button title="Delete User" class="deleteBtn w-9 h-9 grid place-items-center rounded-lg text-red-600 border border-red-200 hover:bg-red-50">
                             <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"/></svg>
                         </button>
@@ -322,7 +322,7 @@
                     signOut(auth);
                 }
             } else {
-                window.location.href = "google.html";
+                window.location.href = "index.html";
             }
         });
     </script>
