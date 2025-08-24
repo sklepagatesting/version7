@@ -1,131 +1,265 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Google Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  signOut
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // --- Firebase Config ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-      authDomain: "sklepaga-8790e.firebaseapp.com",
-      projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.firebasestorage.app",
-      messagingSenderId: "815409129057",
-      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-      measurementId: "G-9GH707G2WZ"
-    };
+// --- Firebase Config ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+  authDomain: "sklepaga-8790e.firebaseapp.com",
+  projectId: "sklepaga-8790e",
+  storageBucket: "sklepaga-8790e.appspot.com",
+  messagingSenderId: "815409129057",
+  appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+  measurementId: "G-9GH707G2WZ"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-    const db = getFirestore(app);
+// --- Initialize ---
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+await setPersistence(auth, browserLocalPersistence);
 
-    // Load saved accounts
-    function getSavedAccounts() {
-      return JSON.parse(localStorage.getItem("accounts") || "[]");
+// --- UI refs ---
+const loginSection = document.getElementById("login-section");
+const profilesSection = document.getElementById("profiles-section");
+const profilesGrid = document.getElementById("profiles");
+const notYouBtn = document.getElementById("not-you");
+
+// --- Helpers ---
+const genColor = (seed) => {
+  const palette = ["#2563eb","#16a34a","#db2777","#f59e0b","#7c3aed","#059669","#ef4444","#0ea5e9"];
+  let sum = 0;
+  for (let i=0;i<seed.length;i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
+  return palette[sum];
+};
+
+const addLoginPageUser = (user) => {
+  const lite = {
+    uid: user.uid,
+    name: user.displayName || user.name || "",
+    email: user.email || "",
+    avatar: user.photoURL || user.avatar || "",
+    type: user.type || "account"
+  };
+  let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+  users = [lite, ...users.filter(u => u.uid !== lite.uid)];
+  if (users.length > 6) users = users.slice(0, 6);
+  localStorage.setItem("loginPageUsers", JSON.stringify(users));
+};
+
+const deleteLoginPageUser = (uid) => {
+  let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+  users = users.filter(u => u.uid !== uid);
+  localStorage.setItem("loginPageUsers", JSON.stringify(users));
+  renderProfiles();
+};
+
+
+const renderProfiles = () => {
+  const saved = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+  if (saved.length === 0) {
+    profilesSection.classList.add("hidden");
+    loginSection.classList.remove("hidden");
+    return;
+  }
+  loginSection.classList.add("hidden");
+  profilesSection.classList.remove("hidden");
+  profilesGrid.innerHTML = "";
+  
+  const activeUid = auth.currentUser ? auth.currentUser.uid : null;
+  const activeUser = saved.find(u => u.uid === activeUid);
+  const otherUsers = saved.filter(u => u.uid !== activeUid);
+
+  if (activeUser) {
+    profilesGrid.appendChild(createProfileCard(activeUser, true));
+  }
+
+  otherUsers.forEach(u => {
+    profilesGrid.appendChild(createProfileCard(u, false));
+  });
+  
+  if (otherUsers.length === 0) {
+    const moreAccounts = document.createElement("button");
+    moreAccounts.textContent = "Create an Account";
+    moreAccounts.onclick = login;
+    moreAccounts.className = "w-full max-w-xs text-black px-4 py-3 rounded-xl hover:bg-gray-50 text-center";
+    profilesGrid.appendChild(moreAccounts);
+  }
+};
+
+const createProfileCard = (user, isActive) => {
+  const card = document.createElement("button");
+  card.className = "flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left relative group";
+  
+  const badgeSvg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="256" height="256" viewBox="0 0 256 256" xml:space="preserve">
+    <g style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;" transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">
+      <path d="M 30.091 10.131 L 30.091 10.131 c 5.28 -13.046 23.695 -13.207 29.202 -0.255 l 0 0 l 0 0 c 12.959 -5.491 26.093 7.416 20.829 20.469 l 0 0 l 0 0 c 13.046 5.28 13.207 23.695 0.255 29.202 l 0 0 l 0 0 c 5.491 12.959 -7.416 26.093 -20.469 20.829 l 0 0 l 0 0 c -5.28 13.046 -23.695 13.207 -29.202 0.255 l 0 0 l 0 0 C 17.748 86.122 4.613 73.215 9.878 60.162 l 0 0 l 0 0 C -3.169 54.881 -3.33 36.467 9.623 30.96 l 0 0 l 0 0 C 4.131 18.001 17.038 4.866 30.091 10.131 L 30.091 10.131 z" style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,150,241); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round"/>
+      <polygon points="39.66,63.79 23.36,47.76 28.97,42.05 39.3,52.21 59.6,29.58 65.56,34.93 " style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) "/>
+    </g>
+  </svg>`;
+
+  card.innerHTML = `
+    <div class="w-12 h-12 rounded-full border overflow-hidden flex items-center justify-center" style="background:${genColor(user.email||user.uid)}">
+      ${user.avatar ? `<img src="${user.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold">${(user.name?.[0]||"?").toUpperCase()}</span>`}
+    </div>
+    <div class="min-w-0">
+      <div class="font-semibold truncate" title="${user.name||""}">${user.name||"Unnamed"}</div>
+      <div class="text-xs text-gray-500 truncate" title="${user.email||""}">${user.email||""}</div>
+    </div>
+    <div class="flex items-center gap-1 ml-auto">
+      <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+        ${user.type==='admin'?'Admin':'Account'}
+      </span>
+      ${isActive ? `<span class="w-4 h-4">${badgeSvg}</span>` : ''}
+    </div>
+  `;
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "absolute right-2 top-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity";
+  deleteBtn.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  `;
+  deleteBtn.onclick = (e) => {
+    e.stopPropagation();
+    deleteLoginPageUser(user.uid);
+  };
+  card.appendChild(deleteBtn);
+
+  // Click behavior
+  card.onclick = async () => {
+    // If clicked profile is already currentUser, skip popup
+    if (auth.currentUser && auth.currentUser.uid === user.uid) {
+      await routeUser(auth.currentUser);
+    } else {
+      await login(); // popup for new or different user
     }
+  };
 
-    function saveAccount(account) {
-      let accounts = getSavedAccounts();
-      // Prevent duplicates by UID
-      accounts = accounts.filter(acc => acc.uid !== account.uid);
-      accounts.push(account);
-      localStorage.setItem("accounts", JSON.stringify(accounts));
+  return card;
+};
+
+// --- Core flows ---
+async function login() {
+  try {
+    const res = await signInWithPopup(auth, provider);
+    const user = res.user;
+    addLoginPageUser(user);
+    await routeUser(user);
+  } catch (e) {
+    console.error(e);
+    alert("Login failed: " + (e?.message || e));
+  }
+}
+
+async function routeUser(user) {
+  const adminRef = doc(db, "admin", user.uid);
+  try {
+    const adminSnap = await getDoc(adminRef);
+    if (adminSnap.exists()) {
+      addLoginPageUser({ ...user, type: "admin" });
+      window.location.href = "adminpanel.html";
+      return;
     }
+  } catch (e) {
+    console.error("Admin check failed:", e);
+    alert("Could not verify admin role. Please try again.");
+    return;
+  }
 
-    async function login() {
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        const token = await user.getIdToken();
-
-        const account = {
-          uid: user.uid,
-          name: user.displayName || "",
-          email: user.email || "",
-          avatarLetter: user.displayName?.charAt(0).toUpperCase() || "?",
-          avatarColor: "#3498DB",
-          idToken: token,
-          tokenExpiration: new Date(Date.now() + 3600 * 1000).toISOString()
-        };
-
-        // Save to Firestore
-        await setDoc(doc(db, "accounts", user.uid), account);
-
-        // Save locally
-        saveAccount(account);
-
-        // Redirect
-        window.location.href = "messages.html";
-      } catch (error) {
-        console.error("Login failed:", error);
-        alert("Login failed: " + error.message);
-      }
-    }
-
-    function selectAccount(uid) {
-      const accounts = getSavedAccounts();
-      const account = accounts.find(acc => acc.uid === uid);
-      if (account) {
-        // Set this account as the active one for session
-        localStorage.setItem("activeAccount", JSON.stringify(account));
-        window.location.href = "messages.html";
-      }
-    }
-
-    // On load: check saved accounts
-    window.addEventListener("DOMContentLoaded", () => {
-      const accounts = getSavedAccounts();
-      if (accounts.length === 1) {
-        // Only one account saved → auto-redirect
-        localStorage.setItem("activeAccount", JSON.stringify(accounts[0]));
-        window.location.href = "messages.html";
-      } else if (accounts.length > 1) {
-        // Multiple accounts → show selection
-        const list = document.getElementById("accountList");
-        document.getElementById("loginSection").classList.add("hidden");
-        document.getElementById("accountSection").classList.remove("hidden");
-
-        accounts.forEach(acc => {
-          const btn = document.createElement("button");
-          btn.className = "flex items-center gap-3 w-full px-4 py-2 border rounded-lg hover:bg-gray-50";
-          btn.innerHTML = `
-            <div class="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold" style="background:${acc.avatarColor}">${acc.avatarLetter}</div>
-            <div>
-              <div class="font-semibold">${acc.name}</div>
-              <div class="text-sm text-gray-500">${acc.email}</div>
-            </div>
-          `;
-          btn.onclick = () => selectAccount(acc.uid);
-          list.appendChild(btn);
-        });
-      }
+  const accRef = doc(db, "accounts", user.uid);
+  const accSnap = await getDoc(accRef);
+  if (!accSnap.exists()) {
+    await setDoc(accRef, {
+      uid: user.uid,
+      name: user.displayName || "",
+      email: user.email || "",
+      avatar: user.photoURL || "",
+      createdAt: new Date().toISOString()
     });
+  }
+  window.location.href = "messenger.html";
+}
 
-    window.login = login;
-  </script>
+async function doSignOut() {
+  try { await signOut(auth); } catch (e) { console.warn("Sign out error:", e); }
+  window.location.href = "index.html";
+}
+
+// --- Events ---
+window.login = login;
+window.logoutLocal = doSignOut;
+notYouBtn.addEventListener("click", doSignOut);
+
+renderProfiles();
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    addLoginPageUser(user);
+  }
+  renderProfiles();
+});
+</script>
+
+  <style>
+    html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  </style>
 </head>
-<body class="flex items-center justify-center min-h-screen bg-gray-100">
-  <!-- Login Section -->
-  <div id="loginSection" class="bg-white shadow-lg rounded-lg p-6 text-center">
-    <h1 class="text-2xl font-bold mb-4">Welcome</h1>
-    <button onclick="login()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-      Login with Google
-    </button>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+  <div id="offline-banner" class="fixed top-0 inset-x-0 z-50 hidden">
+    <div class="mx-auto max-w-xl bg-yellow-100 text-yellow-800 text-sm px-4 py-2 rounded-b-lg shadow">
+      You appear to be offline. Some actions may not work. Please check your internet connection.
+    </div>
   </div>
 
-  <!-- Account Selection Section -->
-  <div id="accountSection" class="hidden bg-white shadow-lg rounded-lg p-6 w-80">
-    <h1 class="text-xl font-bold mb-4">Choose an account</h1>
-    <div id="accountList" class="flex flex-col gap-3"></div>
-    <div class="mt-4 text-center">
-      <button onclick="login()" class="text-blue-500 hover:underline">Use another account</button>
+  <div class="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
+    <h1 class="text-2xl font-bold text-center">Sign in with Google</h1>
+
+    <div id="login-section" class="mt-6">
+      <button onclick="login()" class="w-full flex items-center justify-center gap-2 border px-4 py-3 rounded-xl hover:bg-gray-50">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="">
+        <span>Sign in with Google</span>
+      </button>
+      <p class="text-[11px] text-gray-500 text-center mt-3">
+        By continuing, you agree to our Terms & Privacy Policy.
+      </p>
+    </div>
+
+    <div id="profiles-section" class="mt-6 mb-3 hidden">
+      <div id="profiles" class="flex flex-col gap-3"></div>
+      <div class="flex flex-col items-center justify-center mt-4">
+        <button onclick="login()" class="w-full max-w-xs text-black px-4 py-3 rounded-xl hover:bg-gray-50 text-center">
+          Use another account
+        </button>
+        <button id="not-you" class="text-red-600 text-sm hover:underline mt-2">Sign out</button>
+      </div>
+      <p class="text-[11px] text-gray-500 text-center mt-3">
+        Selecting a profile will trigger Google’s account chooser and continue.
+      </p>
     </div>
   </div>
 </body>
