@@ -5,239 +5,306 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <meta name="color-scheme" content="light dark" />
-  <style>
-    .profile-card {
-      transition: all 0.2s;
-    }
-    .profile-card:hover {
-      transform: scale(1.02);
-    }
-    .remove-mode .profile-card {
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.6); /* Apple-style blue glow */
-      position: relative;
-    }
-    .remove-btn {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      background: #ef4444;
-      color: white;
-      border-radius: 9999px;
-      width: 24px;
-      height: 24px;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-    #verify-modal {
-      display: none;
-    }
-    #verify-modal.active {
-      display: flex;
-    }
-  </style>
-</head>
-<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen">
-
-  <!-- Container -->
-  <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-    <h1 id="header-text" class="text-2xl font-semibold text-center mb-6 text-gray-800 dark:text-gray-200">
-      Create an account
-    </h1>
-
-    <!-- Profiles -->
-    <div id="profiles" class="space-y-3"></div>
-
-    <!-- Sign in button -->
-    <button id="login-btn" onclick="login()"
-      class="w-full mt-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow">
-      Sign in with Google
-    </button>
-
-    <!-- Remove button -->
-    <button id="remove-btn" onclick="toggleRemoveMode()"
-      class="w-full mt-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-xl font-medium shadow">
-      Remove an account
-    </button>
-  </div>
-
-  <!-- Modal -->
-  <div id="verify-modal"
-    class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 max-w-sm w-full text-center">
-      <h2 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Verify your account</h2>
-      <p class="text-gray-600 dark:text-gray-300 mb-4">
-        Choose your account from the selection of accounts on your device to proceed.
-      </p>
-      <button onclick="closeVerifyModal()"
-        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow">
-        OK
-      </button>
-    </div>
-  </div>
-
-  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      onAuthStateChanged,
+      setPersistence,
+      browserLocalPersistence,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
+    // --- Firebase Config ---
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+      authDomain: "sklepaga-8790e.firebaseapp.com",
+      projectId: "sklepaga-8790e",
+      storageBucket: "sklepaga-8790e.appspot.com",
+      messagingSenderId: "815409129057",
+      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+      measurementId: "G-9GH707G2WZ"
     };
 
+    // --- Initialize ---
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
+    await setPersistence(auth, browserLocalPersistence);
 
-    let removeMode = false;
-    let currentUser = null;
+    // --- State ---
+    let isRemoveMode = false;
 
-    // Login
-    async function login() {
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        saveUser(user);
-        renderProfiles();
-      } catch (error) {
-        console.error(error);
-      }
-    }
+    // --- UI refs ---
+    const loginSection = document.getElementById("login-section");
+    const mainLoginBtn = document.getElementById("main-login-btn");
+    const profilesSection = document.getElementById("profiles-section");
+    const profilesGrid = document.getElementById("profiles");
+    const signOutBtn = document.getElementById("sign-out-btn");
+    const mainHeader = document.getElementById("main-header");
+    const removeAccountBtn = document.getElementById("remove-account-btn");
+    const verifyModal = document.getElementById("verify-modal");
+    const closeModalBtn = document.getElementById("close-modal-btn");
 
-    // Save to localStorage
-    function saveUser(user) {
-      let users = JSON.parse(localStorage.getItem("users")) || [];
-      if (!users.find(u => u.uid === user.uid)) {
-        users.push({
-          uid: user.uid,
-          name: user.displayName,
-          email: user.email,
-          photo: user.photoURL
-        });
-        localStorage.setItem("users", JSON.stringify(users));
-      }
-    }
+    // --- Helpers ---
+    const verifiedBadgeSVG = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="256" height="256" viewBox="0 0 256 256" xml:space="preserve" class="w-4 h-4">
+    <g style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;" transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">
+        <path d="M 30.091 10.131 L 30.091 10.131 c 5.28 -13.046 23.695 -13.207 29.202 -0.255 l 0 0 l 0 0 c 12.959 -5.491 26.093 7.416 20.829 20.469 l 0 0 l 0 0 c 13.046 5.28 13.207 23.695 0.255 29.202 l 0 0 l 0 0 c 5.491 12.959 -7.416 26.093 -20.469 20.829 l 0 0 l 0 0 c -5.28 13.046 -23.695 13.207 -29.202 0.255 l 0 0 l 0 0 C 17.748 86.122 4.613 73.215 9.878 60.162 l 0 0 l 0 0 C -3.169 54.881 -3.33 36.467 9.623 30.96 l 0 0 l 0 0 C 4.131 18.001 17.038 4.866 30.091 10.131 L 30.091 10.131 z" style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,150,241); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round"/>
+        <polygon points="39.66,63.79 23.36,47.76 28.97,42.05 39.3,52.21 59.6,29.58 65.56,34.93 " style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) "/>
+    </g>
+    </svg>`;
 
-    // Remove user
-    function removeUser(uid) {
-      let users = JSON.parse(localStorage.getItem("users")) || [];
-      users = users.filter(u => u.uid !== uid);
-      localStorage.setItem("users", JSON.stringify(users));
-      renderProfiles();
-    }
+    const genColor = (seed) => {
+      const palette = ["#2563eb", "#16a34a", "#db2777", "#f59e0b", "#7c3aed", "#059669", "#ef4444", "#0ea5e9"];
+      let sum = 0;
+      for (let i = 0; i < seed.length; i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
+      return palette[sum];
+    };
 
-    // Toggle remove mode
-    function toggleRemoveMode() {
-      removeMode = !removeMode;
-      renderProfiles();
-    }
-
-    // Modal
-    function showVerifyModal() {
-      document.getElementById("verify-modal").classList.add("active");
-    }
-    function closeVerifyModal() {
-      document.getElementById("verify-modal").classList.remove("active");
-    }
-
-    // Route user
-    async function routeUser(uid) {
-      const adminRef = doc(db, "admin", uid);
-      const adminSnap = await getDoc(adminRef);
-      if (adminSnap.exists()) {
-        window.location.href = "adminpanel.html";
-        return;
-      }
-      const userRef = doc(db, "accounts", uid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        window.location.href = "messenger.html";
-        return;
-      }
-      alert("Account not found in system.");
-    }
-
-    // Render
-    async function renderProfiles() {
-      const container = document.getElementById("profiles");
-      const header = document.getElementById("header-text");
-      container.innerHTML = "";
-
-      let users = JSON.parse(localStorage.getItem("users")) || [];
-
-      if (!currentUser && users.length === 0) {
-        header.textContent = "Create an account";
-        return;
-      }
-
-      if (removeMode) {
-        header.textContent = "Choose an account to remove.";
-      } else if (users.length > 1) {
-        header.textContent = "Choose an account";
-      } else if (users.length === 1) {
-        header.textContent = "Continue with your account";
-      }
-
-      for (let u of users) {
-        // Role tag
-        let role = "";
-        const adminRef = doc(db, "admin", u.uid);
-        const adminSnap = await getDoc(adminRef);
-        if (adminSnap.exists()) {
-          role = `<span class="ml-2 px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">Admin</span>`;
-        } else {
-          const userRef = doc(db, "accounts", u.uid);
-          const userSnap = await getDoc(userRef);
-          if (userSnap.exists()) {
-            role = `<span class="ml-2 px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">User</span>`;
-          }
-        }
-
-        const isActive = currentUser && currentUser.uid === u.uid;
-
-        const card = document.createElement("div");
-        card.className = "profile-card flex items-center bg-gray-100 dark:bg-gray-700 rounded-xl p-3 cursor-pointer";
-        card.innerHTML = `
-          <img src="${u.photo}" class="w-10 h-10 rounded-full mr-3">
-          <div class="flex-1">
-            <p class="text-gray-800 dark:text-gray-100 font-medium">${u.name} ${role}</p>
-            <p class="text-gray-500 dark:text-gray-400 text-sm">${u.email}</p>
-          </div>
-          ${isActive ? `<span class="text-green-500 font-bold">✔</span>` : ""}
-          ${removeMode ? `<div class="remove-btn" onclick="event.stopPropagation(); removeUser('${u.uid}')">×</div>` : ""}
-        `;
-
-        card.onclick = () => {
-          if (removeMode) return;
-          if (isActive) {
-            routeUser(u.uid);
-          } else {
-            showVerifyModal();
-          }
-        };
-
-        container.appendChild(card);
-      }
-    }
-
-    // Auth state
-    onAuthStateChanged(auth, (user) => {
-      currentUser = user;
-      if (user) saveUser(user);
-      renderProfiles();
+    const createLiteUser = (user, type = 'user') => ({
+      uid: user.uid,
+      name: user.displayName || user.name || "",
+      email: user.email || "",
+      avatar: user.photoURL || user.avatar || "",
+      type: type
     });
 
-    renderProfiles();
+    const addLoginPageUser = (liteUser) => {
+      let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+      users = [liteUser, ...users.filter(u => u.uid !== liteUser.uid)];
+      if (users.length > 6) users = users.slice(0, 6);
+      localStorage.setItem("loginPageUsers", JSON.stringify(users));
+    };
+
+    const removeProfile = (uid) => {
+      let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+      users = users.filter(u => u.uid !== uid);
+      localStorage.setItem("loginPageUsers", JSON.stringify(users));
+      if (auth.currentUser && auth.currentUser.uid === uid) {
+        signOut(auth).catch(e => console.warn("Sign out error:", e));
+      } else {
+        renderProfiles();
+      }
+    };
+
+    const updateHeaderText = (userCount) => {
+        if (isRemoveMode) {
+            mainHeader.textContent = "Choose an account to remove.";
+            return;
+        }
+        if (userCount === 0) {
+            mainHeader.textContent = "Create an account";
+        } else if (userCount === 1) {
+            mainHeader.textContent = "Continue with your account";
+        } else {
+            mainHeader.textContent = "Choose an account";
+        }
+    };
+
+    const renderProfiles = () => {
+      const savedUsers = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+      updateHeaderText(savedUsers.length);
+      
+      if (savedUsers.length === 0) {
+        profilesSection.classList.add("hidden");
+        loginSection.classList.remove("hidden");
+        return;
+      }
+
+      loginSection.classList.add("hidden");
+      profilesSection.classList.remove("hidden");
+      profilesGrid.innerHTML = "";
+
+      const activeUid = auth.currentUser ? auth.currentUser.uid : null;
+
+      savedUsers.forEach(user => {
+        const isActive = user.uid === activeUid;
+        profilesGrid.appendChild(createProfileCard(user, isActive));
+      });
+    };
+
+    const createProfileCard = (user, isActive) => {
+      const card = document.createElement("div");
+      const removeModeClasses = isRemoveMode ? "shadow-[0_0_15px_2px_rgba(59,130,246,0.4)] cursor-default" : "cursor-pointer";
+      card.className = `flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left relative transition-shadow duration-300 ${removeModeClasses}`;
+
+      card.innerHTML = `
+        <div class="w-12 h-12 rounded-full border overflow-hidden flex items-center justify-center shrink-0" style="background:${genColor(user.email||user.uid)}">
+          ${user.avatar ? `<img src="${user.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold">${(user.name?.[0]||"?").toUpperCase()}</span>`}
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold truncate flex items-center gap-1.5" title="${user.name||""}">
+            <span>${user.name||"Unnamed"}</span>
+            ${isActive ? verifiedBadgeSVG : ''}
+          </div>
+          <div class="text-xs text-gray-500 truncate" title="${user.email||""}">${user.email||""}</div>
+        </div>
+        <div class="ml-auto flex items-center gap-1.5 shrink-0">
+            <span class="text-[10px] font-medium px-2 py-1 rounded-full ${user.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
+                ${user.type==='admin'?'Admin':'User'}
+            </span>
+        </div>
+        <button class="delete-profile absolute top-1 right-1 w-6 h-6 items-center justify-center text-gray-500 hover:text-red-500 bg-white/50 backdrop-blur-sm hover:bg-red-100 rounded-full z-10 font-bold text-lg ${isRemoveMode ? 'flex' : 'hidden'}">&times;</button>
+      `;
+
+      // Main card click behavior
+      card.onclick = async () => {
+        if (isRemoveMode) return; // Ignore card clicks in remove mode
+
+        if (isActive) {
+          await routeUser(auth.currentUser);
+        } else {
+          verifyModal.classList.remove('hidden');
+        }
+      };
+
+      // Delete button click behavior
+      const deleteBtn = card.querySelector('.delete-profile');
+      deleteBtn.onclick = (event) => {
+          event.stopPropagation(); // Prevent the main card click event
+          removeProfile(user.uid);
+      };
+
+      return card;
+    };
+    
+    // --- Core flows ---
+    async function login() {
+      try {
+        const res = await signInWithPopup(auth, provider);
+        await routeUser(res.user);
+      } catch (e) {
+        console.error(e);
+        if (e.code !== 'auth/popup-closed-by-user') {
+            alert("Login failed: " + (e?.message || e));
+        }
+      }
+    }
+
+    async function routeUser(user) {
+      if (!user) return;
+      try {
+        const adminRef = doc(db, "admin", user.uid);
+        const adminSnap = await getDoc(adminRef);
+        if (adminSnap.exists()) {
+          addLoginPageUser(createLiteUser(user, 'admin'));
+          window.location.href = "adminpanel.html";
+          return;
+        }
+      } catch (e) {
+        console.error("Admin check failed:", e);
+        alert("Could not verify your role. Please try again.");
+        return;
+      }
+
+      // If not admin, they are a regular user
+      addLoginPageUser(createLiteUser(user, 'user'));
+      const accRef = doc(db, "accounts", user.uid);
+      const accSnap = await getDoc(accRef);
+      if (!accSnap.exists()) {
+        await setDoc(accRef, {
+          uid: user.uid,
+          name: user.displayName || "",
+          email: user.email || "",
+          avatar: user.photoURL || "",
+          createdAt: new Date().toISOString()
+        });
+      }
+      window.location.href = "messenger.html";
+    }
+
+    async function doSignOut() {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        // Remove only the signed-out user from localStorage
+        let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+        users = users.filter(u => u.uid !== currentUser.uid);
+        localStorage.setItem("loginPageUsers", JSON.stringify(users));
+      }
+      try { 
+        await signOut(auth); 
+        renderProfiles(); // Re-render to show remaining users
+      } catch (e) { 
+        console.warn("Sign out error:", e); 
+      }
+    }
+
+    function toggleRemoveMode() {
+        isRemoveMode = !isRemoveMode;
+        removeAccountBtn.textContent = isRemoveMode ? 'Done' : 'Remove an account';
+        removeAccountBtn.classList.toggle('bg-blue-600', isRemoveMode);
+        removeAccountBtn.classList.toggle('text-white', isRemoveMode);
+        renderProfiles();
+    }
+
+    // --- Events ---
+    window.login = login;
+    signOutBtn.addEventListener("click", doSignOut);
+    removeAccountBtn.addEventListener("click", toggleRemoveMode);
+    closeModalBtn.addEventListener("click", () => verifyModal.classList.add('hidden'));
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Determine role on page load for the signed-in user
+        const adminRef = doc(db, "admin", user.uid);
+        const adminSnap = await getDoc(adminRef);
+        const userType = adminSnap.exists() ? 'admin' : 'user';
+        addLoginPageUser(createLiteUser(user, userType));
+      }
+      renderProfiles();
+    });
   </script>
+
+  <style>
+    html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+  <div class="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
+    <h1 id="main-header" class="text-2xl font-bold text-center">Sign in</h1>
+
+    <div id="login-section" class="mt-6">
+      <button id="main-login-btn" onclick="login()" class="w-full flex items-center justify-center gap-2 border px-4 py-3 rounded-xl hover:bg-gray-50">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="">
+        <span>Sign in with Google</span>
+      </button>
+      <p class="text-[11px] text-gray-500 text-center mt-3">
+        By continuing, you agree to our Terms & Privacy Policy.
+      </p>
+    </div>
+
+    <div id="profiles-section" class="mt-6 mb-3 hidden">
+      <div id="profiles" class="flex flex-col gap-3"></div>
+      <div class="flex flex-col items-center justify-center mt-4 space-y-2">
+        <button onclick="login()" class="w-full text-black px-4 py-3 rounded-xl hover:bg-gray-50 text-center border">
+          Use another account
+        </button>
+        <button id="remove-account-btn" class="w-full text-gray-700 text-sm px-4 py-2 rounded-xl hover:bg-gray-100 border">Remove an account</button>
+        <button id="sign-out-btn" class="text-red-600 text-sm hover:underline mt-2">Sign out</button>
+      </div>
+      <p class="text-[11px] text-gray-500 text-center mt-3">
+        Selecting a profile will continue with that account.
+      </p>
+    </div>
+  </div>
+
+  <div id="verify-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 hidden">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 text-center">
+        <h2 class="text-xl font-bold">Verify your account</h2>
+        <p class="text-gray-600 mt-2">Choose your account from the selection of accounts on your device to proceed.</p>
+        <button id="close-modal-btn" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded-lg mt-6 hover:bg-blue-700">OK</button>
+    </div>
+  </div>
+
 </body>
 </html>
