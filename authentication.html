@@ -43,11 +43,19 @@ await setPersistence(auth, browserLocalPersistence);
 
 // --- UI refs ---
 const loginSection = document.getElementById("login-section");
+const mainLoginBtn = document.getElementById("main-login-btn");
 const profilesSection = document.getElementById("profiles-section");
 const profilesGrid = document.getElementById("profiles");
 const notYouBtn = document.getElementById("not-you");
 
 // --- Helpers ---
+const verifiedBadgeSVG = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="256" height="256" viewBox="0 0 256 256" xml:space="preserve" class="w-4 h-4">
+<g style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;" transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">
+	<path d="M 30.091 10.131 L 30.091 10.131 c 5.28 -13.046 23.695 -13.207 29.202 -0.255 l 0 0 l 0 0 c 12.959 -5.491 26.093 7.416 20.829 20.469 l 0 0 l 0 0 c 13.046 5.28 13.207 23.695 0.255 29.202 l 0 0 l 0 0 c 5.491 12.959 -7.416 26.093 -20.469 20.829 l 0 0 l 0 0 c -5.28 13.046 -23.695 13.207 -29.202 0.255 l 0 0 l 0 0 C 17.748 86.122 4.613 73.215 9.878 60.162 l 0 0 l 0 0 C -3.169 54.881 -3.33 36.467 9.623 30.96 l 0 0 l 0 0 C 4.131 18.001 17.038 4.866 30.091 10.131 L 30.091 10.131 z" style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,150,241); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round"/>
+	<polygon points="39.66,63.79 23.36,47.76 28.97,42.05 39.3,52.21 59.6,29.58 65.56,34.93 " style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) "/>
+</g>
+</svg>`;
+
 const genColor = (seed) => {
   const palette = ["#2563eb","#16a34a","#db2777","#f59e0b","#7c3aed","#059669","#ef4444","#0ea5e9"];
   let sum = 0;
@@ -55,35 +63,37 @@ const genColor = (seed) => {
   return palette[sum];
 };
 
-const addLoginPageUser = (user) => {
-  const lite = {
-    uid: user.uid,
-    name: user.displayName || user.name || "",
-    email: user.email || "",
-    avatar: user.photoURL || user.avatar || "",
-    type: user.type || "account"
-  };
+const createLiteUser = (user, type = 'user') => ({
+  uid: user.uid,
+  name: user.displayName || user.name || "",
+  email: user.email || "",
+  avatar: user.photoURL || user.avatar || "",
+  type: type
+});
+
+const addLoginPageUser = (liteUser) => {
   let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
-  users = [lite, ...users.filter(u => u.uid !== lite.uid)];
+  users = [liteUser, ...users.filter(u => u.uid !== liteUser.uid)];
   if (users.length > 6) users = users.slice(0, 6);
   localStorage.setItem("loginPageUsers", JSON.stringify(users));
 };
 
-const deleteLoginPageUser = (uid) => {
+const removeProfile = (uid) => {
   let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
   users = users.filter(u => u.uid !== uid);
   localStorage.setItem("loginPageUsers", JSON.stringify(users));
   renderProfiles();
 };
 
-
 const renderProfiles = () => {
   const saved = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
   if (saved.length === 0) {
     profilesSection.classList.add("hidden");
     loginSection.classList.remove("hidden");
+    mainLoginBtn.querySelector('span').textContent = 'Create an Account';
     return;
   }
+  
   loginSection.classList.add("hidden");
   profilesSection.classList.remove("hidden");
   profilesGrid.innerHTML = "";
@@ -95,68 +105,46 @@ const renderProfiles = () => {
   if (activeUser) {
     profilesGrid.appendChild(createProfileCard(activeUser, true));
   }
-
   otherUsers.forEach(u => {
     profilesGrid.appendChild(createProfileCard(u, false));
   });
-  
-  if (otherUsers.length === 0) {
-    const moreAccounts = document.createElement("button");
-    moreAccounts.textContent = "Create an Account";
-    moreAccounts.onclick = login;
-    moreAccounts.className = "w-full max-w-xs text-black px-4 py-3 rounded-xl hover:bg-gray-50 text-center";
-    profilesGrid.appendChild(moreAccounts);
-  }
 };
 
 const createProfileCard = (user, isActive) => {
-  const card = document.createElement("button");
-  card.className = "flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left relative group";
-  
-  const badgeSvg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="256" height="256" viewBox="0 0 256 256" xml:space="preserve">
-    <g style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;" transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">
-      <path d="M 30.091 10.131 L 30.091 10.131 c 5.28 -13.046 23.695 -13.207 29.202 -0.255 l 0 0 l 0 0 c 12.959 -5.491 26.093 7.416 20.829 20.469 l 0 0 l 0 0 c 13.046 5.28 13.207 23.695 0.255 29.202 l 0 0 l 0 0 c 5.491 12.959 -7.416 26.093 -20.469 20.829 l 0 0 l 0 0 c -5.28 13.046 -23.695 13.207 -29.202 0.255 l 0 0 l 0 0 C 17.748 86.122 4.613 73.215 9.878 60.162 l 0 0 l 0 0 C -3.169 54.881 -3.33 36.467 9.623 30.96 l 0 0 l 0 0 C 4.131 18.001 17.038 4.866 30.091 10.131 L 30.091 10.131 z" style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,150,241); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round"/>
-      <polygon points="39.66,63.79 23.36,47.76 28.97,42.05 39.3,52.21 59.6,29.58 65.56,34.93 " style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) "/>
-    </g>
-  </svg>`;
+  const card = document.createElement("div");
+  card.className = "flex items-center gap-3 w-full border rounded-xl p-3 hover:bg-gray-50 text-left relative cursor-pointer";
 
   card.innerHTML = `
-    <div class="w-12 h-12 rounded-full border overflow-hidden flex items-center justify-center" style="background:${genColor(user.email||user.uid)}">
+    <div class="w-12 h-12 rounded-full border overflow-hidden flex items-center justify-center shrink-0" style="background:${genColor(user.email||user.uid)}">
       ${user.avatar ? `<img src="${user.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold">${(user.name?.[0]||"?").toUpperCase()}</span>`}
     </div>
-    <div class="min-w-0">
+    <div class="min-w-0 flex-1">
       <div class="font-semibold truncate" title="${user.name||""}">${user.name||"Unnamed"}</div>
       <div class="text-xs text-gray-500 truncate" title="${user.email||""}">${user.email||""}</div>
     </div>
-    <div class="flex items-center gap-1 ml-auto">
-      <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-        ${user.type==='admin'?'Admin':'Account'}
-      </span>
-      ${isActive ? `<span class="w-4 h-4">${badgeSvg}</span>` : ''}
+    <div class="ml-auto flex items-center gap-1.5 shrink-0">
+        <span class="text-[10px] px-2 py-1 rounded-full ${user.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
+            ${user.type==='admin'?'Admin':'User'}
+        </span>
+        ${isActive ? verifiedBadgeSVG : ''}
     </div>
+    <button class="delete-profile absolute top-1 right-1 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-100 rounded-full z-10">&times;</button>
   `;
 
-  const deleteBtn = document.createElement("button");
-  deleteBtn.className = "absolute right-2 top-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity";
-  deleteBtn.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  `;
-  deleteBtn.onclick = (e) => {
-    e.stopPropagation();
-    deleteLoginPageUser(user.uid);
-  };
-  card.appendChild(deleteBtn);
-
-  // Click behavior
+  // Main card click behavior
   card.onclick = async () => {
-    // If clicked profile is already currentUser, skip popup
     if (auth.currentUser && auth.currentUser.uid === user.uid) {
       await routeUser(auth.currentUser);
     } else {
-      await login(); // popup for new or different user
+      await login();
     }
+  };
+
+  // Delete button click behavior
+  const deleteBtn = card.querySelector('.delete-profile');
+  deleteBtn.onclick = (event) => {
+      event.stopPropagation(); // Prevent the main card click event
+      removeProfile(user.uid);
   };
 
   return card;
@@ -166,30 +154,32 @@ const createProfileCard = (user, isActive) => {
 async function login() {
   try {
     const res = await signInWithPopup(auth, provider);
-    const user = res.user;
-    addLoginPageUser(user);
-    await routeUser(user);
+    await routeUser(res.user);
   } catch (e) {
     console.error(e);
-    alert("Login failed: " + (e?.message || e));
+    if (e.code !== 'auth/popup-closed-by-user') {
+        alert("Login failed: " + (e?.message || e));
+    }
   }
 }
 
 async function routeUser(user) {
-  const adminRef = doc(db, "admin", user.uid);
   try {
+    const adminRef = doc(db, "admin", user.uid);
     const adminSnap = await getDoc(adminRef);
     if (adminSnap.exists()) {
-      addLoginPageUser({ ...user, type: "admin" });
+      addLoginPageUser(createLiteUser(user, 'admin'));
       window.location.href = "adminpanel.html";
       return;
     }
   } catch (e) {
     console.error("Admin check failed:", e);
-    alert("Could not verify admin role. Please try again.");
+    alert("Could not verify your role. Please try again.");
     return;
   }
 
+  // If not admin, they are a regular user
+  addLoginPageUser(createLiteUser(user, 'user'));
   const accRef = doc(db, "accounts", user.uid);
   const accSnap = await getDoc(accRef);
   if (!accSnap.exists()) {
@@ -206,6 +196,8 @@ async function routeUser(user) {
 
 async function doSignOut() {
   try { await signOut(auth); } catch (e) { console.warn("Sign out error:", e); }
+  // Clear only the active user, keep others for selection
+  localStorage.removeItem("loginPageUsers"); // Or could selectively remove just the signed out user
   window.location.href = "index.html";
 }
 
@@ -214,11 +206,13 @@ window.login = login;
 window.logoutLocal = doSignOut;
 notYouBtn.addEventListener("click", doSignOut);
 
-renderProfiles();
-
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (user) {
-    addLoginPageUser(user);
+    // Determine role on page load for the signed-in user
+    const adminRef = doc(db, "admin", user.uid);
+    const adminSnap = await getDoc(adminRef);
+    const userType = adminSnap.exists() ? 'admin' : 'user';
+    addLoginPageUser(createLiteUser(user, userType));
   }
   renderProfiles();
 });
@@ -237,10 +231,10 @@ onAuthStateChanged(auth, (user) => {
   </div>
 
   <div class="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
-    <h1 class="text-2xl font-bold text-center">Sign in with Google</h1>
+    <h1 class="text-2xl font-bold text-center">Sign in</h1>
 
     <div id="login-section" class="mt-6">
-      <button onclick="login()" class="w-full flex items-center justify-center gap-2 border px-4 py-3 rounded-xl hover:bg-gray-50">
+      <button id="main-login-btn" onclick="login()" class="w-full flex items-center justify-center gap-2 border px-4 py-3 rounded-xl hover:bg-gray-50">
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="">
         <span>Sign in with Google</span>
       </button>
@@ -252,13 +246,13 @@ onAuthStateChanged(auth, (user) => {
     <div id="profiles-section" class="mt-6 mb-3 hidden">
       <div id="profiles" class="flex flex-col gap-3"></div>
       <div class="flex flex-col items-center justify-center mt-4">
-        <button onclick="login()" class="w-full max-w-xs text-black px-4 py-3 rounded-xl hover:bg-gray-50 text-center">
+        <button onclick="login()" class="w-full text-black px-4 py-3 rounded-xl hover:bg-gray-50 text-center border">
           Use another account
         </button>
-        <button id="not-you" class="text-red-600 text-sm hover:underline mt-2">Sign out</button>
+        <button id="not-you" class="text-red-600 text-sm hover:underline mt-2">Sign out and remove all accounts</button>
       </div>
       <p class="text-[11px] text-gray-500 text-center mt-3">
-        Selecting a profile will trigger Google’s account chooser and continue.
+        Selecting a profile will continue with that account.
       </p>
     </div>
   </div>
