@@ -7,36 +7,31 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <meta name="color-scheme" content="light dark" />
   <style>
-    .skeleton {
-      background: linear-gradient(90deg,#eee 25%,#f5f5f5 37%,#eee 63%);
-      background-size: 400% 100%;
-      animation: sh 1.2s ease-in-out infinite;
-    }
+    .skeleton { background: linear-gradient(90deg,#eee 25%,#f5f5f5 37%,#eee 63%); background-size: 400% 100%; animation: sh 1.2s ease-in-out infinite; }
     @keyframes sh { 0%{background-position: 100% 0}100%{background-position: -100% 0} }
+    /* Custom utility to prevent wrapping on long words, letting it overflow. */
+    .break-words-all { word-break: break-all; }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
-  <!-- HEADER -->
   <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <h1 class="text-lg font-semibold">Administrator</h1>
-      <div class="hidden sm:flex items-center gap-2">
+      <div class="flex items-center gap-2">
         <a href="#" id="adminMessagesLink" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50 flex items-center gap-2">
-          <svg class="w-5 h-5 text-gray-800" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-4Z" clip-rule="evenodd"/></svg>
-          <span>Admin Messages</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M3.5 2.75a.75.75 0 00-1.5 0v14.5a.75.75 0 001.5 0v-4.392l1.657-.348a6.441 6.441 0 015.686 0l2.311.482 1.657-.348A6.441 6.441 0 0118 12.25v-2.5a6.441 6.441 0 01-1.843-4.252l-1.657-.348-2.311.482-1.657-.348a6.441 6.441 0 01-5.686 0L3.5 5.142V2.75z"></path></svg>
+          <span class="hidden sm:inline">Admin Messages</span>
         </a>
         <button id="outBtn" class="px-3 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 flex items-center gap-2">
-          <svg class="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H8m12 0-4 4m4-4-4-4M9 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h2"/></svg>
-          <span>Sign out</span>
+           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z" clip-rule="evenodd"></path><path fill-rule="evenodd" d="M16.72 9.22a.75.75 0 011.06 0l2.25 2.25a.75.75 0 010 1.06l-2.25 2.25a.75.75 0 11-1.06-1.06L17.94 12l-1.22-1.22a.75.75 0 010-1.06z" clip-rule="evenodd"></path></svg>
+           <span class="hidden sm:inline">Sign out</span>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- MAIN -->
   <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-6">
-    <!-- Admin Info -->
     <section class="mb-6">
       <h2 class="text-lg font-semibold mb-3">My Admin Account</h2>
       <div id="adminInfo" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex items-center gap-4">
@@ -48,15 +43,12 @@
       </div>
     </section>
 
-    <!-- User Accounts -->
     <section class="mb-4">
       <div class="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
         <h2 class="text-lg font-semibold">User Accounts</h2>
         <div class="flex items-center gap-2">
-          <input id="searchInput" type="search" placeholder="Search name or email"
-                 class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 p-2.5" />
-          <select id="sortSelect"
-                  class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+          <input id="searchInput" type="search" placeholder="Search name or email" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 p-2.5" />
+          <select id="sortSelect" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
             <option value="name-asc">Name A–Z</option>
             <option value="name-desc">Name Z–A</option>
             <option value="time-desc">Newest</option>
@@ -64,45 +56,37 @@
           </select>
         </div>
       </div>
-      <p class="text-xs text-gray-500 mt-1">Use the buttons to manage user accounts.</p>
+      <p class="text-xs text-gray-500 mt-1">
+        Use the buttons to manage user accounts.
+      </p>
     </section>
 
     <section>
-      <div id="userList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      <div id="userList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
+        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
+        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
+      </div>
+
       <div class="flex justify-center mt-6">
         <button id="loadMoreBtn" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Load more</button>
       </div>
     </section>
   </main>
 
-  <!-- Mobile Bottom Nav -->
-  <div class="sm:hidden fixed bottom-0 left-0 right-0 z-40 p-3 bg-white border-t border-gray-200 shadow-lg">
-    <div class="flex justify-around items-center">
-      <a href="#" id="adminMessagesLinkMobile" class="p-3 text-sm rounded-lg flex-1 flex flex-col items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-100">
-        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 9a4 4 0 0 0-4 4v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1a4 4 0 0 0-4-4h-4Z" clip-rule="evenodd"/></svg>
-        <span class="text-xs mt-1">Messages</span>
-      </a>
-      <button id="outBtnMobile" class="p-3 text-sm rounded-lg flex-1 flex flex-col items-center justify-center text-red-500 hover:text-red-700 hover:bg-gray-100">
-        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h6a1 1 0 110 2H4v10h10v-6a1 1 0 112 0v6a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2h6a1 1 0 011 1zm9 3a1 1 0 100-2h4a1 1 0 100-2h-4a1 1 0 00-1 1zm-1 3a1 1 0 100-2h5a1 1 0 100-2h-5a1 1 0 00-1 1zm0 3a1 1 0 100-2h5a1 1 0 100-2h-5a1 1 0 00-1 1z" clip-rule="evenodd"/></svg>
-        <span class="text-xs mt-1">Sign out</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Toast -->
   <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden">
     <div id="toastBody" class="px-4 py-2 rounded-xl text-white shadow-lg"></div>
   </div>
 
-  <!-- FIREBASE + APP SCRIPT -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import {
       getFirestore, collection, doc, getDoc, setDoc, deleteDoc,
-      onSnapshot, query, orderBy, limit, startAfter, getDocs, serverTimestamp
+      onSnapshot, query, orderBy, limit, startAfter, getDocs
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
+    // 🔹 Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
       authDomain: "sklepaga-8790e.firebaseapp.com",
@@ -113,17 +97,16 @@
       measurementId: "G-9GH707G2WZ"
     };
 
+    // Init
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     let activeAdmin = null;
 
-    // UI
+    // UI handles
     const adminInfoDiv = document.getElementById("adminInfo");
     const outBtn = document.getElementById("outBtn");
-    const outBtnMobile = document.getElementById("outBtnMobile");
     const adminMessagesLink = document.getElementById("adminMessagesLink");
-    const adminMessagesLinkMobile = document.getElementById("adminMessagesLinkMobile");
     const userListEl = document.getElementById("userList");
     const searchInput = document.getElementById("searchInput");
     const sortSelect = document.getElementById("sortSelect");
@@ -131,175 +114,180 @@
     const toastEl = document.getElementById("toast");
     const toastBody = document.getElementById("toastBody");
 
-    function toast(msg, type="success") {
-      toastBody.className = "px-4 py-2 rounded-xl text-white shadow-lg " +
-        (type==="success" ? "bg-green-600" : type==="warn" ? "bg-amber-600" : "bg-red-600");
+    // --- Helpers ---
+    function toast(msg, type = "success") {
+      toastBody.className = "px-4 py-2 rounded-xl text-white shadow-lg " + (type === "success" ? "bg-green-600" : type === "warn" ? "bg-amber-600" : "bg-red-600");
       toastBody.textContent = msg;
       toastEl.classList.remove("hidden");
-      setTimeout(()=>toastEl.classList.add("hidden"), 2500);
+      setTimeout(() => toastEl.classList.add("hidden"), 2500);
     }
 
-    outBtn.onclick = ()=>signOut(auth);
-    outBtnMobile.onclick = ()=>signOut(auth);
+    outBtn.addEventListener("click", async () => {
+      await signOut(auth);
+    });
 
-    // Admin Info
+    // --- Admin Actions ---
     async function resignAdminRole() {
-      if (!activeAdmin || !confirm("Resign admin role?")) return;
-      try {
-        const adminRef = doc(db, "admin", activeAdmin.uid);
-        const adminSnap = await getDoc(adminRef);
-        if (!adminSnap.exists()) throw new Error("Not found");
-        const adminData = adminSnap.data();
-        const accountData = {
-          uid: adminData.uid,
-          name: adminData.name || activeAdmin.displayName || "",
-          email: adminData.email || activeAdmin.email || "",
-          avatar: adminData.avatar || activeAdmin.photoURL || "",
-          createdAt: serverTimestamp()
-        };
-        await setDoc(doc(db, "accounts", activeAdmin.uid), accountData);
-        await deleteDoc(adminRef);
-        toast("Resigned. Signing out...");
-        setTimeout(()=>signOut(auth), 1500);
-      } catch(e){ console.error(e); toast("Error resigning","error"); }
+        if (!activeAdmin || !confirm("Are you sure you want to resign your admin role? You will be signed out and will lose access to this panel.")) return;
+        
+        try {
+          const adminRef = doc(db, "admin", activeAdmin.uid);
+          const adminSnap = await getDoc(adminRef);
+          if (!adminSnap.exists()) throw new Error("Admin document not found.");
+
+          const adminData = adminSnap.data();
+          const accountData = {
+              uid: adminData.uid,
+              name: adminData.name || activeAdmin.displayName || "",
+              email: adminData.email || activeAdmin.email || "",
+              avatar: adminData.avatar || activeAdmin.photoURL || "",
+              createdAt: adminData.createdAt || new Date().toISOString(),
+          };
+          
+          await setDoc(doc(db, "accounts", activeAdmin.uid), accountData);
+          await deleteDoc(adminRef);
+
+          toast("Admin role resigned. Signing out...");
+          setTimeout(() => signOut(auth), 1500);
+        } catch (e) {
+            console.error("Failed to resign admin role:", e);
+            toast("An error occurred. Could not resign admin role.", "error");
+        }
     }
 
-    function loadAdminInfo(user) {
-      adminMessagesLink.href = `adminmessage.html?user=${user.uid}`;
-      adminMessagesLinkMobile.href = `adminmessage.html?user=${user.uid}`;
+    async function loadAdminInfo(user) {
+      adminMessagesLink.href = `messages.html?user=${user.uid}`;
       adminInfoDiv.innerHTML = `
-        <img src="${user.photoURL || 'https://ui-avatars.com/api/?name='+encodeURIComponent(user.displayName||'A')}" class="w-16 h-16 rounded-full border">
+        <img src="${user.photoURL || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(user.displayName || 'A')}"
+              class="w-16 h-16 rounded-full border" alt="avatar">
         <div class="min-w-0 flex-1">
-          <h3 class="font-semibold">${user.displayName||"(no name)"}</h3>
-          <p class="text-gray-600 truncate">${user.email||""}</p>
+          <h3 class="font-semibold">${user.displayName || "(no name)"}</h3>
+          <p class="text-gray-600">${user.email || ""}</p>
         </div>
-        <div><button id="resignBtn" class="px-3 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50">Resign Admin Role</button></div>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button class="px-3 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50" id="resignBtn">Resign Admin Role</button>
+        </div>
       `;
       document.getElementById("resignBtn").onclick = resignAdminRole;
     }
 
-    // Users
+    // --- Users List Management ---
     const PAGE_SIZE = 18;
-    let cachedUsers = [], lastDocSnap=null, unsubUsers=null;
+    let cachedUsers = [];
+    let lastDocSnap = null;
+    let unsubUsers = null;
 
-    function renderUsers(list){
-      userListEl.innerHTML="";
-      if(!list.length){
-        userListEl.innerHTML=`<div class="text-center text-gray-500 col-span-full py-10">No users found</div>`;
+    function renderUsers(list) {
+      userListEl.innerHTML = "";
+      if (list.length === 0) {
+        userListEl.innerHTML = `<div class="text-center text-gray-500 col-span-full py-10">No users found matching your criteria.</div>`;
         return;
       }
-      list.forEach(u=>{
-        const joined = u.createdAt?.toDate ? u.createdAt.toDate().toLocaleDateString() : "—";
-        const card=document.createElement("div");
-        card.className="bg-white rounded-2xl border p-4 flex flex-col";
-        card.innerHTML=`
+      list.forEach(u => {
+        const card = document.createElement("div");
+        card.className = "bg-white rounded-2xl border border-gray-200 p-4 flex flex-col";
+        card.innerHTML = `
           <div class="flex items-center gap-3 flex-1 mb-4">
-            <img src="${u.avatar || 'https://ui-avatars.com/api/?name='+encodeURIComponent(u.name||'U')}" class="w-14 h-14 rounded-full border">
+            <img src="${u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || 'U')}" class="w-14 h-14 rounded-full border" alt="avatar">
             <div class="min-w-0">
-              <p class="font-semibold truncate">${u.name||"(no name)"}</p>
-              <p class="text-sm text-gray-600 truncate">${u.email||""}</p>
-              <p class="text-xs text-gray-500 mt-1">Joined: ${joined}</p>
+              <p class="font-semibold break-words-all">${u.name || "(no name)"}</p>
+              <p class="text-sm text-gray-600 break-words-all">${u.email || ""}</p>
+              <p class="text-xs text-gray-500 mt-1">Joined: ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</p>
             </div>
           </div>
           <div class="flex gap-2 justify-end">
             <button class="promoteBtn px-4 py-2 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700">Set as Administrator</button>
-            <button class="deleteBtn w-9 h-9 grid place-items-center rounded-lg text-red-600 border border-red-200 hover:bg-red-50">
-              <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"/></svg>
+            <button title="Send Message" class="messageBtn w-9 h-9 grid place-items-center rounded-lg border hover:bg-gray-50">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M3.5 2A1.5 1.5 0 002 3.5v1.143a1.5 1.5 0 00.75 1.309l6.5 4.333c.414.275.986.275 1.4 0l6.5-4.333A1.5 1.5 0 0018 4.643V3.5A1.5 1.5 0 0016.5 2h-13z" /><path d="M2 8.252V16.5A1.5 1.5 0 003.5 18h13a1.5 1.5 0 001.5-1.5V8.252l-6.522 4.348a2.502 2.502 0 01-2.956 0L2 8.252z" /></svg>
             </button>
-          </div>`;
-        card.querySelector(".promoteBtn").onclick=async()=>{
-          if(!confirm(`Promote ${u.name||u.email}?`))return;
-          try{
-            await setDoc(doc(db,"admin",u.uid),{
-              uid:u.uid,name:u.name||"",email:u.email||"",avatar:u.avatar||"",
-              createdAt:serverTimestamp(),createdBy:activeAdmin.uid
+            <button title="Delete User" class="deleteBtn w-9 h-9 grid place-items-center rounded-lg text-red-600 border border-red-200 hover:bg-red-50">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193v-.443A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd" /></svg>
+            </button>
+          </div>
+        `;
+        // Actions
+        card.querySelector(".promoteBtn").onclick = async () => {
+          if (!confirm(`Promote ${u.name || u.email} to admin? They will be removed from the regular user list.`)) return;
+          try {
+            await setDoc(doc(db, "admin", u.uid), {
+              uid: u.uid, name: u.name || "", email: u.email || "", avatar: u.avatar || "",
+              createdAt: new Date().toISOString(), createdBy: activeAdmin.uid
             });
-            await deleteDoc(doc(db,"accounts",u.uid));
-            toast("Promoted");
-          }catch(e){console.error(e);toast("Failed","error");}
+            await deleteDoc(doc(db, "accounts", u.uid));
+            toast("Promoted to admin");
+          } catch (e) { console.error(e); toast("Promotion failed", "error"); }
         };
-        card.querySelector(".deleteBtn").onclick=async()=>{
-          if(!confirm(`Delete ${u.name||u.email}?`))return;
-          try{await deleteDoc(doc(db,"accounts",u.uid));toast("Removed");}
-          catch(e){console.error(e);toast("Error","error");}
+        card.querySelector(".deleteBtn").onclick = async () => {
+          if (!confirm(`Are you sure you want to remove ${u.name || u.email}? This cannot be undone.`)) return;
+          try {
+            await deleteDoc(doc(db, "accounts", u.uid));
+            toast("User removed");
+          } catch (e) { console.error(e); toast("Removal failed", "error"); }
         };
+        card.querySelector(".messageBtn").onclick = () => { window.location.href = `messages.html?user=${u.uid}`; };
         userListEl.appendChild(card);
       });
     }
 
-    function applySearchAndSort(){
-      const q=(searchInput.value||"").toLowerCase().trim();
-      let list=cachedUsers.filter(u=>(u.name||"").toLowerCase().includes(q)||(u.email||"").toLowerCase().includes(q));
-      const sort=sortSelect.value;
-      if(sort==="name-asc")list.sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-      if(sort==="name-desc")list.sort((a,b)=>(b.name||"").localeCompare(a.name||""));
-      if(sort==="time-desc")list.sort((a,b)=>(b.createdAt?.toDate?.()||0)-(a.createdAt?.toDate?.()||0)).reverse();
-      if(sort==="time-asc")list.sort((a,b)=>(a.createdAt?.toDate?.()||0)-(b.createdAt?.toDate?.()||0));
+    function applySearchAndSort() {
+      const q = (searchInput.value || "").toLowerCase().trim();
+      let list = cachedUsers.filter(u =>
+        (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q)
+      );
+      const sort = sortSelect.value;
+      if (sort === "name-asc") list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      if (sort === "name-desc") list.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+      if (sort === "time-desc") list.sort((a, b) => (new Date(b.createdAt || 0)) - (new Date(a.createdAt || 0)));
+      if (sort === "time-asc") list.sort((a, b) => (new Date(a.createdAt || 0)) - (new Date(b.createdAt || 0)));
       renderUsers(list);
     }
-    searchInput.oninput=applySearchAndSort;
-    sortSelect.onchange=applySearchAndSort;
 
-    async function initialLoad(){
-      if(unsubUsers)unsubUsers();
-      const q1=query(collection(db,"accounts"),orderBy("createdAt","desc"),limit(PAGE_SIZE));
-      unsubUsers=onSnapshot(q1,(snap)=>{
-        cachedUsers=snap.docs.map(d=>({uid:d.id,...d.data()}));
-        lastDocSnap=snap.docs[snap.docs.length-1]||null;
-        loadMoreBtn.style.display=snap.docs.length<PAGE_SIZE?"none":"inline-block";
+    searchInput.addEventListener("input", applySearchAndSort);
+    sortSelect.addEventListener("change", applySearchAndSort);
+
+    async function initialLoad() {
+      if (unsubUsers) unsubUsers();
+      const q1 = query(collection(db, "accounts"), orderBy("createdAt", "desc"), limit(PAGE_SIZE));
+      unsubUsers = onSnapshot(q1, (snap) => {
+        cachedUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        lastDocSnap = snap.docs[snap.docs.length - 1] || null;
+        loadMoreBtn.style.display = snap.docs.length < PAGE_SIZE ? 'none' : 'inline-block';
         applySearchAndSort();
       });
     }
 
-    loadMoreBtn.onclick=async()=>{
-      if(!lastDocSnap){toast("No more users","warn");return;}
-      const q2=query(collection(db,"accounts"),orderBy
-</div>
-                <!-- Badge + Time (Gray Background Box) -->
-                <div class="ml-2 flex items-center bg-gray-200 px-2 py-0.5 rounded-full">
-                    <!-- Red Badge -->
-                    <span class="text-xs font-bold text-white bg-red-500 rounded-full px-2 py-0.5">
-                        3
-                    </span>
-                    <!-- Time -->
-                    <span class="ml-1 text-xs text-gray-600">
-                        12:45 PM
-                    </span>
-                </div>
-            </div>
-        </div>
+    loadMoreBtn.addEventListener("click", async () => {
+      if (!lastDocSnap) { toast("No more users", "warn"); return; }
+      const q2 = query(collection(db, "accounts"), orderBy("createdAt", "desc"), startAfter(lastDocSnap), limit(PAGE_SIZE));
+      const next = await getDocs(q2);
+      const more = next.docs.map(d => ({ uid: d.id, ...d.data() }));
+      if (more.length === 0) {
+        toast("No more users to load", "warn");
+        loadMoreBtn.style.display = 'none';
+        return;
+      }
+      cachedUsers = cachedUsers.concat(more);
+      lastDocSnap = next.docs[next.docs.length - 1] || null;
+      if (next.docs.length < PAGE_SIZE) loadMoreBtn.style.display = 'none';
+      applySearchAndSort();
+    });
 
-        <!-- Chat Item 2 (no badge) -->
-        <div class="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer border-b">
-            <div class="flex items-center space-x-3">
-                <img src="https://via.placeholder.com/40" alt="Avatar" class="w-10 h-10 rounded-full">
-                <div>
-                    <p class="font-semibold text-gray-900">Jane Smith</p>
-                    <p class="text-sm text-gray-500 truncate w-40">Sure, I’ll check it out.</p>
-                </div>
-            </div>
-            <!-- Only time (no badge) -->
-            <span class="text-xs text-gray-500">12:30 PM</span>
-        </div>
-
-        <!-- Chat Item 3 -->
-        <div class="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer border-b">
-            <div class="flex items-center space-x-3">
-                <img src="https://via.placeholder.com/40" alt="Avatar" class="w-10 h-10 rounded-full">
-                <div>
-                    <p class="font-semibold text-gray-900">Michael Lee</p>
-                    <p class="text-sm text-gray-500 truncate w-40">Did you finish the report?</p>
-                </div>
-            </div>
-            <!-- Badge + Time -->
-            <div class="ml-2 flex items-center bg-gray-200 px-2 py-0.5 rounded-full">
-                <span class="text-xs font-bold text-white bg-red-500 rounded-full px-2 py-0.5">
-                    1
-                </span>
-                <span class="ml-1 text-xs text-gray-600">11:58 AM</span>
-            </div>
-        </div>
-
-    </div>
+    // 🔹 Securely manage user session and admin status
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const adminDoc = await getDoc(doc(db, "admin", user.uid));
+        if (adminDoc.exists()) {
+          activeAdmin = user;
+          loadAdminInfo(activeAdmin);
+          initialLoad();
+        } else {
+          alert("You are not authorized to view this page.");
+          signOut(auth);
+        }
+      } else {
+        window.location.href = "google.html";
+      }
+    });
+  </script>
 </body>
 </html>
