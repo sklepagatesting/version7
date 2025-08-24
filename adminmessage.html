@@ -372,9 +372,11 @@
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="m15 19-7-7 7-7"/>
                     </svg>
                 </button>
-                <div id="chatHeaderProfile" class="flex items-center">
-                    <span id="chatHeaderName" class="font-semibold text-gray-800"></span>
-                </div>
+<div id="chatHeaderProfile" class="flex items-center max-w-[200px]">
+    <span id="chatHeaderName" class="font-semibold text-gray-800 truncate block">
+        Very long username example that will get truncated...
+    </span>
+</div>
                 <span id="chatTitle" class="flex-grow">Select a conversation</span>
             </div>
             <div class="messages" id="messagesContainer">
