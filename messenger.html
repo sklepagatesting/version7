@@ -376,7 +376,7 @@ function formatTimestamp(date) {
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(() => {
           updateDoc(currentConversationRef, { userTyping: false });
-        }, 800);
+        }, 1500);
       }
     });
 
