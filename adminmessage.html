@@ -366,26 +366,26 @@
             <div class="conversation-list" id="userList"></div>
         </div>
         <div class="chat-panel">
-<div class="chat-header flex items-center px-2">
+<div class="chat-header flex items-center relative h-12 px-2">
   <!-- Back Button -->
-  <button class="back-btn mr-2" id="backBtn">
-    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+  <button class="back-btn absolute left-2 top-1/2 -translate-y-1/2 z-20" id="backBtn">
+    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
       <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="m15 19-7-7 7-7"/>
     </svg>
   </button>
 
-  <!-- Profile / Chat Header Name (takes up 90%) -->
-  <div id="chatHeaderProfile" class="flex items-center w-[90%]">
-    <span id="chatHeaderName" class="font-semibold text-gray-800 truncate block">
+  <!-- Centered Username (when a chat is selected) -->
+  <div id="chatHeaderProfile" class="flex justify-center w-full">
+    <span id="chatHeaderName" class="font-semibold text-gray-800 truncate max-w-[70%] block text-center">
       <!-- Username goes here -->
     </span>
   </div>
 
-  <!-- Fallback Title (only shows when no conversation selected) -->
-  <span id="chatTitle" class="ml-2 text-gray-600 whitespace-nowrap">
+  <!-- Centered Fallback Title (when no conversation selected) -->
+  <span id="chatTitle" class="absolute left-1/2 -translate-x-1/2 font-semibold text-gray-600 whitespace-nowrap">
+    Select a conversation
   </span>
 </div>
-
             <div class="messages" id="messagesContainer">
                 <div class="placeholder">
                     <div>
