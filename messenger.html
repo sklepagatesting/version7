@@ -95,15 +95,30 @@
       align-self: flex-start;
     }
     /* Typing indicator bubble */
-    .chat-bubble.typing-indicator {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 4px;
-      min-height: 40px;
-      padding: 10px 14px;
-      box-sizing: border-box;
-    }
+.chat-bubble.typing-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+    min-height: 40px;
+    padding: 10px 14px;
+    box-sizing: border-box;
+
+    /* Animated gradient background */
+    background: linear-gradient(270deg, #8ec5fc, #e0c3fc, #a1c4fd, #c2e9fb);
+    background-size: 400% 400%;
+    border-radius: 18px;
+
+    animation: gradientShift 6s ease infinite;
+    color: #fff; /* keeps text/icons readable */
+}
+
+@keyframes gradientShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
 
     .message-time {
       font-size: 0.75rem;
