@@ -1,142 +1,188 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Admin Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Account Switcher</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="bg-white rounded-2xl shadow-lg w-full max-w-md p-6">
+    <!-- Profiles -->
+    <div id="profiles" class="space-y-3"></div>
 
-  <!-- Login Section -->
-  <div id="login-section" class="w-full max-w-md">
-    <div class="bg-white shadow-md rounded-2xl p-6 text-center">
-      <h1 id="main-header" class="text-xl font-semibold mb-4">Welcome</h1>
+    <!-- Buttons -->
+    <div class="mt-6 space-y-3">
       <button onclick="login()" class="w-full border px-4 py-3 rounded-xl text-sm font-medium">
-        Sign in with Google
+        Use another account
+      </button>
+      <button id="remove-account-btn" class="w-full border px-4 py-3 rounded-xl text-sm font-medium">
+        Remove an account
+      </button>
+    </div>
+
+    <!-- Sign Out -->
+    <div class="mt-4 text-center">
+      <button onclick="logout()" class="text-red-500 text-sm font-medium">
+        Sign out
       </button>
     </div>
   </div>
 
-  <!-- Profiles Section -->
-  <div id="profiles-section" class="hidden w-full max-w-md">
-    <div class="bg-white shadow-md rounded-2xl p-6">
-      <h2 class="text-lg font-semibold mb-4">Choose an account</h2>
-      <div id="profiles" class="grid gap-3"></div>
-
-      <div class="flex flex-col items-center justify-center mt-4 space-y-2 w-full">
-        <button onclick="login()" class="w-full border px-4 py-3 rounded-xl text-sm font-medium">
-          Use another account
-        </button>
-        <button id="remove-account-btn" class="w-full border px-4 py-3 rounded-xl text-sm font-medium">
-          Remove an account
-        </button>
-        <button id="sign-out-btn" class="text-red-600 text-sm mt-2">Sign out</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Verify Modal -->
-  <div id="verify-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-    <div class="bg-white rounded-2xl p-6 w-80 text-center">
-      <h3 class="text-lg font-semibold mb-4">Verification Required</h3>
-      <p class="text-sm text-gray-600 mb-4">Please sign in again to verify your account.</p>
-      <button id="verify-modal-btn" class="w-full bg-blue-600 text-white px-4 py-3 rounded-xl text-sm font-medium">
-        Verify
+  <!-- Verification Modal -->
+  <div id="verification-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+    <div class="bg-white p-6 rounded-xl shadow-lg text-center max-w-sm w-full">
+      <h2 class="text-lg font-semibold mb-3">Verify your account</h2>
+      <p class="text-sm text-gray-600 mb-5">For security, please log in again to continue.</p>
+      <button onclick="verify()" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        OK
       </button>
     </div>
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import {
-      getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
-      setPersistence, browserLocalPersistence, signOut
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence, signOut } 
+      from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-      authDomain: "sklepaga-8790e.firebaseapp.com",
-      projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.appspot.com",
-      messagingSenderId: "815409129057",
-      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-      measurementId: "G-9GH707G2WZ"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" }); // ✅ always show account chooser
-    await setPersistence(auth, browserLocalPersistence);
+    provider.setCustomParameters({ prompt: "select_account" }); // ✅ Always show chooser
 
-    let isRemoveMode = false;
+    const profilesContainer = document.getElementById("profiles");
+    const removeBtn = document.getElementById("remove-account-btn");
+    const modal = document.getElementById("verification-modal");
 
-    const loginSection = document.getElementById("login-section");
-    const profilesSection = document.getElementById("profiles-section");
-    const profilesGrid = document.getElementById("profiles");
-    const signOutBtn = document.getElementById("sign-out-btn");
-    const mainHeader = document.getElementById("main-header");
-    const removeAccountBtn = document.getElementById("remove-account-btn");
-    const verifyModal = document.getElementById("verify-modal");
-    const verifyModalBtn = document.getElementById("verify-modal-btn");
+    let removeMode = false;
+    let accounts = JSON.parse(localStorage.getItem("accounts")) || [];
+    let activeUser = JSON.parse(localStorage.getItem("activeUser")) || null;
+    let pendingVerify = null;
 
-    // --- Profile rendering (dummy placeholder for your real renderProfiles)
     function renderProfiles() {
-      profilesGrid.innerHTML = `
-        <div class="flex items-center justify-between border rounded-xl px-4 py-3">
-          <span class="text-sm">user@example.com</span>
-          ${isRemoveMode ? '<span class="text-red-500 text-sm cursor-pointer">Remove</span>' : ""}
-        </div>
-      `;
+      profilesContainer.innerHTML = "";
+      if (accounts.length === 0) {
+        profilesContainer.innerHTML = `<p class="text-sm text-gray-500 text-center">No accounts yet.</p>`;
+        return;
+      }
+
+      accounts.forEach((acc, index) => {
+        const div = document.createElement("div");
+        div.className = "flex items-center justify-between border p-3 rounded-xl cursor-pointer hover:bg-gray-50";
+
+        div.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <img src="${acc.photoURL}" class="w-10 h-10 rounded-full border" />
+            <div>
+              <p class="text-sm font-medium">${acc.displayName}</p>
+              <p class="text-xs text-gray-500">${acc.email}</p>
+              <span class="text-[10px] text-gray-400 px-2 py-0.5 border rounded">${acc.role || "User"}</span>
+            </div>
+          </div>
+          ${activeUser?.uid === acc.uid ? 
+            '<span class="text-blue-500 font-bold">✓</span>' : ""}
+          ${removeMode ? 
+            `<button onclick="removeAccount(${index})" class="text-red-500 text-xs font-medium">Remove</button>` : ""}
+        `;
+
+        div.onclick = () => {
+          if (!removeMode) {
+            if (activeUser?.uid === acc.uid) {
+              alert("Already signed in.");
+            } else {
+              pendingVerify = acc;
+              modal.classList.remove("hidden");
+            }
+          }
+        };
+
+        profilesContainer.appendChild(div);
+      });
     }
 
-    // --- Auth flows
-    async function login() {
+    window.login = async () => {
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        const acc = {
+          uid: user.uid,
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          role: "User"
+        };
+
+        if (!accounts.find(a => a.uid === acc.uid)) accounts.push(acc);
+        localStorage.setItem("accounts", JSON.stringify(accounts));
+        localStorage.setItem("activeUser", JSON.stringify(acc));
+        activeUser = acc;
+        renderProfiles();
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    window.removeAccount = (index) => {
+      const acc = accounts[index];
+      if (activeUser?.uid === acc.uid) {
+        logout();
+      }
+      accounts.splice(index, 1);
+      localStorage.setItem("accounts", JSON.stringify(accounts));
+      renderProfiles();
+    };
+
+    window.logout = async () => {
+      await signOut(auth);
+      localStorage.removeItem("activeUser");
+      activeUser = null;
+      renderProfiles();
+    };
+
+    window.verify = async () => {
+      modal.classList.add("hidden");
+      if (!pendingVerify) return;
       try {
         const result = await signInWithPopup(auth, provider);
-        console.log("Logged in:", result.user.email);
-      } catch (error) {
-        console.error("Login failed:", error);
-      }
-    }
-
-    async function doSignOut() {
-      await signOut(auth);
-      console.log("Signed out");
-    }
-
-    function toggleRemoveMode() {
-      isRemoveMode = !isRemoveMode;
-      if (isRemoveMode) {
-        removeAccountBtn.textContent = 'Done';
-        removeAccountBtn.classList.add('bg-blue-600','text-white');
-      } else {
-        removeAccountBtn.textContent = 'Remove an account';
-        removeAccountBtn.classList.remove('bg-blue-600','text-white');
-      }
-      renderProfiles();
-    }
-
-    signOutBtn.addEventListener("click", doSignOut);
-    removeAccountBtn.addEventListener("click", toggleRemoveMode);
-    verifyModalBtn.addEventListener("click", () => {
-      verifyModal.classList.add('hidden');
-      login();
-    });
-
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        loginSection.classList.add("hidden");
-        profilesSection.classList.remove("hidden");
+        const user = result.user;
+        activeUser = {
+          uid: user.uid,
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          role: "User"
+        };
+        localStorage.setItem("activeUser", JSON.stringify(activeUser));
         renderProfiles();
-      } else {
-        profilesSection.classList.add("hidden");
-        loginSection.classList.remove("hidden");
+      } catch (err) {
+        console.error(err);
       }
-    });
+      pendingVerify = null;
+    };
+
+    removeBtn.onclick = () => {
+      removeMode = !removeMode;
+      removeBtn.textContent = removeMode ? "Done" : "Remove an account";
+      removeBtn.className = removeMode
+        ? "w-full bg-blue-500 text-white px-4 py-3 rounded-xl text-sm font-medium"
+        : "w-full border px-4 py-3 rounded-xl text-sm font-medium";
+      renderProfiles();
+    };
+
+    renderProfiles();
   </script>
 </body>
 </html>
