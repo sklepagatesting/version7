@@ -9,12 +9,10 @@
   <style>
     .skeleton { background: linear-gradient(90deg,#eee 25%,#f5f5f5 37%,#eee 63%); background-size: 400% 100%; animation: sh 1.2s ease-in-out infinite; }
     @keyframes sh { 0%{background-position: 100% 0}100%{background-position: -100% 0} }
-    /* Custom utility to prevent wrapping on long words, letting it overflow. */
     .break-words-all { word-break: break-all; }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
-
   <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <h1 class="text-lg font-semibold">Administrator</h1>
@@ -34,12 +32,16 @@
   <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-6">
     <section class="mb-6">
       <h2 class="text-lg font-semibold mb-3">My Admin Account</h2>
-      <div id="adminInfo" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex items-center gap-4">
-        <div class="w-16 h-16 rounded-full overflow-hidden border skeleton"></div>
-        <div class="flex-1">
-          <div class="h-5 w-40 rounded skeleton mb-2"></div>
-          <div class="h-4 w-64 rounded skeleton"></div>
+      <div id="adminInfo" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row items-center sm:items-start gap-4">
+        <div class="flex items-center gap-4 w-full sm:w-auto">
+            <div class="w-16 h-16 rounded-full overflow-hidden border skeleton"></div>
+            <div class="flex-1 min-w-0">
+                <div class="h-5 w-40 rounded skeleton mb-2"></div>
+                <div class="h-4 w-64 rounded skeleton"></div>
+            </div>
         </div>
+        <div class="flex-1"></div>
+        <button id="resignBtn" class="px-3 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto mt-4 sm:mt-0">Resign Admin Role</button>
       </div>
     </section>
 
@@ -63,9 +65,7 @@
 
     <section>
       <div id="userList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-4"><div class="w-14 h-14 rounded-full skeleton mb-3"></div><div class="h-5 rounded skeleton w-40 mb-2"></div><div class="h-4 rounded skeleton w-56 mb-4"></div><div class="flex gap-2"><div class="h-9 w-24 rounded skeleton"></div><div class="h-9 w-28 rounded skeleton"></div></div></div>
+        <!-- Users skeleton will load dynamically -->
       </div>
 
       <div class="flex justify-center mt-6">
@@ -74,39 +74,37 @@
     </section>
   </main>
 
+  <!-- Toast -->
   <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden">
     <div id="toastBody" class="px-4 py-2 rounded-xl text-white shadow-lg"></div>
+  </div>
+
+  <!-- Modal Container -->
+  <div id="modalContainer" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
+    <div class="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-lg">
+      <h3 id="modalTitle" class="text-lg font-semibold"></h3>
+      <p id="modalMessage" class="text-gray-600"></p>
+      <div class="flex justify-end gap-3">
+        <button id="modalCancelBtn" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
+        <button id="modalConfirmBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Confirm</button>
+      </div>
+    </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import {
-      getFirestore, collection, doc, getDoc, setDoc, deleteDoc,
-      onSnapshot, query, orderBy, limit, startAfter, getDocs
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, getDoc, setDoc, deleteDoc, onSnapshot, query, orderBy, limit, startAfter, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // 🔹 Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-      authDomain: "sklepaga-8790e.firebaseapp.com",
-      projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.appspot.com",
-      messagingSenderId: "815409129057",
-      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-      measurementId: "G-9GH707G2WZ"
-    };
-
-    // Init
+    const firebaseConfig = { /* your config */ };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     let activeAdmin = null;
 
-    // UI handles
+    // UI
     const adminInfoDiv = document.getElementById("adminInfo");
     const outBtn = document.getElementById("outBtn");
-    const adminMessagesLink = document.getElementById("adminMessagesLink");
     const userListEl = document.getElementById("userList");
     const searchInput = document.getElementById("searchInput");
     const sortSelect = document.getElementById("sortSelect");
@@ -114,59 +112,74 @@
     const toastEl = document.getElementById("toast");
     const toastBody = document.getElementById("toastBody");
 
-    // --- Helpers ---
+    // Modal Elements
+    const modalContainer = document.getElementById("modalContainer");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalMessage = document.getElementById("modalMessage");
+    const modalCancelBtn = document.getElementById("modalCancelBtn");
+    const modalConfirmBtn = document.getElementById("modalConfirmBtn");
+
     function toast(msg, type = "success") {
-      toastBody.className = "px-4 py-2 rounded-xl text-white shadow-lg " + (type === "success" ? "bg-green-600" : type === "warn" ? "bg-amber-600" : "bg-red-600");
+      toastBody.className = "px-4 py-2 rounded-xl text-white shadow-lg " + 
+        (type === "success" ? "bg-green-600" : type === "warn" ? "bg-amber-600" : "bg-red-600");
       toastBody.textContent = msg;
       toastEl.classList.remove("hidden");
       setTimeout(() => toastEl.classList.add("hidden"), 2500);
     }
 
-    outBtn.addEventListener("click", async () => {
-      await signOut(auth);
-    });
+    outBtn.addEventListener("click", async () => await signOut(auth));
 
-    // --- Admin Actions ---
-    async function resignAdminRole() {
-        if (!activeAdmin || !confirm("Are you sure you want to resign your admin role? You will be signed out and will lose access to this panel.")) return;
-        
-        try {
-          const adminRef = doc(db, "admin", activeAdmin.uid);
-          const adminSnap = await getDoc(adminRef);
-          if (!adminSnap.exists()) throw new Error("Admin document not found.");
+    // --- Modal Helper ---
+    function showModal(title, message) {
+      return new Promise(resolve => {
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modalContainer.classList.remove("hidden");
 
-          const adminData = adminSnap.data();
-          const accountData = {
-              uid: adminData.uid,
-              name: adminData.name || activeAdmin.displayName || "",
-              email: adminData.email || activeAdmin.email || "",
-              avatar: adminData.avatar || activeAdmin.photoURL || "",
-              createdAt: adminData.createdAt || new Date().toISOString(),
-          };
-          
-          await setDoc(doc(db, "accounts", activeAdmin.uid), accountData);
-          await deleteDoc(adminRef);
+        const cleanUp = () => {
+          modalContainer.classList.add("hidden");
+          modalConfirmBtn.onclick = null;
+          modalCancelBtn.onclick = null;
+        };
 
-          toast("Admin role resigned. Signing out...");
-          setTimeout(() => signOut(auth), 1500);
-        } catch (e) {
-            console.error("Failed to resign admin role:", e);
-            toast("An error occurred. Could not resign admin role.", "error");
-        }
+        modalConfirmBtn.onclick = () => { cleanUp(); resolve(true); };
+        modalCancelBtn.onclick = () => { cleanUp(); resolve(false); };
+      });
     }
 
-    async function loadAdminInfo(user) {
-      adminMessagesLink.href = `messages.html?user=${user.uid}`;
+    async function resignAdminRole() {
+      if (!activeAdmin) return;
+      const ok = await showModal("Resign Admin Role", "Are you sure you want to resign your admin role? You will lose access and be signed out.");
+      if (!ok) return;
+      try {
+        const adminRef = doc(db, "admin", activeAdmin.uid);
+        const adminSnap = await getDoc(adminRef);
+        if (!adminSnap.exists()) throw new Error("Admin document not found.");
+
+        const adminData = adminSnap.data();
+        await setDoc(doc(db, "accounts", activeAdmin.uid), {
+          uid: adminData.uid, name: adminData.name || activeAdmin.displayName || "",
+          email: adminData.email || activeAdmin.email || "",
+          avatar: adminData.avatar || activeAdmin.photoURL || "",
+          createdAt: adminData.createdAt || new Date().toISOString(),
+        });
+        await deleteDoc(adminRef);
+        toast("Admin role resigned. Signing out...");
+        setTimeout(() => signOut(auth), 1500);
+      } catch(e) { console.error(e); toast("Failed to resign admin role", "error"); }
+    }
+
+    function loadAdminInfo(user) {
       adminInfoDiv.innerHTML = `
-        <img src="${user.photoURL || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(user.displayName || 'A')}"
-              class="w-16 h-16 rounded-full border" alt="avatar">
-        <div class="min-w-0 flex-1">
-          <h3 class="font-semibold">${user.displayName || "(no name)"}</h3>
-          <p class="text-gray-600">${user.email || ""}</p>
+        <div class="flex items-center gap-4 w-full sm:w-auto">
+          <img src="${user.photoURL || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(user.displayName || 'A')}" class="w-16 h-16 rounded-full border">
+          <div class="flex-1 min-w-0">
+            <h3 class="font-semibold truncate">${user.displayName || "(no name)"}</h3>
+            <p class="text-gray-600 truncate">${user.email || ""}</p>
+          </div>
         </div>
-        <div class="flex flex-col sm:flex-row gap-2">
-          <button class="px-3 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50" id="resignBtn">Resign Admin Role</button>
-        </div>
+        <div class="flex-1"></div>
+        <button class="px-3 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto mt-4 sm:mt-0" id="resignBtn">Resign Admin Role</button>
       `;
       document.getElementById("resignBtn").onclick = resignAdminRole;
     }
@@ -179,66 +192,50 @@
 
     function renderUsers(list) {
       userListEl.innerHTML = "";
-      if (list.length === 0) {
-        userListEl.innerHTML = `<div class="text-center text-gray-500 col-span-full py-10">No users found matching your criteria.</div>`;
-        return;
-      }
+      if (!list.length) return userListEl.innerHTML = `<div class="text-center text-gray-500 col-span-full py-10">No users found matching your criteria.</div>`;
       list.forEach(u => {
         const card = document.createElement("div");
         card.className = "bg-white rounded-2xl border border-gray-200 p-4 flex flex-col";
         card.innerHTML = `
-          <div class="flex items-center gap-3 flex-1 mb-4">
-            <img src="${u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || 'U')}" class="w-14 h-14 rounded-full border" alt="avatar">
+          <div class="flex items-center gap-3 flex-1">
+            <img src="${u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || 'U')}" class="w-14 h-14 rounded-full border">
             <div class="min-w-0">
-              <p class="font-semibold break-words-all">${u.name || "(no name)"}</p>
-              <p class="text-sm text-gray-600 break-words-all">${u.email || ""}</p>
+              <p class="font-semibold truncate">${u.name || "(no name)"}</p>
+              <p class="text-sm text-gray-600 truncate">${u.email || ""}</p>
               <p class="text-xs text-gray-500 mt-1">Joined: ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</p>
             </div>
           </div>
-          <div class="flex gap-2 justify-end">
+          <div class="flex gap-2 justify-end mt-auto pt-4">
             <button class="promoteBtn px-4 py-2 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700">Set as Administrator</button>
-            <button title="Send Message" class="messageBtn w-9 h-9 grid place-items-center rounded-lg border hover:bg-gray-50">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M3.5 2A1.5 1.5 0 002 3.5v1.143a1.5 1.5 0 00.75 1.309l6.5 4.333c.414.275.986.275 1.4 0l6.5-4.333A1.5 1.5 0 0018 4.643V3.5A1.5 1.5 0 0016.5 2h-13z" /><path d="M2 8.252V16.5A1.5 1.5 0 003.5 18h13a1.5 1.5 0 001.5-1.5V8.252l-6.522 4.348a2.502 2.502 0 01-2.956 0L2 8.252z" /></svg>
-            </button>
-            <button title="Delete User" class="deleteBtn w-9 h-9 grid place-items-center rounded-lg text-red-600 border border-red-200 hover:bg-red-50">
+            <button class="deleteBtn w-9 h-9 grid place-items-center rounded-lg text-red-600 border border-red-200 hover:bg-red-50">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193v-.443A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd" /></svg>
             </button>
           </div>
         `;
-        // Actions
         card.querySelector(".promoteBtn").onclick = async () => {
-          if (!confirm(`Promote ${u.name || u.email} to admin? They will be removed from the regular user list.`)) return;
-          try {
-            await setDoc(doc(db, "admin", u.uid), {
-              uid: u.uid, name: u.name || "", email: u.email || "", avatar: u.avatar || "",
-              createdAt: new Date().toISOString(), createdBy: activeAdmin.uid
-            });
-            await deleteDoc(doc(db, "accounts", u.uid));
-            toast("Promoted to admin");
-          } catch (e) { console.error(e); toast("Promotion failed", "error"); }
+          const ok = await showModal("Promote User", `Promote ${u.name || u.email} to admin? They will be removed from the regular user list.`);
+          if (!ok) return;
+          try { await setDoc(doc(db, "admin", u.uid), { uid: u.uid, name: u.name || "", email: u.email || "", avatar: u.avatar || "", createdAt: new Date().toISOString(), createdBy: activeAdmin.uid }); await deleteDoc(doc(db, "accounts", u.uid)); toast("Promoted to admin"); }
+          catch(e){ console.error(e); toast("Promotion failed","error"); }
         };
         card.querySelector(".deleteBtn").onclick = async () => {
-          if (!confirm(`Are you sure you want to remove ${u.name || u.email}? This cannot be undone.`)) return;
-          try {
-            await deleteDoc(doc(db, "accounts", u.uid));
-            toast("User removed");
-          } catch (e) { console.error(e); toast("Removal failed", "error"); }
+          const ok = await showModal("Delete User", `Are you sure you want to remove ${u.name || u.email}? This cannot be undone.`);
+          if (!ok) return;
+          try { await deleteDoc(doc(db, "accounts", u.uid)); toast("User removed"); }
+          catch(e){ console.error(e); toast("Removal failed","error"); }
         };
-        card.querySelector(".messageBtn").onclick = () => { window.location.href = `messages.html?user=${u.uid}`; };
         userListEl.appendChild(card);
       });
     }
 
     function applySearchAndSort() {
       const q = (searchInput.value || "").toLowerCase().trim();
-      let list = cachedUsers.filter(u =>
-        (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q)
-      );
+      let list = cachedUsers.filter(u => (u.name||"").toLowerCase().includes(q) || (u.email||"").toLowerCase().includes(q));
       const sort = sortSelect.value;
-      if (sort === "name-asc") list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-      if (sort === "name-desc") list.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
-      if (sort === "time-desc") list.sort((a, b) => (new Date(b.createdAt || 0)) - (new Date(a.createdAt || 0)));
-      if (sort === "time-asc") list.sort((a, b) => (new Date(a.createdAt || 0)) - (new Date(b.createdAt || 0)));
+      if(sort==="name-asc") list.sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+      if(sort==="name-desc") list.sort((a,b)=>(b.name||"").localeCompare(a.name||""));
+      if(sort==="time-desc") list.sort((a,b)=>(new Date(b.createdAt||0))-(new Date(a.createdAt||0)));
+      if(sort==="time-asc") list.sort((a,b)=>(new Date(a.createdAt||0))-(new Date(b.createdAt||0)));
       renderUsers(list);
     }
 
@@ -246,47 +243,29 @@
     sortSelect.addEventListener("change", applySearchAndSort);
 
     async function initialLoad() {
-      if (unsubUsers) unsubUsers();
-      const q1 = query(collection(db, "accounts"), orderBy("createdAt", "desc"), limit(PAGE_SIZE));
-      unsubUsers = onSnapshot(q1, (snap) => {
-        cachedUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-        lastDocSnap = snap.docs[snap.docs.length - 1] || null;
-        loadMoreBtn.style.display = snap.docs.length < PAGE_SIZE ? 'none' : 'inline-block';
-        applySearchAndSort();
-      });
+      if(unsubUsers) unsubUsers();
+      const q1=query(collection(db,"accounts"),orderBy("createdAt","desc"),limit(PAGE_SIZE));
+      unsubUsers = onSnapshot(q1,snap=>{ cachedUsers=snap.docs.map(d=>({uid:d.id,...d.data()})); lastDocSnap=snap.docs[snap.docs.length-1]||null; loadMoreBtn.style.display=snap.docs.length<PAGE_SIZE?'none':'inline-block'; applySearchAndSort(); });
     }
 
-    loadMoreBtn.addEventListener("click", async () => {
-      if (!lastDocSnap) { toast("No more users", "warn"); return; }
-      const q2 = query(collection(db, "accounts"), orderBy("createdAt", "desc"), startAfter(lastDocSnap), limit(PAGE_SIZE));
-      const next = await getDocs(q2);
-      const more = next.docs.map(d => ({ uid: d.id, ...d.data() }));
-      if (more.length === 0) {
-        toast("No more users to load", "warn");
-        loadMoreBtn.style.display = 'none';
-        return;
-      }
-      cachedUsers = cachedUsers.concat(more);
-      lastDocSnap = next.docs[next.docs.length - 1] || null;
-      if (next.docs.length < PAGE_SIZE) loadMoreBtn.style.display = 'none';
+    loadMoreBtn.addEventListener("click", async ()=>{
+      if(!lastDocSnap){ toast("No more users","warn"); return; }
+      const q2=query(collection(db,"accounts"),orderBy("createdAt","desc"),startAfter(lastDocSnap),limit(PAGE_SIZE));
+      const next=await getDocs(q2);
+      const more=next.docs.map(d=>({uid:d.id,...d.data()}));
+      if(more.length===0){ toast("No more users to load","warn"); loadMoreBtn.style.display='none'; return; }
+      cachedUsers=cachedUsers.concat(more);
+      lastDocSnap=next.docs[next.docs.length-1]||null;
+      if(next.docs.length<PAGE_SIZE) loadMoreBtn.style.display='none';
       applySearchAndSort();
     });
 
-    // 🔹 Securely manage user session and admin status
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const adminDoc = await getDoc(doc(db, "admin", user.uid));
-        if (adminDoc.exists()) {
-          activeAdmin = user;
-          loadAdminInfo(activeAdmin);
-          initialLoad();
-        } else {
-          alert("You are not authorized to view this page.");
-          signOut(auth);
-        }
-      } else {
-        window.location.href = "google.html";
-      }
+    onAuthStateChanged(auth,async user=>{
+      if(user){
+        const adminDoc=await getDoc(doc(db,"admin",user.uid));
+        if(adminDoc.exists()){ activeAdmin=user; loadAdminInfo(activeAdmin); initialLoad(); }
+        else{ alert("You are not authorized."); signOut(auth); }
+      } else { window.location.href="google.html"; }
     });
   </script>
 </body>
