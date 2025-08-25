@@ -32,12 +32,16 @@
   <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-6">
     <section class="mb-6">
       <h2 class="text-lg font-semibold mb-3">My Admin Account</h2>
-      <div id="adminInfo" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex items-center gap-4">
-        <div class="w-16 h-16 rounded-full overflow-hidden border skeleton"></div>
-        <div class="flex-1">
-          <div class="h-5 w-40 rounded skeleton mb-2"></div>
-          <div class="h-4 w-64 rounded skeleton"></div>
+      <div id="adminInfo" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row items-center sm:items-start gap-4">
+        <div class="flex items-center gap-4 w-full sm:w-auto">
+            <div class="w-16 h-16 rounded-full overflow-hidden border skeleton"></div>
+            <div class="flex-1 min-w-0">
+                <div class="h-5 w-40 rounded skeleton mb-2"></div>
+                <div class="h-4 w-64 rounded skeleton"></div>
+            </div>
         </div>
+        <div class="flex-1"></div>
+        <button id="resignBtn" class="px-3 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto mt-4 sm:mt-0">Resign Admin Role</button>
       </div>
     </section>
 
@@ -156,15 +160,16 @@
     function loadAdminInfo(user) {
       adminMessagesLink.href = `messages.html?user=${user.uid}`;
       adminInfoDiv.innerHTML = `
-        <img src="${user.photoURL || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(user.displayName || 'A')}"
-              class="w-16 h-16 rounded-full border" alt="avatar">
-        <div class="min-w-0 flex-1">
-          <h3 class="font-semibold truncate">${user.displayName || "(no name)"}</h3>
-          <p class="text-gray-600 truncate">${user.email || ""}</p>
+        <div class="flex items-center gap-4 w-full sm:w-auto">
+          <img src="${user.photoURL || 'https://ui-avatars.com/api/?background=2563eb&color=fff&name=' + encodeURIComponent(user.displayName || 'A')}"
+                class="w-16 h-16 rounded-full border" alt="avatar">
+          <div class="flex-1 min-w-0">
+            <h3 class="font-semibold truncate">${user.displayName || "(no name)"}</h3>
+            <p class="text-gray-600 truncate">${user.email || ""}</p>
+          </div>
         </div>
-        <div class="flex flex-col sm:flex-row gap-2">
-          <button class="px-3 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50" id="resignBtn">Resign Admin Role</button>
-        </div>
+        <div class="flex-1"></div>
+        <button class="px-3 py-2 text-sm rounded-lg border text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto mt-4 sm:mt-0" id="resignBtn">Resign Admin Role</button>
       `;
       document.getElementById("resignBtn").onclick = resignAdminRole;
     }
@@ -188,8 +193,8 @@
           <div class="flex items-center gap-3 flex-1">
             <img src="${u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || 'U')}" class="w-14 h-14 rounded-full border" alt="avatar">
             <div class="min-w-0">
-              <p class="font-semibold break-words-all">${u.name || "(no name)"}</p>
-              <p class="text-sm text-gray-600 break-words-all">${u.email || ""}</p>
+              <p class="font-semibold truncate">${u.name || "(no name)"}</p>
+              <p class="text-sm text-gray-600 truncate">${u.email || ""}</p>
               <p class="text-xs text-gray-500 mt-1">Joined: ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</p>
             </div>
           </div>
