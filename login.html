@@ -135,7 +135,7 @@
                     <span class="text-[10px] font-medium px-2 py-1 rounded-full ${user.type==='admin'?'bg-purple-100 text-purple-700':'bg-blue-100 text-blue-700'}">
                         ${user.type==='admin'?'Admin':'User'}
                     </span>
-                    ${isActive ? `<span class="text-[10px] font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1.5">${verifiedBadgeSVG}Verified</span>` : ''}
+                    ${isActive ? `<span class="text-[10px] px-2 py-1 rounded-full bg-blue-100 text-blue-700">${verifiedBadgeSVG}</span>` : ''}
                 </div>
                 <button class="delete-profile absolute top-1 right-1 w-6 h-6 flex items-center justify-center text-red-500 bg-white/90 rounded-full z-10 font-bold text-lg ${isRemoveMode ? 'flex' : 'hidden'}">&times;</button>
             `;
