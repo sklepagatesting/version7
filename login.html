@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
+<!DOCTYPE html><html lang="en" class="scroll-smooth"><head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Login</title>
@@ -46,23 +44,18 @@
 
     // --- UI refs ---
     const loginSection = document.getElementById("login-section");
-    const mainLoginBtn = document.getElementById("main-login-btn");
     const profilesSection = document.getElementById("profiles-section");
     const profilesGrid = document.getElementById("profiles");
     const signOutBtn = document.getElementById("sign-out-btn");
     const mainHeader = document.getElementById("main-header");
     const removeAccountBtn = document.getElementById("remove-account-btn");
+    const useAnotherAccountBtn = document.getElementById("use-another-account-btn");
     const verifyModal = document.getElementById("verify-modal");
     const closeModalBtn = document.getElementById("close-modal-btn");
+    const modalContinueBtn = document.getElementById("modal-continue-btn");
 
     // --- Helpers ---
-    const verifiedBadgeSVG = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="256" height="256" viewBox="0 0 256 256" xml:space="preserve" class="w-4 h-4">
-    <g style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;" transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">
-        <path d="M 30.091 10.131 L 30.091 10.131 c 5.28 -13.046 23.695 -13.207 29.202 -0.255 l 0 0 l 0 0 c 12.959 -5.491 26.093 7.416 20.829 20.469 l 0 0 l 0 0 c 13.046 5.28 13.207 23.695 0.255 29.202 l 0 0 l 0 0 c 5.491 12.959 -7.416 26.093 -20.469 20.829 l 0 0 l 0 0 c -5.28 13.046 -23.695 13.207 -29.202 0.255 l 0 0 l 0 0 C 17.748 86.122 4.613 73.215 9.878 60.162 l 0 0 l 0 0 C -3.169 54.881 -3.33 36.467 9.623 30.96 l 0 0 l 0 0 C 4.131 18.001 17.038 4.866 30.091 10.131 L 30.091 10.131 z" style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,150,241); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round"/>
-        <polygon points="39.66,63.79 23.36,47.76 28.97,42.05 39.3,52.21 59.6,29.58 65.56,34.93 " style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) "/>
-    </g>
-    </svg>`;
-
+    const verifiedBadgeSVG = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="256" height="256" viewBox="0 0 256 256" xml:space="preserve" class="w-4 h-4">    <g style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;" transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">        <path d="M 30.091 10.131 L 30.091 10.131 c 5.28 -13.046 23.695 -13.207 29.202 -0.255 l 0 0 l 0 0 c 12.959 -5.491 26.093 7.416 20.829 20.469 l 0 0 l 0 0 c 13.046 5.28 13.207 23.695 0.255 29.202 l 0 0 l 0 0 c 5.491 12.959 -7.416 26.093 -20.469 20.829 l 0 0 l 0 0 c -5.28 13.046 -23.695 13.207 -29.202 0.255 l 0 0 l 0 0 C 17.748 86.122 4.613 73.215 9.878 60.162 l 0 0 l 0 0 C -3.169 54.881 -3.33 36.467 9.623 30.96 l 0 0 l 0 0 C 4.131 18.001 17.038 4.866 30.091 10.131 L 30.091 10.131 z" style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,150,241); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round"/>        <polygon points="39.66,63.79 23.36,47.76 28.97,42.05 39.3,52.21 59.6,29.58 65.56,34.93 " style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) "/>    </g>    </svg>`;
     const genColor = (seed) => {
       const palette = ["#2563eb", "#16a34a", "#db2777", "#f59e0b", "#7c3aed", "#059669", "#ef4444", "#0ea5e9"];
       let sum = 0;
@@ -113,7 +106,7 @@
     const renderProfiles = () => {
       const savedUsers = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
       updateHeaderText(savedUsers.length);
-      
+
       if (savedUsers.length === 0) {
         profilesSection.classList.add("hidden");
         loginSection.classList.remove("hidden");
@@ -155,11 +148,9 @@
         </div>
         <button class="delete-profile absolute top-1 right-1 w-6 h-6 items-center justify-center text-gray-500 hover:text-red-500 bg-white/50 backdrop-blur-sm hover:bg-red-100 rounded-full z-10 font-bold text-lg ${isRemoveMode ? 'flex' : 'hidden'}">&times;</button>
       `;
-
       // Main card click behavior
       card.onclick = async () => {
         if (isRemoveMode) return; // Ignore card clicks in remove mode
-
         if (isActive) {
           await routeUser(auth.currentUser);
         } else {
@@ -176,7 +167,7 @@
 
       return card;
     };
-    
+
     // --- Core flows ---
     async function login() {
       try {
@@ -230,12 +221,12 @@
         users = users.filter(u => u.uid !== currentUser.uid);
         localStorage.setItem("loginPageUsers", JSON.stringify(users));
       }
-      try { 
-        await signOut(auth); 
-        renderProfiles(); // Re-render to show remaining users
-      } catch (e) { 
-        console.warn("Sign out error:", e); 
-      }
+      try {
+         await signOut(auth);
+         renderProfiles(); // Re-render to show remaining users
+      } catch (e) {
+         console.warn("Sign out error:", e);
+       }
     }
 
     function toggleRemoveMode() {
@@ -246,11 +237,19 @@
         renderProfiles();
     }
 
+    // New function to handle the modal button
+    function promptLoginWithGoogle() {
+        verifyModal.classList.add('hidden');
+        login();
+    }
+
+
     // --- Events ---
     window.login = login;
     signOutBtn.addEventListener("click", doSignOut);
     removeAccountBtn.addEventListener("click", toggleRemoveMode);
     closeModalBtn.addEventListener("click", () => verifyModal.classList.add('hidden'));
+    modalContinueBtn.addEventListener("click", promptLoginWithGoogle); // New event listener for the modal button
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -286,7 +285,7 @@
     <div id="profiles-section" class="mt-6 mb-3 hidden">
       <div id="profiles" class="flex flex-col gap-3"></div>
       <div class="flex flex-col items-center justify-center mt-4 space-y-2">
-        <button onclick="login()" class="w-full text-black px-4 py-3 rounded-xl hover:bg-gray-50 text-center border">
+        <button id="use-another-account-btn" onclick="login()" class="w-full text-black px-4 py-3 rounded-xl hover:bg-gray-50 text-center border">
           Use another account
         </button>
         <button id="remove-account-btn" class="w-full text-gray-700 text-sm px-4 py-2 rounded-xl hover:bg-gray-100 border">Remove an account</button>
@@ -302,8 +301,8 @@
     <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 text-center">
         <h2 class="text-xl font-bold">Verify your account</h2>
         <p class="text-gray-600 mt-2">Choose your account from the selection of accounts on your device to proceed.</p>
-        <button id="close-modal-btn" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded-lg mt-6 hover:bg-blue-700">OK</button>
-    </div>
+        <button id="modal-continue-btn" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded-lg mt-6 hover:bg-blue-700">OK</button>
+        </div>
   </div>
 
 </body>
