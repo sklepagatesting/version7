@@ -790,7 +790,7 @@
                     console.log('Notification permission granted.');
                     
                     // IMPORTANT: Replace with your VAPID key from Firebase Project Settings > Cloud Messaging
-                    const vapidKey = BHzw4iUgO00Vxlpzr5DHngoxSWw01D0LigxY5nAWH7kVa50FrYK7V9OrHxv5yACcWo52oiO5DVOb7TfdxpYdQKc; 
+                    const vapidKey = "BHzw4iUgO00Vxlpzr5DHngoxSWw01D0LigxY5nAWH7kVa50FrYK7V9OrHxv5yACcWo52oiO5DVOb7TfdxpYdQKc"; 
                     const fcmToken = await getToken(messaging, { vapidKey: vapidKey });
 
                     if (fcmToken) {
