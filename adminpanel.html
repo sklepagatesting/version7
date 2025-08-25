@@ -96,7 +96,16 @@
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import { getFirestore, collection, doc, getDoc, setDoc, deleteDoc, onSnapshot, query, orderBy, limit, startAfter, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    const firebaseConfig = { /* your config */ };
+    const firebaseConfig = {
+            apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+            authDomain: "sklepaga-8790e.firebaseapp.com",
+            projectId: "sklepaga-8790e",
+            storageBucket: "sklepaga-8790e.appspot.com",
+            messagingSenderId: "815409129057",
+            appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+            measurementId: "G-9GH707G2WZ"
+        };
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
