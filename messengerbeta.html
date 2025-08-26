@@ -254,7 +254,7 @@
   <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
   <script>
     (function() {
-      emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your EmailJS public key
+      emailjs.init("O3lW73xpbv35YItw4"); // Replace with your EmailJS public key
     })();
   </script>
 
@@ -288,7 +288,7 @@
 
     // EMAILJS FUNCTION
     function notifyAdmin(message, user) {
-      emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
+      emailjs.send("service_h72d2xw", "template_ue9q6ze", {
         user_name: user.displayName || user.email,
         user_message: message,
       })
