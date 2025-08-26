@@ -334,7 +334,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp, FieldValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -360,21 +360,44 @@
         const typingIndicatorContainer = document.getElementById("typingIndicatorContainer");
         const messagesPlaceholder = document.querySelector('.message-placeholder');
 
-        // EMAILJS FUNCTION
-        function notifyAdmin(message, user) {
-            emailjs.send("service_h72d2xw", "template_9g05rdg", {
-                title: "New Message in Messenger",
-                name: user.displayName || "Guest",
-                time: new Date().toLocaleString(),
-                message: message,
-                email: user.email || "no-reply@test",
-            })
-            .then(function(response) {
-                console.log("✅ Email sent to admin", response.status, response.text);
-            }, function(error) {
-                console.error("❌ Email failed", error);
-            });
-        }
+        // New function to send email only if a new one hasn't been sent in the last hour
+        const sendEmailIfNeeded = async (conversationId, message, user) => {
+            const convRef = doc(db, "conversations", conversationId);
+            const convSnap = await getDoc(convRef);
+            const convData = convSnap.data();
+
+            const now = new Date();
+            let shouldSend = false;
+
+            if (!convData || !convData.lastEmailSentAt) {
+                // first message or first time sending an email
+                shouldSend = true;
+            } else {
+                const lastEmail = convData.lastEmailSentAt.toDate();
+                const diffHours = (now - lastEmail) / (1000 * 60 * 60);
+                if (diffHours >= 1) {
+                    shouldSend = true;
+                }
+            }
+
+            if (shouldSend) {
+                await emailjs.send("service_h72d2xw", "template_9g05rdg", {
+                    title: "New Message in Messenger",
+                    name: user.displayName || "Guest",
+                    time: now.toLocaleString(),
+                    message: message,
+                    email: user.email || "no-reply@test",
+                });
+
+                await updateDoc(convRef, {
+                    lastEmailSentAt: serverTimestamp(),
+                });
+
+                console.log("✅ Email sent");
+            } else {
+                console.log("⏳ Skipped, email already sent within last hour");
+            }
+        };
 
         function escapeHtml(text) {
             if (typeof text !== 'string') return "";
@@ -488,6 +511,8 @@
                     status: 'sent'
                 };
 
+                const conversationId = `conv_${currentUser.uid}`;
+
                 if (docSnap.exists()) {
                     await updateDoc(currentConversationRef, {
                         messages: arrayUnion(newMessage),
@@ -510,8 +535,8 @@
                     });
                 }
 
-                // EMAILJS ADDED: send notification
-                notifyAdmin(text, currentUser);
+                // Call the new function to handle email notification logic
+                sendEmailIfNeeded(conversationId, text, currentUser);
 
                 messageInput.value = "";
                 messageInput.style.height = "42px";
