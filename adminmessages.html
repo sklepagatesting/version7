@@ -497,23 +497,51 @@
         const chatHeaderName = document.getElementById("chatHeaderName");
 
         // New function to send email notification to the user
-        const sendEmailToUser = async (userEmail, messageText) => {
+        const sendEmailToUser = async (conversationId, userEmail, messageText) => {
+            const convRef = doc(db, "conversations", conversationId);
+            const convSnap = await getDoc(convRef);
+            const convData = convSnap.data();
+
             if (!userEmail) {
                 console.log("No user email provided, skipping email notification.");
                 return;
             }
 
-            try {
-                await emailjs.send("service_h72d2xw", "template_air3jlw", {
-                    subject: "Reply from Support",
-                    from_name: "Support Admin", // You can change this to your name
-                    to_email: userEmail,
-                    message: messageText,
-                    user_name: currentUserName,
-                });
-                console.log("✅ Email notification sent to user.");
-            } catch (error) {
-                console.error("Failed to send email notification:", error);
+            const now = new Date();
+            let shouldSend = false;
+
+            if (!convData || !convData.lastEmailSentToUserAt) {
+                // First reply or first time sending a notification
+                shouldSend = true;
+            } else {
+                const lastEmail = convData.lastEmailSentToUserAt.toDate();
+                const diffHours = (now - lastEmail) / (1000 * 60 * 60);
+                if (diffHours >= 1) {
+                    shouldSend = true;
+                }
+            }
+
+            if (shouldSend) {
+                try {
+                    await emailjs.send("service_h72d2xw", "template_air3jlw", {
+                        subject: "Reply from Support",
+                        from_name: "Support Admin",
+                        to_email: userEmail,
+                        message: messageText,
+                        user_name: currentUserName,
+                    });
+                    console.log("✅ Email notification sent to user.");
+
+                    // Update the last email sent timestamp
+                    await updateDoc(convRef, {
+                        lastEmailSentToUserAt: serverTimestamp(),
+                    });
+
+                } catch (error) {
+                    console.error("Failed to send email notification:", error);
+                }
+            } else {
+                console.log("⏳ Skipped, email already sent to user within last hour");
             }
         };
 
@@ -863,7 +891,7 @@
                 });
 
                 // Call the email function after the message is sent
-                sendEmailToUser(currentUserEmail, text);
+                sendEmailToUser(currentConversationId, currentUserEmail, text);
 
                 replyInput.value = "";
                 replyInput.style.height = "42px";
