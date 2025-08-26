@@ -126,9 +126,17 @@
         }
 
         @keyframes gradientShift {
-            0%   { background-position: 0% 50%; }
-            50%  { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
         }
 
         .message-time {
@@ -297,12 +305,14 @@
             from {
                 transform: translateY(0);
             }
+
             to {
                 transform: translateY(-4px);
             }
         }
     </style>
 </head>
+
 <body>
     <div class="chat-app" id="chatApp">
         <div class="chat-header">
@@ -311,8 +321,10 @@
         </div>
         <div class="messages" id="messagesContainer">
             <div class="message-placeholder">
-                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
+                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                        d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
                 </svg>
                 <h3 class="mt-2 text-sm font-medium text-gray-900">Start a conversation</h3>
                 <p class="mt-1 text-sm text-gray-500">Send a message to our support team.</p>
@@ -333,9 +345,27 @@
     </script>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp, FieldValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-        import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import {
+            initializeApp
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import {
+            getFirestore,
+            collection,
+            doc,
+            onSnapshot,
+            getDoc,
+            getDocs,
+            setDoc,
+            updateDoc,
+            arrayUnion,
+            serverTimestamp,
+            FieldValue
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import {
+            getAuth,
+            signOut,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
@@ -360,7 +390,7 @@
         const typingIndicatorContainer = document.getElementById("typingIndicatorContainer");
         const messagesPlaceholder = document.querySelector('.message-placeholder');
 
-        // New function to send email only if a new one hasn't been sent in the last hour
+        // New function to send email only if a new one hasn't been sent in the last 5 minutes
         const sendEmailIfNeeded = async (conversationId, message, user) => {
             const convRef = doc(db, "conversations", conversationId);
             const convSnap = await getDoc(convRef);
@@ -374,34 +404,59 @@
                 shouldSend = true;
             } else {
                 const lastEmail = convData.lastEmailSentAt.toDate();
-                const diffHours = (now - lastEmail) / (1000 * 60 * 60);
-                if (diffHours >= 1) {
+                // Check if 5 minutes have passed
+                const diffMinutes = (now - lastEmail) / (1000 * 60);
+                if (diffMinutes >= 5) {
                     shouldSend = true;
                 }
             }
 
             if (shouldSend) {
-                await emailjs.send("service_h72d2xw", "template_9g05rdg", {
-                    title: "New Message in Messenger",
-                    name: user.displayName || "Guest",
-                    time: now.toLocaleString(),
-                    message: message,
-                    email: user.email || "no-reply@test",
+                // --- START OF NEW CODE ---
+                // Find all admin emails dynamically from the 'admin' collection
+                const adminDocs = await getDocs(collection(db, "admin"));
+                const adminEmails = [];
+                adminDocs.forEach(doc => {
+                    const data = doc.data();
+                    if (data.email) {
+                        adminEmails.push(data.email);
+                    }
                 });
 
-                await updateDoc(convRef, {
-                    lastEmailSentAt: serverTimestamp(),
-                });
+                // Join the emails into a single comma-separated string
+                const toEmailList = adminEmails.join(",");
+                // --- END OF NEW CODE ---
 
-                console.log("✅ Email sent");
+                if (toEmailList.length > 0) {
+                    await emailjs.send("service_h72d2xw", "template_9g05rdg", {
+                        title: "New Message in Messenger",
+                        name: user.displayName || "Guest",
+                        time: now.toLocaleString(),
+                        message: message,
+                        // --- UPDATED to use the dynamic email list ---
+                        to_email: toEmailList,
+                        // --- END OF UPDATE ---
+                        email: user.email || "no-reply@test",
+                    });
+
+                    await updateDoc(convRef, {
+                        lastEmailSentAt: serverTimestamp(),
+                    });
+
+                    console.log("✅ Email sent to admins:", toEmailList);
+                } else {
+                    console.log("⚠️ No admin emails found. Skipping email notification.");
+                }
+
             } else {
-                console.log("⏳ Skipped, email already sent within last hour");
+                console.log("⏳ Skipped, email already sent within last 5 minutes");
             }
         };
 
         function escapeHtml(text) {
             if (typeof text !== 'string') return "";
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
         }
 
         function formatTimestamp(date) {
@@ -409,12 +464,26 @@
             const d = date.toDate ? date.toDate() : new Date(date);
 
             // Always format in Asia/Manila (PHT)
-            const optionsTime = { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' };
-            const optionsDate = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' };
+            const optionsTime = {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Manila'
+            };
+            const optionsDate = {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                timeZone: 'Asia/Manila'
+            };
 
             const today = new Date();
-            const todayPH = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-            const dPH = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+            const todayPH = new Date(today.toLocaleString('en-US', {
+                timeZone: 'Asia/Manila'
+            }));
+            const dPH = new Date(d.toLocaleString('en-US', {
+                timeZone: 'Asia/Manila'
+            }));
 
             const isToday = dPH.toDateString() === todayPH.toDateString();
             const yesterdayPH = new Date(todayPH);
@@ -426,7 +495,8 @@
             } else if (isYesterday) {
                 return 'Yesterday, ' + dPH.toLocaleTimeString('en-US', optionsTime);
             } else {
-                return dPH.toLocaleDateString('en-US', optionsDate) + ', ' + dPH.toLocaleTimeString('en-US', optionsTime);
+                return dPH.toLocaleDateString('en-US', optionsDate) + ', ' + dPH.toLocaleTimeString('en-US',
+                    optionsTime);
             }
         }
 
@@ -436,12 +506,15 @@
             });
         }
 
-        const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
-        const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
+        const sentIcon =
+            `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
+        const readIcon =
+            `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
         function renderMessages(allMessages) {
             // Clear all messages before re-rendering
-            messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el => el.remove());
+            messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el =>
+                el.remove());
 
             const fragment = document.createDocumentFragment();
             for (let i = 0; i < allMessages.length; i++) {
@@ -464,7 +537,8 @@
                 if (i > 0) {
                     lastMessageTime = allMessages[i - 1].time;
                 }
-                const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate().getTime() > 300000);
+                const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate()
+                    .getTime() > 300000);
 
                 if (showTime || (isSender && isLastMessage)) {
                     const timeEl = document.createElement("div");
@@ -489,10 +563,14 @@
         let typingTimeout = null;
         messageInput.addEventListener('input', () => {
             if (currentConversationRef) {
-                updateDoc(currentConversationRef, { userTyping: true });
+                updateDoc(currentConversationRef, {
+                    userTyping: true
+                });
                 clearTimeout(typingTimeout);
                 typingTimeout = setTimeout(() => {
-                    updateDoc(currentConversationRef, { userTyping: false });
+                    updateDoc(currentConversationRef, {
+                        userTyping: false
+                    });
                 }, 1500);
             }
         });
@@ -584,11 +662,15 @@
                     if (unreadAdminMessages.length > 0) {
                         const updatedMessages = (data.messages || []).map(msg => {
                             if (msg.author !== user.displayName && msg.status !== 'read') {
-                                return { ...msg, status: 'read' };
+                                return { ...msg,
+                                    status: 'read'
+                                };
                             }
                             return msg;
                         });
-                        updateDoc(currentConversationRef, { messages: updatedMessages });
+                        updateDoc(currentConversationRef, {
+                            messages: updatedMessages
+                        });
                     }
                 }
                 scrollToBottom();
@@ -625,4 +707,5 @@
         });
     </script>
 </body>
+
 </html>
