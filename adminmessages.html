@@ -163,6 +163,29 @@
             min-height: 40px;
             padding: 10px 14px;
             box-sizing: border-box;
+
+            /* Animated gradient background */
+            background: linear-gradient(270deg, #8ec5fc, #e0c3fc, #a1c4fd, #c2e9fb);
+            background-size: 400% 400%;
+            border-radius: 18px;
+
+            animation: gradientShift 6s ease infinite;
+            color: #fff;
+            /* keeps text/icons readable */
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
         }
 
         .message-time {
@@ -231,6 +254,7 @@
         }
 
         /* END: INPUT WRAPPER STYLES */
+
         .chat-app.no-chat-selected .placeholder {
             display: flex;
             align-items: center;
@@ -246,6 +270,7 @@
         }
 
         @media (max-width: 1200px) {
+
             .sidebar,
             .chat-panel {
                 width: 100%;
@@ -271,8 +296,13 @@
                 transform: translateX(0);
             }
 
+            /* Show/Hide back button on mobile based on class */
             .chat-app.show-chat .back-btn {
                 display: inline-block;
+            }
+
+            .chat-app:not(.show-chat) .back-btn {
+                display: none;
             }
         }
 
@@ -284,26 +314,28 @@
             justify-content: center;
         }
 
-        /* --- MODIFICATION START: Updated badge styles --- */
         .unread-badge {
             position: absolute;
             bottom: -2px;
             right: -2px;
-            background-color: #ef4444; /* red-500 */
+            background-color: #ef4444;
+            /* red-500 */
             color: white;
-            font-size: 0.75rem; /* 12px */
+            font-size: 0.75rem;
+            /* 12px */
             font-weight: bold;
             line-height: 1;
             border-radius: 9999px;
             border: 2px solid white;
-            min-width: 1.25rem; /* 20px */
-            height: 1.25rem; /* 20px */
+            min-width: 1.25rem;
+            /* 20px */
+            height: 1.25rem;
+            /* 20px */
             display: flex;
             align-items: center;
             justify-content: center;
             box-sizing: border-box;
         }
-        /* --- MODIFICATION END --- */
 
         .chat-profile-avatar {
             width: 2.5rem;
@@ -344,6 +376,7 @@
             from {
                 transform: translateY(0);
             }
+
             to {
                 transform: translateY(-4px);
             }
@@ -361,25 +394,33 @@
             <div class="conversation-list" id="userList"></div>
         </div>
         <div class="chat-panel">
-            <div class="chat-header">
-                <button class="back-btn" id="backBtn">
-                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12l4-4m-4 4 4 4" />
+            <div class="chat-header flex items-center px-2">
+                <button class="back-btn mr-2" id="backBtn">
+                    <svg class="w-6 h-6 text-black" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                        height="24" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                            d="m15 19-7-7 7-7" />
                     </svg>
                 </button>
-                <div id="chatHeaderProfile" class="flex items-center" style="display: none;">
-                    <span id="chatHeaderName" class="font-semibold text-gray-800"></span>
+
+                <div id="chatHeaderProfile" class="flex items-center w-[90%]">
+                    <span id="chatHeaderName" class="font-semibold text-gray-800 truncate block">
+                        </span>
                 </div>
-                <span id="chatTitle" class="flex-grow">Select a conversation</span>
+
+                <span id="chatTitle" class="ml-2 text-gray-600 whitespace-nowrap"> </span>
             </div>
             <div class="messages" id="messagesContainer">
                 <div class="placeholder">
                     <div>
-                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                                d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h4.586A2 2 0 0115 2.586L17 4.586V8z" />
                         </svg>
                         <h3 class="mt-2 text-sm font-medium text-gray-900">No conversation selected</h3>
-                        <p class="mt-1 text-sm text-gray-500">Select a conversation from the list to start chatting.</p>
+                        <p class="mt-1 text-sm text-gray-500">Select a conversation from the list to start chatting.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -390,10 +431,36 @@
             </form>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <script>
+        (function() {
+            emailjs.init("O3lW73xpbv35YItw4"); // Replace with your EmailJS public key
+        })();
+    </script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, query, orderBy, doc, getDoc, getDocs, onSnapshot, updateDoc, arrayUnion, serverTimestamp, limit, startAfter } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-        import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import {
+            initializeApp
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import {
+            getFirestore,
+            collection,
+            query,
+            orderBy,
+            doc,
+            getDoc,
+            getDocs,
+            onSnapshot,
+            updateDoc,
+            arrayUnion,
+            serverTimestamp,
+            limit,
+            startAfter
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import {
+            getAuth,
+            signOut,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
@@ -405,20 +472,19 @@
             measurementId: "G-9GH707G2WZ"
         };
 
-
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const admin = { name: "Support Admin" };
+        const admin = {
+            name: "Support Admin"
+        };
         let currentUser = null;
         let currentConversationId = null;
         let currentUserName = null;
+        let currentUserEmail = null; // Store user email for notifications
         let currentUserAvatar = null;
         let unsubscribeConversationListener = null;
         let unsubscribeConversationsList = null;
-        let lastDoc = null;
-        let isLoading = false;
-        const CONVERSATIONS_PER_LOAD = 20;
 
         const chatApp = document.getElementById("chatApp");
         const userList = document.getElementById("userList");
@@ -427,20 +493,51 @@
         const replyInput = document.getElementById("replyInput");
         const chatTitle = document.getElementById("chatTitle");
         const backBtn = document.getElementById("backBtn");
-        const typingIndicator = document.getElementById("typingIndicator");
         const chatHeaderProfile = document.getElementById("chatHeaderProfile");
         const chatHeaderName = document.getElementById("chatHeaderName");
 
+        // New function to send email notification to the user
+        const sendEmailToUser = async (userEmail, messageText) => {
+            if (!userEmail) {
+                console.log("No user email provided, skipping email notification.");
+                return;
+            }
+
+            try {
+                await emailjs.send("service_h72d2xw", "template_d6s891j", {
+                    subject: "You have a new message from Support",
+                    from_name: "Support",
+                    to_email: userEmail,
+                    message: messageText,
+                    user_name: currentUserName,
+                });
+                console.log("✅ Email notification sent to user.");
+            } catch (error) {
+                console.error("Failed to send email notification:", error);
+            }
+        };
+
         function escapeHtml(text) {
             if (typeof text !== 'string') return "";
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
         }
 
         function formatTimestamp(date) {
             if (!date) return '';
             const d = date.toDate ? date.toDate() : new Date(date);
-            const optionsTime = { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' };
-            const optionsDateOnly = { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'Asia/Manila' };
+            const optionsTime = {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Manila'
+            };
+            const optionsDateOnly = {
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                timeZone: 'Asia/Manila'
+            };
             const todayPH = new Date(new Date().toLocaleDateString('en-US', optionsDateOnly));
             const dPH = new Date(d.toLocaleDateString('en-US', optionsDateOnly));
             const yesterdayPH = new Date(todayPH);
@@ -452,26 +549,46 @@
             } else if (isYesterday) {
                 return 'Yesterday, ' + d.toLocaleTimeString('en-US', optionsTime);
             } else {
-                const optionsFullDate = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' };
-                return d.toLocaleDateString('en-US', optionsFullDate) + ', ' + d.toLocaleTimeString('en-US', optionsTime);
+                const optionsFullDate = {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    timeZone: 'Asia/Manila'
+                };
+                return d.toLocaleDateString('en-US', optionsFullDate) + ', ' + d.toLocaleTimeString('en-US',
+                    optionsTime);
             }
         }
 
         function formatTimestampForList(date) {
             if (!date) return '';
             const d = date.toDate ? date.toDate() : new Date(date);
-            const optionsDateOnly = { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'Asia/Manila' };
+            const optionsDateOnly = {
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                timeZone: 'Asia/Manila'
+            };
             const todayPH = new Date(new Date().toLocaleDateString('en-US', optionsDateOnly));
             const dPH = new Date(d.toLocaleDateString('en-US', optionsDateOnly));
             const yesterdayPH = new Date(todayPH);
             yesterdayPH.setDate(todayPH.getDate() - 1);
             if (dPH.getTime() === todayPH.getTime()) {
-                return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' });
+                return d.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: 'Asia/Manila'
+                });
             }
             if (dPH.getTime() === yesterdayPH.getTime()) {
                 return 'Yesterday';
             }
-            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' });
+            return d.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                timeZone: 'Asia/Manila'
+            });
         }
 
         function scrollToBottom() {
@@ -480,8 +597,10 @@
             });
         }
 
-        const sentIcon = `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
-        const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
+        const sentIcon =
+            `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
+        const readIcon =
+            `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm13.707-1.293a1 1 0 0 0-1.414-1.414L11 12.586l-1.793-1.793a1 1 0 0 0-1.414 1.414l2.5 2.5a1 1 0 0 0 1.414 0l4-4Z" clip-rule="evenodd"/></svg>`;
 
         function addMessage(author, text, time, status, isLastMessage, showTime) {
             const isSender = author === currentUser.displayName;
@@ -496,6 +615,7 @@
             bubble.textContent = text;
 
             content.appendChild(bubble);
+
             if (showTime || (isSender && isLastMessage)) {
                 const timeEl = document.createElement("div");
                 timeEl.className = "message-time flex items-center gap-1";
@@ -516,13 +636,6 @@
         }
 
         const isMobile = window.innerWidth <= 1200;
-
-        replyInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                replyForm.requestSubmit();
-            }
-        });
 
         replyInput.addEventListener("input", () => {
             replyInput.style.height = "42px";
@@ -548,20 +661,21 @@
             }, 1500);
         });
 
-        async function openConversation(conversationId, otherName, otherAvatar) {
+        async function openConversation(conversationId, otherName, otherEmail, otherAvatar) {
             currentConversationId = conversationId;
             currentUserName = otherName;
+            currentUserEmail = otherEmail; // Set the user email here
             currentUserAvatar = otherAvatar;
 
             chatTitle.style.display = 'none';
             chatHeaderProfile.style.display = 'flex';
-            chatHeaderName.textContent = escapeHtml(otherName);
             chatApp.classList.remove('no-chat-selected');
 
+            // Set header profile content
             chatHeaderProfile.innerHTML = `
                 <img src="${escapeHtml(otherAvatar)}" alt="${escapeHtml(otherName)}'s avatar" class="w-10 h-10 rounded-full" />
-                <div class="ml-3">
-                    <h3 class="font-semibold text-gray-800">${escapeHtml(otherName)}</h3>
+                <div class="ml-3 min-w-0">
+                    <h3 class="font-semibold text-gray-800 truncate">${escapeHtml(otherName)}</h3>
                 </div>
             `;
 
@@ -570,13 +684,11 @@
 
             replyInput.value = "";
             replyInput.style.height = "42px";
-            typingIndicator.textContent = "";
 
             if (unsubscribeConversationListener) unsubscribeConversationListener();
 
-            unsubscribeConversationListener = onSnapshot(doc(db, "conversations", conversationId), (docSnap) => {
-                messagesContainer.innerHTML = "";
-                typingIndicator.innerHTML = "";
+            unsubscribeConversationListener = onSnapshot(doc(db, "conversations", conversationId), async (docSnap) => {
+                messagesContainer.innerHTML = ""; // This is safe now because we only render one conversation at a time.
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
@@ -584,11 +696,14 @@
 
                     let lastMessageTime = null;
                     allMessages.forEach((msg, index) => {
-                        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() > 300000);
-                        addMessage(msg.author, msg.text, msg.time, msg.status, index === allMessages.length - 1, showTime);
+                        const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.getTime() >
+                            60000);
+                        addMessage(msg.author, msg.text, msg.time, msg.status, index === allMessages.length - 1,
+                            showTime);
                         lastMessageTime = msg.time.toDate();
                     });
 
+                    // Handle typing indicator separately
                     if (data.userTyping) {
                         const typingBubble = document.createElement("div");
                         typingBubble.className = "message-row receiver";
@@ -602,19 +717,25 @@
 
                     const userMessages = allMessages.filter(msg => msg.author !== currentUser.displayName);
                     const unreadUserMessages = userMessages.filter(msg => msg.status !== 'read');
+
                     if (unreadUserMessages.length > 0) {
-                        const updatedMessages = allMessages.map(msg => {
-                            if (msg.author !== currentUser.displayName && msg.status !== 'read') {
-                                return {
-                                    ...msg,
-                                    status: 'read'
-                                };
-                            }
-                            return msg;
-                        });
-                        updateDoc(doc(db, "conversations", conversationId), {
-                            messages: updatedMessages
-                        });
+                        // Check if the chat panel is visible before marking as read
+                        const chatPanelVisible = !isMobile || chatApp.classList.contains("show-chat");
+
+                        if (chatPanelVisible) {
+                            const updatedMessages = allMessages.map(msg => {
+                                if (msg.author !== currentUser.displayName && msg.status !== 'read') {
+                                    return {
+                                        ...msg,
+                                        status: 'read'
+                                    };
+                                }
+                                return msg;
+                            });
+                            updateDoc(doc(db, "conversations", conversationId), {
+                                messages: updatedMessages
+                            });
+                        }
                     }
                 } else {
                     messagesContainer.innerHTML = `<div class="placeholder flex items-center justify-center h-full text-center">
@@ -625,85 +746,100 @@
                         </div>
                     </div>`;
                 }
+
                 scrollToBottom();
             });
 
-            if (isMobile) chatApp.classList.add("show-chat");
+            if (isMobile) {
+                chatApp.classList.add("show-chat");
+            }
         }
 
-        async function renderConversations(docs) {
-            userList.innerHTML = "";
-            if (docs.length === 0) {
-                userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
-                return;
+        async function createConversationElement(docSnap) {
+            const data = docSnap.data();
+            const id = docSnap.id;
+            const userName = data.user?.name || "Unknown User";
+            const userEmail = data.user?.email || null;
+            const userId = data.user?.uid;
+
+            let userAvatar = data.user?.avatar ||
+                `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(userName)}`;
+
+            if (userId) {
+                const userProfileRef = doc(db, "accounts", userId);
+                const userProfileSnap = await getDoc(userProfileRef);
+                if (userProfileSnap.exists() && userProfileSnap.data().avatar) {
+                    userAvatar = userProfileSnap.data().avatar;
+                }
             }
 
-            docs.forEach(async docSnap => {
-                const data = docSnap.data();
-                const id = docSnap.id;
-                const userName = data.user?.name || "Unknown User";
-                const userId = data.user?.uid;
+            const lastMessage = data.messages?.slice(-1)[0] || {
+                text: "Start a conversation...",
+                time: data.lastUpdated
+            };
 
-                let userAvatar = data.user?.avatar || `https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(userName)}`;
+            const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read')
+                .length;
+            const hasUnread = unreadCount > 0;
 
-                if (userId) {
-                    const userProfileRef = doc(db, "accounts", userId);
-                    const userProfileSnap = await getDoc(userProfileRef);
-                    if (userProfileSnap.exists() && userProfileSnap.data().avatar) {
-                        userAvatar = userProfileSnap.data().avatar;
-                    }
-                }
+            const nameClasses = hasUnread ? "font-bold text-gray-900 truncate" : "font-semibold text-gray-800 truncate";
+            const messageClasses = hasUnread ? "text-sm text-gray-800 font-medium truncate" :
+                "text-sm text-gray-600 truncate";
+            const timestampClasses = hasUnread ? "text-xs text-gray-800 font-bold flex-shrink-0" :
+                "text-xs text-gray-500 flex-shrink-0";
+            const unreadBadge = hasUnread ? `<span class="unread-badge">${unreadCount}</span>` : '';
+            const timestamp = formatTimestampForList(lastMessage.time);
 
-                const lastMessage = data.messages?.slice(-1)[0] || {
-                    text: "Start a conversation...",
-                    time: data.lastUpdated
-                };
-                
-                // --- MODIFICATION START: Logic for unread messages ---
-                const unreadCount = data.messages.filter(msg => msg.author !== currentUser.displayName && msg.status !== 'read').length;
-                const hasUnread = unreadCount > 0;
+            const li = document.createElement("div");
+            li.className = "conversation";
+            li.dataset.id = id;
 
-                // Conditionally set classes for bolding text
-                const nameClasses = hasUnread ? "font-bold text-gray-900 truncate" : "font-semibold text-gray-800 truncate";
-                const messageClasses = hasUnread ? "text-sm text-gray-800 font-medium truncate" : "text-sm text-gray-600 truncate";
-                const unreadBadge = hasUnread ? `<span class="unread-badge">${unreadCount}</span>` : '';
-                // --- MODIFICATION END ---
-
-                const timestamp = formatTimestampForList(lastMessage.time);
-
-                const li = document.createElement("div");
-                li.className = "conversation";
-                li.dataset.id = id;
-                
-                // --- MODIFICATION START: Updated innerHTML for conversation item ---
-                li.innerHTML = `
-                    <div class="relative flex-shrink-0">
-                        <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
-                        ${unreadBadge}
+            li.innerHTML = `
+                <div class="relative flex-shrink-0">
+                    <img src="${escapeHtml(userAvatar)}" alt="${escapeHtml(userName)}'s avatar" class="w-10 h-10 rounded-full" />
+                    ${unreadBadge}
+                </div>
+                <div class="conversation-info">
+                    <div class="flex justify-between items-center">
+                        <strong class="${nameClasses}">${escapeHtml(userName)}</strong>
+                        <span class="${timestampClasses}">${escapeHtml(timestamp)}</span>
                     </div>
-                    <div class="conversation-info">
-                        <div class="flex justify-between items-center">
-                            <strong class="${nameClasses}">${escapeHtml(userName)}</strong>
-                            <span class="text-xs text-gray-500 flex-shrink-0">${escapeHtml(timestamp)}</span>
-                        </div>
-                        <p class="${messageClasses}">${escapeHtml(lastMessage.text)}</p>
-                    </div>
-                `;
-                // --- MODIFICATION END ---
-                
-                li.addEventListener("click", () => openConversation(id, userName, userAvatar));
-                userList.appendChild(li);
+                    <p class="${messageClasses}">${escapeHtml(lastMessage.text)}</p>
+                </div>
+            `;
 
-                if (currentConversationId === id) {
-                    li.classList.add('active');
-                }
-            });
+            li.addEventListener("click", () => openConversation(id, userName, userEmail, userAvatar));
+            return li;
         }
 
         function setupConversationsListener() {
             const q = query(collection(db, "conversations"), orderBy("lastUpdated", "desc"));
-            unsubscribeConversationsList = onSnapshot(q, (querySnapshot) => {
-                renderConversations(querySnapshot.docs);
+            unsubscribeConversationsList = onSnapshot(q, async (querySnapshot) => {
+                if (querySnapshot.docs.length === 0) {
+                    userList.innerHTML = `<p class="p-4 text-center text-gray-500">No conversations yet.</p>`;
+                    return;
+                }
+
+                const newElements = [];
+                for (const docSnap of querySnapshot.docs) {
+                    const newElement = await createConversationElement(docSnap);
+                    newElements.push(newElement);
+                }
+
+                // Temporarily detach list elements to prevent reflow issues
+                const fragment = document.createDocumentFragment();
+                newElements.forEach(el => fragment.appendChild(el));
+
+                userList.innerHTML = '';
+                userList.appendChild(fragment);
+
+                // Re-apply active class if it was the current chat
+                if (currentConversationId) {
+                    const activeElement = userList.querySelector(`[data-id="${currentConversationId}"]`);
+                    if (activeElement) {
+                        activeElement.classList.add('active');
+                    }
+                }
             });
         }
 
@@ -725,6 +861,10 @@
                     messages: arrayUnion(reply),
                     lastUpdated: serverTimestamp()
                 });
+
+                // Call the email function after the message is sent
+                sendEmailToUser(currentUserEmail, text);
+
                 replyInput.value = "";
                 replyInput.style.height = "42px";
                 scrollToBottom();
@@ -754,10 +894,12 @@
             if (user) {
                 const adminDoc = await getDoc(doc(db, "admin", user.uid));
                 if (adminDoc.exists()) {
-                    currentUser = { displayName: adminDoc.data().name || user.displayName, uid: user.uid };
+                    currentUser = {
+                        displayName: adminDoc.data().name || user.displayName,
+                        uid: user.uid
+                    };
                     setupConversationsListener();
                 } else {
-                    // This was pointing to messages.html, assuming it should be the login/index page if not an admin
                     window.location.href = "index.html";
                 }
             } else {
