@@ -496,7 +496,7 @@
         const chatHeaderProfile = document.getElementById("chatHeaderProfile");
         const chatHeaderName = document.getElementById("chatHeaderName");
 
-        // NEW: Updated function to use the same template as the user's messenger
+        // New function to send email notification to the user
         const sendEmailToUser = async (userEmail, messageText) => {
             if (!userEmail) {
                 console.log("No user email provided, skipping email notification.");
@@ -504,12 +504,12 @@
             }
 
             try {
-                await emailjs.send("service_h72d2xw", "template_9g05rdg", {
-                    title: "New Reply from Support",
-                    name: currentUserName,
-                    time: new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }),
+                await emailjs.send("service_h72d2xw", "template_d6s891j", {
+                    subject: "Reply from Support",
+                    from_name: "Support Admin", // You can change this to your name
+                    to_email: userEmail,
                     message: messageText,
-                    email: userEmail,
+                    user_name: currentUserName,
                 });
                 console.log("✅ Email notification sent to user.");
             } catch (error) {
