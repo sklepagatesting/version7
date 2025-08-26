@@ -12,7 +12,7 @@
       --receiver-bg: #e5e5ea;
       --body-bg: #f5f5f5;
     }
-    
+    
     html {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
@@ -104,19 +104,19 @@
       min-height: 40px;
       padding: 10px 14px;
       box-sizing: border-box;
-    
+    
       /* Animated gradient background */
       background: linear-gradient(270deg, #8ec5fc, #e0c3fc, #a1c4fd, #c2e9fb);
       background-size: 400% 400%;
       border-radius: 18px;
-    
+    
       animation: gradientShift 6s ease infinite;
       color: #fff; /* keeps text/icons readable */
     }
 
     @keyframes gradientShift {
-      0%   { background-position: 0% 50%; }
-      50%  { background-position: 100% 50%; }
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
 
@@ -228,13 +228,6 @@
       }
     }
   </style>
-    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-  <script>
-    (function() {
-      emailjs.init("O3lW73xpbv35YItw4"); // Replace with your EmailJS public key
-    })();
-  </script>
-
 </head>
 <body>
   <div class="chat-app" id="chatApp">
@@ -257,6 +250,14 @@
       <button type="submit" aria-label="Send Message">&#10148;</button>
     </form>
   </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <script>
+    (function() {
+      emailjs.init("O3lW73xpbv35YItw4"); // Replace with your EmailJS public key
+    })();
+  </script>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
@@ -288,11 +289,11 @@
     // EMAILJS FUNCTION
     function notifyAdmin(message, user) {
       emailjs.send("service_h72d2xw", "template_9g05rdg", {
-  title: "New Message in Messenger",     // goes to subject
-  name: user.displayName || "Guest",     // {{name}}
-  time: new Date().toLocaleString(),     // {{time}}
-  message: message,                      // {{message}}
-  email: user.email || "no-reply@test",  // {{email}}
+  title: "New Message in Messenger",     // goes to subject
+  name: user.displayName || "Guest",     // {{name}}
+  time: new Date().toLocaleString(),     // {{time}}
+  message: message,                      // {{message}}
+  email: user.email || "no-reply@test",  // {{email}}
 })
       .then(function(response) {
         console.log("✅ Email sent to admin", response.status, response.text);
@@ -309,20 +310,20 @@
     function formatTimestamp(date) {
       if (!date) return '';
       const d = date.toDate ? date.toDate() : new Date(date);
-    
+    
       // Always format in Asia/Manila (PHT)
       const optionsTime = { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' };
       const optionsDate = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' };
-    
+    
       const today = new Date();
       const todayPH = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
       const dPH = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-    
+    
       const isToday = dPH.toDateString() === todayPH.toDateString();
       const yesterdayPH = new Date(todayPH);
       yesterdayPH.setDate(todayPH.getDate() - 1);
       const isYesterday = dPH.toDateString() === yesterdayPH.toDateString();
-    
+    
       if (isToday) {
         return dPH.toLocaleTimeString('en-US', optionsTime);
       } else if (isYesterday) {
@@ -450,7 +451,7 @@
       currentUser = user;
       const conversationId = `conv_${user.uid}`;
       currentConversationRef = doc(db, "conversations", conversationId);
-          
+          
       onSnapshot(currentConversationRef, async (docSnap) => {
         if (messagesPlaceholder) {
             if (docSnap.exists() && (docSnap.data().messages?.length > 0)) {
