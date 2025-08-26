@@ -228,6 +228,13 @@
       }
     }
   </style>
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <script>
+    (function() {
+      emailjs.init("O3lW73xpbv35YItw4"); // Replace with your EmailJS public key
+    })();
+  </script>
+
 </head>
 <body>
   <div class="chat-app" id="chatApp">
@@ -250,14 +257,6 @@
       <button type="submit" aria-label="Send Message">&#10148;</button>
     </form>
   </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-  <script>
-    (function() {
-      emailjs.init("O3lW73xpbv35YItw4"); // Replace with your EmailJS public key
-    })();
-  </script>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
@@ -289,12 +288,12 @@
     // EMAILJS FUNCTION
     function notifyAdmin(message, user) {
       emailjs.send("service_h72d2xw", "template_9g05rdg", {
-  title: "New Message in Messenger",     // goes to subject
-  name: user.displayName || "Guest",     // {{name}}
-  time: new Date().toLocaleString(),     // {{time}}
-  message: message,                      // {{message}}
-  email: user.email || "no-reply@test",  // {{email}}
-})
+        title: "New Message in Messenger",
+        name: user.displayName || "Guest",
+        time: new Date().toLocaleString(),
+        message: message,
+        email: user.email || "no-reply@test",
+      })
       .then(function(response) {
         console.log("✅ Email sent to admin", response.status, response.text);
       }, function(error) {
