@@ -289,9 +289,12 @@
     // EMAILJS FUNCTION
     function notifyAdmin(message, user) {
       emailjs.send("service_h72d2xw", "template_9g05rdg", {
-        user_name: user.displayName || user.email,
-        user_message: message,
-      })
+  title: "New Message in Messenger",     // goes to subject
+  name: user.displayName || "Guest",     // {{name}}
+  time: new Date().toLocaleString(),     // {{time}}
+  message: message,                      // {{message}}
+  email: user.email || "no-reply@test",  // {{email}}
+})
       .then(function(response) {
         console.log("✅ Email sent to admin", response.status, response.text);
       }, function(error) {
