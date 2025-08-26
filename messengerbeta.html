@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Messages</title>
     <link rel="stylesheet" href="font/font.css">
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
             --sender-bg: #0084ff;
             --receiver-bg: #e5e5ea;
             --body-bg: #f5f5f5;
-            --message-text-color: #1c1c1e;
         }
 
         html {
@@ -31,10 +29,6 @@
             bottom: 0;
             display: flex;
             flex-direction: column;
-            max-width: 768px; /* Added max-width for better desktop display */
-            margin: 0 auto;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-            background-color: #fff;
         }
 
         .chat-header {
@@ -49,6 +43,18 @@
             justify-content: space-between;
         }
 
+        .chat-header .font-semibold {
+            font-weight: 600;
+        }
+
+        .chat-header .text-red-600 {
+            color: #dc2626;
+        }
+
+        .chat-header .text-sm {
+            font-size: 0.875rem;
+        }
+
         .messages {
             flex: 1;
             min-height: 0;
@@ -59,33 +65,25 @@
             -webkit-overflow-scrolling: touch;
             word-break: break-word;
             background-color: var(--body-bg);
-            gap: 4px; /* Space between message groups */
-        }
-
-        .message-group {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .message-group.sender {
-            align-items: flex-end;
-        }
-
-        .message-group.receiver {
-            align-items: flex-start;
         }
 
         .message-row {
             display: flex;
-            justify-content: flex-start;
-            margin-bottom: 2px;
-            max-width: 80%;
-            align-self: flex-start;
+            margin-bottom: 0.25rem;
         }
 
-        .message-group.sender .message-row {
+        .message-row.sender {
             justify-content: flex-end;
-            align-self: flex-end;
+        }
+
+        .message-row.receiver {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            max-width: 80%;
         }
 
         .chat-bubble {
@@ -94,42 +92,22 @@
             word-wrap: break-word;
             white-space: pre-wrap;
             box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
-            line-height: 1.35;
-            position: relative;
         }
-        
+
         .chat-bubble.sender {
             background-color: var(--sender-bg);
             color: white;
-            border-bottom-right-radius: 4px;
+            align-self: flex-end;
         }
-        
-        .message-group.sender .chat-bubble:first-child {
-            border-top-right-radius: 18px;
-            border-bottom-right-radius: 18px;
-        }
-        
-        .message-group.sender .chat-bubble:not(:first-child) {
-            border-top-right-radius: 4px;
-        }
-        
+
         .chat-bubble.receiver {
             background-color: var(--receiver-bg);
-            color: var(--message-text-color);
-            border-bottom-left-radius: 4px;
+            color: black;
+            align-self: flex-start;
         }
-        
-        .message-group.receiver .chat-bubble:first-child {
-            border-top-left-radius: 18px;
-            border-bottom-left-radius: 18px;
-        }
-        
-        .message-group.receiver .chat-bubble:not(:first-child) {
-            border-top-left-radius: 4px;
-        }
-        
+
         /* Typing indicator bubble */
-        .typing-indicator-bubble {
+        .chat-bubble.typing-indicator {
             display: flex;
             align-items: center;
             justify-content: flex-start;
@@ -137,47 +115,59 @@
             min-height: 40px;
             padding: 10px 14px;
             box-sizing: border-box;
-            background-color: var(--receiver-bg);
+
+            /* Animated gradient background */
+            background: linear-gradient(270deg, #8ec5fc, #e0c3fc, #a1c4fd, #c2e9fb);
+            background-size: 400% 400%;
             border-radius: 18px;
-            width: fit-content;
-            margin-bottom: 4px;
+
+            animation: gradientShift 6s ease infinite;
+            color: #fff;
         }
 
-        .typing-indicator-dot {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            background-color: #999;
-            border-radius: 50%;
-            animation: bounce 0.6s infinite alternate;
-        }
-        .typing-indicator-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator-dot:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes bounce {
-            from { transform: translateY(0); }
-            to { transform: translateY(-4px); }
+        @keyframes gradientShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
-        .message-info {
+        .message-time {
             font-size: 0.75rem;
             color: #6b7280;
+            margin-top: 4px;
+            padding: 0 6px;
+        }
+
+        .message-time .text-blue-500 {
+            color: #3b82f6;
+        }
+
+        .message-time .text-gray-400 {
+            color: #9ca3af;
+        }
+
+        .message-time .ms-1 {
+            margin-left: 0.25rem;
+        }
+
+        .message-time .h-4 {
+            height: 1rem;
+        }
+
+        .message-time .w-4 {
+            width: 1rem;
+        }
+
+        .message-row.sender .message-time {
+            align-self: flex-end;
             display: flex;
             align-items: center;
-            gap: 4px;
-            margin-top: 4px;
         }
-        
-        .message-group.sender .message-info {
-            margin-left: auto;
-            align-self: flex-end;
-        }
-        
-        .message-group.receiver .message-info {
-            margin-right: auto;
+
+        .message-row.receiver .message-time {
             align-self: flex-start;
         }
-        
+
         .chat-input-wrapper {
             border-top: 1px solid #ddd;
             background: #fff;
@@ -197,17 +187,21 @@
             outline: none;
             resize: none;
             min-height: 42px;
-            max-height: 200px;
+            max-height: 30vh;
             overflow-y: auto;
             font-size: 1rem;
             line-height: 1.4rem;
             height: 42px;
         }
 
+        .chat-input-wrapper textarea.context::-webkit-scrollbar {
+            display: none;
+        }
+
         .chat-input-wrapper button {
-            height: 42px;
-            width: 42px;
+            height: auto;
             min-height: 42px;
+            padding: 0 12px;
             border: none;
             background: var(--sender-bg);
             color: white;
@@ -217,12 +211,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0;
-            transition: transform 0.2s ease-in-out;
-        }
-        
-        .chat-input-wrapper button:active {
-            transform: scale(0.95);
         }
 
         .message-placeholder {
@@ -233,6 +221,85 @@
             justify-content: center;
             text-align: center;
             color: #6b7280;
+        }
+
+        .message-placeholder .mx-auto {
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .message-placeholder .h-12 {
+            height: 3rem;
+        }
+
+        .message-placeholder .w-12 {
+            width: 3rem;
+        }
+
+        .message-placeholder .text-gray-400 {
+            color: #9ca3af;
+        }
+
+        .message-placeholder .mt-2 {
+            margin-top: 0.5rem;
+        }
+
+        .message-placeholder .mt-1 {
+            margin-top: 0.25rem;
+        }
+
+        .message-placeholder .text-sm {
+            font-size: 0.875rem;
+        }
+
+        .message-placeholder .font-medium {
+            font-weight: 500;
+        }
+
+        .message-placeholder .text-gray-900 {
+            color: #111827;
+        }
+
+        .message-placeholder .text-gray-500 {
+            color: #6b7280;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            background-color: var(--receiver-bg);
+            color: black;
+            padding: 8px 14px;
+            border-radius: 18px;
+            width: fit-content;
+            margin-bottom: 0.25rem;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #666;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: bounce 0.6s infinite alternate;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            from {
+                transform: translateY(0);
+            }
+            to {
+                transform: translateY(-4px);
+            }
         }
     </style>
 </head>
@@ -253,7 +320,7 @@
             <div id="typingIndicatorContainer"></div>
         </div>
         <form id="messageForm" class="chat-input-wrapper">
-            <textarea id="messageInput" placeholder="Type a message..." autocomplete="off"></textarea>
+            <textarea id="messageInput" placeholder="Type a message..." autocomplete="off" class="context"></textarea>
             <button type="submit" aria-label="Send Message">&#10148;</button>
         </form>
     </div>
@@ -264,7 +331,7 @@
             emailjs.init("O3lW73xpbv35YItw4"); // Replace with your EmailJS public key
         })();
     </script>
-    
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
@@ -317,19 +384,20 @@
         function formatTimestamp(date) {
             if (!date) return '';
             const d = date.toDate ? date.toDate() : new Date(date);
-        
+
+            // Always format in Asia/Manila (PHT)
             const optionsTime = { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' };
             const optionsDate = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' };
-        
+
             const today = new Date();
             const todayPH = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
             const dPH = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-        
+
             const isToday = dPH.toDateString() === todayPH.toDateString();
             const yesterdayPH = new Date(todayPH);
             yesterdayPH.setDate(todayPH.getDate() - 1);
             const isYesterday = dPH.toDateString() === yesterdayPH.toDateString();
-        
+
             if (isToday) {
                 return dPH.toLocaleTimeString('en-US', optionsTime);
             } else if (isYesterday) {
@@ -349,64 +417,48 @@
         const readIcon = `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
         function renderMessages(allMessages) {
-            messagesContainer.querySelectorAll('.message-group').forEach(el => el.remove());
-
-            if (!allMessages || allMessages.length === 0) return;
+            // Clear all messages before re-rendering
+            messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el => el.remove());
 
             const fragment = document.createDocumentFragment();
-            
-            let lastAuthor = null;
-            let lastTimestamp = null;
-            let currentGroup = null;
-
-            allMessages.forEach((msg, index) => {
+            for (let i = 0; i < allMessages.length; i++) {
+                const msg = allMessages[i];
                 const isSender = msg.author === currentUser.displayName;
-                const authorChanged = msg.author !== lastAuthor;
-                const timeGap = lastTimestamp && (msg.time.toDate().getTime() - lastTimestamp.toDate().getTime() > 300000);
-                
-                const showTime = timeGap || authorChanged || index === 0;
-
-                if (authorChanged || timeGap) {
-                    if (currentGroup) {
-                        fragment.appendChild(currentGroup);
-                    }
-                    currentGroup = document.createElement("div");
-                    currentGroup.className = `message-group ${isSender ? "sender" : "receiver"}`;
-                }
-
                 const row = document.createElement("div");
-                row.className = "message-row";
+                row.className = "message-row " + (isSender ? "sender" : "receiver");
+
+                const content = document.createElement("div");
+                content.className = "message-content";
 
                 const bubble = document.createElement("div");
-                bubble.className = `chat-bubble ${isSender ? "sender" : "receiver"}`;
+                bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
                 bubble.textContent = msg.text;
 
-                row.appendChild(bubble);
-                currentGroup.appendChild(row);
+                content.appendChild(bubble);
 
-                if (showTime) {
-                    const infoEl = document.createElement("div");
-                    infoEl.className = "message-info";
-                    infoEl.textContent = formatTimestamp(msg.time);
-                    currentGroup.appendChild(infoEl);
+                const isLastMessage = (i === allMessages.length - 1);
+                let lastMessageTime = null;
+                if (i > 0) {
+                    lastMessageTime = allMessages[i - 1].time;
                 }
+                const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate().getTime() > 300000);
 
-                lastAuthor = msg.author;
-                lastTimestamp = msg.time;
-            });
-            
-            if (currentGroup) {
-                // Handle status icon for the very last message
-                const lastMessage = allMessages[allMessages.length - 1];
-                const lastInfoEl = currentGroup.querySelector('.message-info:last-child');
-                if (lastMessage && lastInfoEl && lastMessage.author === currentUser.displayName) {
-                    if (lastMessage.status === 'read') {
-                        lastInfoEl.innerHTML += readIcon;
-                    } else {
-                        lastInfoEl.innerHTML += sentIcon;
+                if (showTime || (isSender && isLastMessage)) {
+                    const timeEl = document.createElement("div");
+                    timeEl.className = "message-time flex items-center gap-1";
+                    timeEl.textContent = formatTimestamp(msg.time);
+
+                    if (isSender && isLastMessage) {
+                        if (msg.status === 'read') {
+                            timeEl.innerHTML += readIcon;
+                        } else {
+                            timeEl.innerHTML += sentIcon;
+                        }
                     }
+                    content.appendChild(timeEl);
                 }
-                fragment.appendChild(currentGroup);
+                row.appendChild(content);
+                fragment.appendChild(row);
             }
             messagesContainer.insertBefore(fragment, typingIndicatorContainer);
         }
@@ -457,6 +509,8 @@
                         adminTyping: false,
                     });
                 }
+
+                // EMAILJS ADDED: send notification
                 notifyAdmin(text, currentUser);
 
                 messageInput.value = "";
@@ -471,7 +525,7 @@
             currentUser = user;
             const conversationId = `conv_${user.uid}`;
             currentConversationRef = doc(db, "conversations", conversationId);
-        
+
             onSnapshot(currentConversationRef, async (docSnap) => {
                 if (messagesPlaceholder) {
                     if (docSnap.exists() && (docSnap.data().messages?.length > 0)) {
@@ -485,12 +539,13 @@
                     const data = docSnap.data();
                     renderMessages(data.messages || []);
 
+                    // Proper typing indicator rendering
                     if (data.adminTyping) {
                         typingIndicatorContainer.innerHTML = `
-                            <div class="message-group receiver">
-                                <div class="message-row">
-                                    <div class="typing-indicator-bubble">
-                                        <span class="typing-indicator-dot"></span><span class="typing-indicator-dot"></span><span class="typing-indicator-dot"></span>
+                            <div class="message-row receiver">
+                                <div class="message-content">
+                                    <div class="chat-bubble receiver typing-indicator">
+                                        <span></span><span></span><span></span>
                                     </div>
                                 </div>
                             </div>
@@ -499,6 +554,7 @@
                         typingIndicatorContainer.innerHTML = "";
                     }
 
+                    // Mark unread admin messages as read
                     const unreadAdminMessages = (data.messages || []).filter(msg => msg.author !== user.displayName && msg.status !== 'read');
                     if (unreadAdminMessages.length > 0) {
                         const updatedMessages = (data.messages || []).map(msg => {
