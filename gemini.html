@@ -6,10 +6,10 @@
   <title>Gemini Chat</title>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
   <script type="module">
     import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
       authDomain: "sklepaga-8790e.firebaseapp.com",
@@ -22,36 +22,42 @@
 
     const app = firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
     let GEMINI_API_KEY = null;
     let genAI = null;
 
-    // Elements
-    const chatContainer = document.getElementById("chat-container");
     const loader = document.getElementById("loader");
+    const chatContainer = document.getElementById("chat-container");
 
-    // 🔹 1. Check if key exists in Firebase
-    async function getApiKey() {
-      const doc = await db.collection("config").doc("gemini").get();
-      if (doc.exists) {
-        GEMINI_API_KEY = doc.data().key;
+    // 🔹 Sign in anonymously
+    async function signIn() {
+      const user = auth.currentUser || (await auth.signInAnonymously()).user;
+      return user.uid;
+    }
+
+    // 🔹 Get API key from user account
+    async function getApiKey(uid) {
+      const doc = await db.collection("accounts").doc(uid).get();
+      if (doc.exists && doc.data().geminiApiKey) {
+        GEMINI_API_KEY = doc.data().geminiApiKey;
         genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         return true;
       }
       return false;
     }
 
-    // 🔹 2. Ask user for key
-    async function askApiKey() {
+    // 🔹 Ask user for key and store
+    async function askApiKey(uid) {
       const key = prompt("Enter your Gemini API Key:");
       if (key) {
-        await db.collection("config").doc("gemini").set({ key });
+        await db.collection("accounts").doc(uid).set({ geminiApiKey: key }, { merge: true });
         GEMINI_API_KEY = key;
         genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
       }
     }
 
-    // 🔹 3. Send prompt to Gemini
+    // 🔹 Send prompt to Gemini
     async function sendPrompt(promptText) {
       if (!genAI) return alert("No API key set!");
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -59,18 +65,16 @@
       document.getElementById("output").innerText = result.response.text();
     }
 
-    // 🔹 4. Initialize flow
+    // 🔹 Init flow
     (async () => {
       loader.classList.remove("hidden");
-      const hasKey = await getApiKey();
-      if (!hasKey) {
-        await askApiKey();
-      }
+      const uid = await signIn();
+      const hasKey = await getApiKey(uid);
+      if (!hasKey) await askApiKey(uid);
       loader.classList.add("hidden");
       chatContainer.classList.remove("hidden");
     })();
 
-    // Expose function for button
     window.sendPrompt = sendPrompt;
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
