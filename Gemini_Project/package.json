@@ -1,0 +1,13 @@
+  {
+    "name": "gemini_project",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+      "start": "node gemini.js"
+    },
+    "dependencies": {
+      "express": "^4.19.2",
+      "dotenv": "^17.2.1",
+      "@google/generative-ai": "^0.11.4"
+    }
+  }
