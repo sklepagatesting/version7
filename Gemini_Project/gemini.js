@@ -50,15 +50,12 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-app.use(express.static(path.join(__dirname, "public")));
+// Root always serves gemini.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "gemini.html"));
 });
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`Server running: http://localhost:${PORT}`)
 );
-
-
