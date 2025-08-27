@@ -1,22 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="bg-gray-100 dark:bg-gray-900">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gemini Chat</title>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
   <script type="module">
     import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
+    // Firebase config
     const firebaseConfig = {
-            apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-            authDomain: "sklepaga-8790e.firebaseapp.com",
-            projectId: "sklepaga-8790e",
-            storageBucket: "sklepaga-8790e.appspot.com",
-            messagingSenderId: "815409129057",
-            appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-            measurementId: "G-9GH707G2WZ"
-        };
+      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+      authDomain: "sklepaga-8790e.firebaseapp.com",
+      projectId: "sklepaga-8790e",
+      storageBucket: "sklepaga-8790e.appspot.com",
+      messagingSenderId: "815409129057",
+      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+      measurementId: "G-9GH707G2WZ"
+    };
 
     const app = firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -24,7 +26,11 @@
     let GEMINI_API_KEY = null;
     let genAI = null;
 
-    // 🔥 2. Check if we already stored key in Firebase
+    // Elements
+    const chatContainer = document.getElementById("chat-container");
+    const loader = document.getElementById("loader");
+
+    // 🔹 1. Check if key exists in Firebase
     async function getApiKey() {
       const doc = await db.collection("config").doc("gemini").get();
       if (doc.exists) {
@@ -35,7 +41,7 @@
       return false;
     }
 
-    // 🔥 3. Ask user to provide API key if not stored
+    // 🔹 2. Ask user for key
     async function askApiKey() {
       const key = prompt("Enter your Gemini API Key:");
       if (key) {
@@ -45,30 +51,43 @@
       }
     }
 
-    // 🔥 4. Send a prompt to Gemini
-    async function sendPrompt(prompt) {
+    // 🔹 3. Send prompt to Gemini
+    async function sendPrompt(promptText) {
       if (!genAI) return alert("No API key set!");
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(promptText);
       document.getElementById("output").innerText = result.response.text();
     }
 
-    // 🔥 5. Init Flow
+    // 🔹 4. Initialize flow
     (async () => {
+      loader.classList.remove("hidden");
       const hasKey = await getApiKey();
       if (!hasKey) {
         await askApiKey();
       }
+      loader.classList.add("hidden");
+      chatContainer.classList.remove("hidden");
     })();
 
-    // Expose for button
+    // Expose function for button
     window.sendPrompt = sendPrompt;
   </script>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h1>🔥 Gemini Chat with Firebase 🔥</h1>
-  <textarea id="input" placeholder="Type something..."></textarea><br>
-  <button onclick="sendPrompt(document.getElementById('input').value)">Send</button>
-  <pre id="output"></pre>
+<body class="flex flex-col items-center justify-start min-h-screen p-6">
+  <!-- Loader -->
+  <div id="loader" class="text-gray-700 dark:text-gray-300 text-lg">🔑 Checking API key...</div>
+
+  <!-- Chat Interface -->
+  <div id="chat-container" class="hidden w-full max-w-xl flex flex-col gap-4">
+    <h1 class="text-2xl font-bold text-gray-800 dark:text-white text-center">🔥 Gemini Chat 🔥</h1>
+    
+    <textarea id="input" placeholder="Type something..." class="w-full p-3 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" rows="4"></textarea>
+    
+    <button onclick="sendPrompt(document.getElementById('input').value)" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">Send</button>
+    
+    <pre id="output" class="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 whitespace-pre-wrap"></pre>
+  </div>
 </body>
 </html>
