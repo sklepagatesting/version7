@@ -1,4 +1,4 @@
-// index.js
+
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -59,3 +59,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`Server running: http://localhost:${PORT}`)
 );
+
