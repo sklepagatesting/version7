@@ -8,6 +8,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
   <script type="module">
     import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+    import { marked } from "https://esm.run/marked";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
@@ -31,6 +32,8 @@
     const chatContainer = document.getElementById("chat-container");
     const apiInput = document.getElementById("api-key-input");
     const saveBtn = document.getElementById("save-api-btn");
+    const outputDiv = document.getElementById("output");
+    const inputTextArea = document.getElementById("input");
 
     // 🔹 Check if API key is already stored
     async function checkApiKey() {
@@ -53,9 +56,22 @@
     // 🔹 Send prompt to Gemini
     async function sendPrompt(promptText) {
       if (!genAI) return alert("No API key set!");
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const result = await model.generateContent(promptText);
-      document.getElementById("output").innerText = result.response.text();
+
+      // Show a loading state
+      outputDiv.innerHTML = '<p class="text-gray-500 animate-pulse">Generating response...</p>';
+
+      try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const result = await model.generateContent(promptText);
+        const responseText = result.response.text();
+
+        // Parse and render the Markdown output
+        outputDiv.innerHTML = marked.parse(responseText);
+
+      } catch (error) {
+        console.error("Error generating content:", error);
+        outputDiv.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+      }
     }
 
     // 🔹 Initialize
@@ -77,6 +93,13 @@
         apiForm.classList.add("hidden");
         chatContainer.classList.remove("hidden");
       });
+      
+      inputTextArea.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendPrompt(inputTextArea.value);
+        }
+      });
     })();
 
     window.sendPrompt = sendPrompt;
@@ -84,17 +107,14 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="flex flex-col items-center justify-start min-h-screen p-6">
-  <!-- Loader -->
   <div id="loader" class="hidden text-gray-700 dark:text-gray-300 text-lg">🔑 Checking API key...</div>
 
-  <!-- API Key Input Form -->
   <div id="api-form" class="hidden w-full max-w-md flex flex-col gap-4 items-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
     <h2 class="text-xl font-semibold text-gray-800 dark:text-white">Enter Gemini API Key</h2>
     <input type="text" id="api-key-input" placeholder="API Key" class="w-full p-3 border rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
     <button id="save-api-btn" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">Save API Key</button>
   </div>
 
-  <!-- Chat Interface -->
   <div id="chat-container" class="hidden w-full max-w-xl flex flex-col gap-4">
     <h1 class="text-2xl font-bold text-gray-800 dark:text-white text-center">🔥 Gemini Chat 🔥</h1>
     
@@ -102,7 +122,7 @@
     
     <button onclick="sendPrompt(document.getElementById('input').value)" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">Send</button>
     
-    <pre id="output" class="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 whitespace-pre-wrap"></pre>
+    <div id="output" class="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 whitespace-pre-wrap"></div>
   </div>
 </body>
 </html>
