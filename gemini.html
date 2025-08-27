@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gemini Chat</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <script type="module">
+    import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+    // 🔥 1. Firebase Config
+    const firebaseConfig = {
+      apiKey: "YOUR_FIREBASE_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let GEMINI_API_KEY = null;
+    let genAI = null;
+
+    // 🔥 2. Check if we already stored key in Firebase
+    async function getApiKey() {
+      const doc = await db.collection("config").doc("gemini").get();
+      if (doc.exists) {
+        GEMINI_API_KEY = doc.data().key;
+        genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        return true;
+      }
+      return false;
+    }
+
+    // 🔥 3. Ask user to provide API key if not stored
+    async function askApiKey() {
+      const key = prompt("Enter your Gemini API Key:");
+      if (key) {
+        await db.collection("config").doc("gemini").set({ key });
+        GEMINI_API_KEY = key;
+        genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      }
+    }
+
+    // 🔥 4. Send a prompt to Gemini
+    async function sendPrompt(prompt) {
+      if (!genAI) return alert("No API key set!");
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const result = await model.generateContent(prompt);
+      document.getElementById("output").innerText = result.response.text();
+    }
+
+    // 🔥 5. Init Flow
+    (async () => {
+      const hasKey = await getApiKey();
+      if (!hasKey) {
+        await askApiKey();
+      }
+    })();
+
+    // Expose for button
+    window.sendPrompt = sendPrompt;
+  </script>
+</head>
+<body>
+  <h1>🔥 Gemini Chat with Firebase 🔥</h1>
+  <textarea id="input" placeholder="Type something..."></textarea><br>
+  <button onclick="sendPrompt(document.getElementById('input').value)">Send</button>
+  <pre id="output"></pre>
+</body>
+</html>
