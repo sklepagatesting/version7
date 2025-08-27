@@ -27,16 +27,20 @@
     let GEMINI_API_KEY = null;
     let genAI = null;
 
+    // Elements
     const loader = document.getElementById("loader");
+    const apiForm = document.getElementById("api-form");
     const chatContainer = document.getElementById("chat-container");
+    const apiInput = document.getElementById("api-key-input");
+    const saveBtn = document.getElementById("save-api-btn");
 
-    // 🔹 Sign in anonymously
+    // Sign in anonymously
     async function signIn() {
       const user = auth.currentUser || (await auth.signInAnonymously()).user;
       return user.uid;
     }
 
-    // 🔹 Get API key from user account
+    // Get API key from account
     async function getApiKey(uid) {
       const doc = await db.collection("accounts").doc(uid).get();
       if (doc.exists && doc.data().geminiApiKey) {
@@ -47,17 +51,14 @@
       return false;
     }
 
-    // 🔹 Ask user for key and store
-    async function askApiKey(uid) {
-      const key = prompt("Enter your Gemini API Key:");
-      if (key) {
-        await db.collection("accounts").doc(uid).set({ geminiApiKey: key }, { merge: true });
-        GEMINI_API_KEY = key;
-        genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      }
+    // Save API key
+    async function saveApiKey(uid, key) {
+      await db.collection("accounts").doc(uid).set({ geminiApiKey: key }, { merge: true });
+      GEMINI_API_KEY = key;
+      genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     }
 
-    // 🔹 Send prompt to Gemini
+    // Send prompt
     async function sendPrompt(promptText) {
       if (!genAI) return alert("No API key set!");
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -65,14 +66,27 @@
       document.getElementById("output").innerText = result.response.text();
     }
 
-    // 🔹 Init flow
+    // Init flow
     (async () => {
       loader.classList.remove("hidden");
       const uid = await signIn();
       const hasKey = await getApiKey(uid);
-      if (!hasKey) await askApiKey(uid);
       loader.classList.add("hidden");
-      chatContainer.classList.remove("hidden");
+
+      if (hasKey) {
+        chatContainer.classList.remove("hidden");
+      } else {
+        apiForm.classList.remove("hidden");
+      }
+
+      // Handle save API key
+      saveBtn.addEventListener("click", async () => {
+        const key = apiInput.value.trim();
+        if (!key) return alert("Please enter a valid API key.");
+        await saveApiKey(uid, key);
+        apiForm.classList.add("hidden");
+        chatContainer.classList.remove("hidden");
+      });
     })();
 
     window.sendPrompt = sendPrompt;
@@ -81,7 +95,14 @@
 </head>
 <body class="flex flex-col items-center justify-start min-h-screen p-6">
   <!-- Loader -->
-  <div id="loader" class="text-gray-700 dark:text-gray-300 text-lg">🔑 Checking API key...</div>
+  <div id="loader" class="hidden text-gray-700 dark:text-gray-300 text-lg">🔑 Checking API key...</div>
+
+  <!-- API Key Input Form -->
+  <div id="api-form" class="hidden w-full max-w-md flex flex-col gap-4 items-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+    <h2 class="text-xl font-semibold text-gray-800 dark:text-white">Enter your Gemini API Key</h2>
+    <input type="text" id="api-key-input" placeholder="API Key" class="w-full p-3 border rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <button id="save-api-btn" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">Save API Key</button>
+  </div>
 
   <!-- Chat Interface -->
   <div id="chat-container" class="hidden w-full max-w-xl flex flex-col gap-4">
