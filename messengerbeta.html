@@ -436,415 +436,426 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-    <script>
-        (function() {
-            emailjs.init("O3lW73xpbv35YItw4"); // Replace with your EmailJS public key
-        })();
-    </script>
+   <script type="module">
+    import {
+        initializeApp
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import {
+        getFirestore,
+        collection,
+        doc,
+        onSnapshot,
+        getDoc,
+        getDocs,
+        setDoc,
+        updateDoc,
+        arrayUnion,
+        serverTimestamp,
+        deleteDoc
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import {
+        getAuth,
+        signOut,
+        onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-    <script type="module">
-        import {
-            initializeApp
-        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import {
-            getFirestore,
-            collection,
-            doc,
-            onSnapshot,
-            getDoc,
-            getDocs,
-            setDoc,
-            updateDoc,
-            arrayUnion,
-            serverTimestamp,
-            deleteDoc
-        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-        import {
-            getAuth,
-            signOut,
-            onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    const firebaseConfig = {
+        apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+        authDomain: "sklepaga-8790e.firebaseapp.com",
+        projectId: "sklepaga-8790e",
+        storageBucket: "sklepaga-8790e.appspot.com",
+        messagingSenderId: "815409129057",
+        appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+        measurementId: "G-9GH707G2WZ"
+    };
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-            authDomain: "sklepaga-8790e.firebaseapp.com",
-            projectId: "sklepaga-8790e",
-            storageBucket: "sklepaga-8790e.appspot.com",
-            messagingSenderId: "815409129057",
-            appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-            measurementId: "G-9GH707G2WZ"
-        };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+    let currentUser = null;
+    let currentConversationRef = null;
+    let lastMessages = null; // Track last rendered messages to avoid unnecessary re-renders
 
-        let currentUser = null;
-        let currentConversationRef = null;
+    const messagesContainer = document.getElementById("messagesContainer");
+    const messageForm = document.getElementById("messageForm");
+    const messageInput = document.getElementById("messageInput");
+    const typingIndicatorContainer = document.getElementById("typingIndicatorContainer");
+    const messagesPlaceholder = document.querySelector('.message-placeholder');
+    const chatMenuButton = document.getElementById("chatMenuButton");
+    const chatMenuDropdown = document.getElementById("chatMenuDropdown");
+    const clearChatOption = document.getElementById("clearChatOption");
+    const deleteChatOption = document.getElementById("deleteChatOption");
+    const signOutOption = document.getElementById("signOutOption");
 
-        const messagesContainer = document.getElementById("messagesContainer");
-        const messageForm = document.getElementById("messageForm");
-        const messageInput = document.getElementById("messageInput");
-        const typingIndicatorContainer = document.getElementById("typingIndicatorContainer");
-        const messagesPlaceholder = document.querySelector('.message-placeholder');
-        const chatMenuButton = document.getElementById("chatMenuButton");
-        const chatMenuDropdown = document.getElementById("chatMenuDropdown");
-        const clearChatOption = document.getElementById("clearChatOption");
-        const deleteChatOption = document.getElementById("deleteChatOption");
-        const signOutOption = document.getElementById("signOutOption");
+    const sendEmailIfNeeded = async (conversationId, message, user) => {
+        const convRef = doc(db, "conversations", conversationId);
+        const convSnap = await getDoc(convRef);
+        const convData = convSnap.data();
 
-        const sendEmailIfNeeded = async (conversationId, message, user) => {
-            const convRef = doc(db, "conversations", conversationId);
-            const convSnap = await getDoc(convRef);
-            const convData = convSnap.data();
+        const now = new Date();
+        let shouldSend = false;
 
-            const now = new Date();
-            let shouldSend = false;
-
-            if (!convData || !convData.lastEmailSentAt) {
+        if (!convData || !convData.lastEmailSentAt) {
+            shouldSend = true;
+        } else {
+            const lastEmail = convData.lastEmailSentAt.toDate();
+            const diffMinutes = (now - lastEmail) / (1000 * 60);
+            if (diffMinutes >= 5) {
                 shouldSend = true;
-            } else {
-                const lastEmail = convData.lastEmailSentAt.toDate();
-                const diffMinutes = (now - lastEmail) / (1000 * 60);
-                if (diffMinutes >= 5) {
-                    shouldSend = true;
-                }
             }
+        }
 
-            if (shouldSend) {
-                const adminDocs = await getDocs(collection(db, "admin"));
-                const adminEmails = [];
-                adminDocs.forEach(doc => {
-                    const data = doc.data();
-                    if (data.email) {
-                        adminEmails.push(data.email);
-                    }
+        if (shouldSend) {
+            const adminDocs = await getDocs(collection(db, "admin"));
+            const adminEmails = [];
+            adminDocs.forEach(doc => {
+                const data = doc.data();
+                if (data.email) {
+                    adminEmails.push(data.email);
+                }
+            });
+
+            const toEmailList = adminEmails.join(",");
+
+            if (toEmailList.length > 0) {
+                await emailjs.send("service_h72d2xw", "template_9g05rdg", {
+                    title: "New Message in Messenger",
+                    name: user.displayName || "Guest",
+                    time: now.toLocaleString(),
+                    message: message,
+                    to_email: toEmailList,
+                    email: user.email || "no-reply@test",
                 });
 
-                const toEmailList = adminEmails.join(",");
+                await updateDoc(convRef, {
+                    lastEmailSentAt: serverTimestamp(),
+                });
 
-                if (toEmailList.length > 0) {
-                    await emailjs.send("service_h72d2xw", "template_9g05rdg", {
-                        title: "New Message in Messenger",
-                        name: user.displayName || "Guest",
-                        time: now.toLocaleString(),
-                        message: message,
-                        to_email: toEmailList,
-                        email: user.email || "no-reply@test",
-                    });
-
-                    await updateDoc(convRef, {
-                        lastEmailSentAt: serverTimestamp(),
-                    });
-
-                    console.log("✅ Email sent to admins:", toEmailList);
-                } else {
-                    console.log("⚠️ No admin emails found. Skipping email notification.");
-                }
-
+                console.log("✅ Email sent to admins:", toEmailList);
             } else {
-                console.log("⏳ Skipped, email already sent within last 5 minutes");
+                console.log("⚠️ No admin emails found. Skipping email notification.");
             }
+        } else {
+            console.log("⏳ Skipped, email already sent within last 5 minutes");
+        }
+    };
+
+    function escapeHtml(text) {
+        if (typeof text !== 'string') return "";
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function formatTimestamp(date) {
+        if (!date) return '';
+        const d = date.toDate ? date.toDate() : new Date(date);
+
+        const optionsTime = {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Manila'
+        };
+        const optionsDate = {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            timeZone: 'Asia/Manila'
         };
 
-        function escapeHtml(text) {
-            if (typeof text !== 'string') return "";
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
+        const today = new Date();
+        const todayPH = new Date(today.toLocaleString('en-US', {
+            timeZone: 'Asia/Manila'
+        }));
+        const dPH = new Date(d.toLocaleString('en-US', {
+            timeZone: 'Asia/Manila'
+        }));
+
+        const isToday = dPH.toDateString() === todayPH.toDateString();
+        const yesterdayPH = new Date(todayPH);
+        yesterdayPH.setDate(todayPH.getDate() - 1);
+        const isYesterday = dPH.toDateString() === yesterdayPH.toDateString();
+
+        if (isToday) {
+            return dPH.toLocaleTimeString('en-US', optionsTime);
+        } else if (isYesterday) {
+            return 'Yesterday, ' + dPH.toLocaleTimeString('en-US', optionsTime);
+        } else {
+            return dPH.toLocaleDateString('en-US', optionsDate) + ', ' + dPH.toLocaleTimeString('en-US',
+                optionsTime);
         }
+    }
 
-        function formatTimestamp(date) {
-            if (!date) return '';
-            const d = date.toDate ? date.toDate() : new Date(date);
+    function scrollToBottom() {
+        requestAnimationFrame(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+    }
 
-            const optionsTime = {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: 'Asia/Manila'
-            };
-            const optionsDate = {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                timeZone: 'Asia/Manila'
-            };
+    const sentIcon =
+        `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
+    const readIcon =
+        `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
-            const today = new Date();
-            const todayPH = new Date(today.toLocaleString('en-US', {
-                timeZone: 'Asia/Manila'
-            }));
-            const dPH = new Date(d.toLocaleString('en-US', {
-                timeZone: 'Asia/Manila'
-            }));
+    function renderMessages(allMessages) {
+        messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el =>
+            el.remove());
 
-            const isToday = dPH.toDateString() === todayPH.toDateString();
-            const yesterdayPH = new Date(todayPH);
-            yesterdayPH.setDate(todayPH.getDate() - 1);
-            const isYesterday = dPH.toDateString() === yesterdayPH.toDateString();
+        const fragment = document.createDocumentFragment();
+        for (let i = 0; i < allMessages.length; i++) {
+            const msg = allMessages[i];
+            const isSender = msg.author === currentUser.displayName;
+            const row = document.createElement("div");
+            row.className = "message-row " + (isSender ? "sender" : "receiver");
 
-            if (isToday) {
-                return dPH.toLocaleTimeString('en-US', optionsTime);
-            } else if (isYesterday) {
-                return 'Yesterday, ' + dPH.toLocaleTimeString('en-US', optionsTime);
-            } else {
-                return dPH.toLocaleDateString('en-US', optionsDate) + ', ' + dPH.toLocaleTimeString('en-US',
-                    optionsTime);
+            const content = document.createElement("div");
+            content.className = "message-content";
+
+            const bubble = document.createElement("div");
+            bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
+            bubble.textContent = msg.text;
+
+            content.appendChild(bubble);
+
+            const isLastMessage = (i === allMessages.length - 1);
+            let lastMessageTime = null;
+            if (i > 0) {
+                lastMessageTime = allMessages[i - 1].time;
             }
-        }
+            const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate()
+                .getTime() > 300000);
 
-        function scrollToBottom() {
-            requestAnimationFrame(() => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            });
-        }
+            if (showTime || (isSender && isLastMessage)) {
+                const timeEl = document.createElement("div");
+                timeEl.className = "message-time flex items-center gap-1";
+                timeEl.textContent = formatTimestamp(msg.time);
 
-        const sentIcon =
-            `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
-        const readIcon =
-            `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
-
-        function renderMessages(allMessages) {
-            messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el =>
-                el.remove());
-
-            const fragment = document.createDocumentFragment();
-            for (let i = 0; i < allMessages.length; i++) {
-                const msg = allMessages[i];
-                const isSender = msg.author === currentUser.displayName;
-                const row = document.createElement("div");
-                row.className = "message-row " + (isSender ? "sender" : "receiver");
-
-                const content = document.createElement("div");
-                content.className = "message-content";
-
-                const bubble = document.createElement("div");
-                bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
-                bubble.textContent = msg.text;
-
-                content.appendChild(bubble);
-
-                const isLastMessage = (i === allMessages.length - 1);
-                let lastMessageTime = null;
-                if (i > 0) {
-                    lastMessageTime = allMessages[i - 1].time;
-                }
-                const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate()
-                    .getTime() > 300000);
-
-                if (showTime || (isSender && isLastMessage)) {
-                    const timeEl = document.createElement("div");
-                    timeEl.className = "message-time flex items-center gap-1";
-                    timeEl.textContent = formatTimestamp(msg.time);
-
-                    if (isSender && isLastMessage) {
-                        if (msg.status === 'read') {
-                            timeEl.innerHTML += readIcon;
-                        } else {
-                            timeEl.innerHTML += sentIcon;
-                        }
+                if (isSender && isLastMessage) {
+                    if (msg.status === 'read') {
+                        timeEl.innerHTML += readIcon;
+                    } else {
+                        timeEl.innerHTML += sentIcon;
                     }
-                    content.appendChild(timeEl);
                 }
-                row.appendChild(content);
-                fragment.appendChild(row);
+                content.appendChild(timeEl);
             }
-            messagesContainer.insertBefore(fragment, typingIndicatorContainer);
+            row.appendChild(content);
+            fragment.appendChild(row);
         }
+        messagesContainer.insertBefore(fragment, typingIndicatorContainer);
+        lastMessages = allMessages; // Update last rendered messages
+    }
 
-        let typingTimeout = null;
-        messageInput.addEventListener('input', () => {
-            if (currentConversationRef) {
+    let typingTimeout = null;
+    messageInput.addEventListener('input', () => {
+        if (currentConversationRef) {
+            updateDoc(currentConversationRef, {
+                userTyping: true
+            });
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
                 updateDoc(currentConversationRef, {
-                    userTyping: true
+                    userTyping: false
                 });
-                clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(() => {
-                    updateDoc(currentConversationRef, {
-                        userTyping: false
-                    });
-                }, 1500);
+            }, 1500);
+        }
+    });
+
+    messageForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = messageInput.value.trim();
+        if (!text || !currentConversationRef) return;
+
+        try {
+            const docSnap = await getDoc(currentConversationRef);
+            const newMessage = {
+                author: currentUser.displayName,
+                text: text,
+                time: new Date(),
+                status: 'sent'
+            };
+
+            const conversationId = `conv_${currentUser.uid}`;
+
+            if (docSnap.exists()) {
+                await updateDoc(currentConversationRef, {
+                    messages: arrayUnion(newMessage),
+                    lastUpdated: serverTimestamp()
+                });
+            } else {
+                await setDoc(currentConversationRef, {
+                    user: {
+                        uid: currentUser.uid,
+                        name: currentUser.displayName,
+                        email: currentUser.email
+                    },
+                    admin: {
+                        name: "Support Admin"
+                    },
+                    messages: [newMessage],
+                    lastUpdated: serverTimestamp(),
+                    userTyping: false,
+                    adminTyping: false,
+                });
             }
-        });
 
-        messageForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const text = messageInput.value.trim();
-            if (!text || !currentConversationRef) return;
+            sendEmailIfNeeded(conversationId, text, currentUser);
 
-            try {
-                const docSnap = await getDoc(currentConversationRef);
-                const newMessage = {
-                    author: currentUser.displayName,
-                    text: text,
-                    time: new Date(),
-                    status: 'sent'
-                };
+            messageInput.value = "";
+            messageInput.style.height = "42px";
+            scrollToBottom();
+        } catch (err) {
+            alert("Failed to send message: " + err.message);
+        }
+    });
 
-                const conversationId = `conv_${currentUser.uid}`;
+    function setupUserChat(user) {
+        currentUser = user;
+        const conversationId = `conv_${user.uid}`;
+        currentConversationRef = doc(db, "conversations", conversationId);
 
-                if (docSnap.exists()) {
-                    await updateDoc(currentConversationRef, {
-                        messages: arrayUnion(newMessage),
-                        lastUpdated: serverTimestamp()
-                    });
-                } else {
-                    await setDoc(currentConversationRef, {
-                        user: {
-                            uid: currentUser.uid,
-                            name: currentUser.displayName,
-                            email: currentUser.email
-                        },
-                        admin: {
-                            name: "Support Admin"
-                        },
-                        messages: [newMessage],
-                        lastUpdated: serverTimestamp(),
-                        userTyping: false,
-                        adminTyping: false,
-                    });
-                }
+        onSnapshot(currentConversationRef, async (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const messages = data.messages || [];
 
-                sendEmailIfNeeded(conversationId, text, currentUser);
-
-                messageInput.value = "";
-                messageInput.style.height = "42px";
-                scrollToBottom();
-            } catch (err) {
-                alert("Failed to send message: " + err.message);
-            }
-        });
-
-        function setupUserChat(user) {
-            currentUser = user;
-            const conversationId = `conv_${user.uid}`;
-            currentConversationRef = doc(db, "conversations", conversationId);
-
-            onSnapshot(currentConversationRef, async (docSnap) => {
+                // Update placeholder visibility
                 if (messagesPlaceholder) {
-                    if (docSnap.exists() && (docSnap.data().messages?.length > 0)) {
+                    if (messages.length > 0) {
                         messagesPlaceholder.style.display = 'none';
                     } else {
                         messagesPlaceholder.style.display = 'flex';
                     }
                 }
 
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    renderMessages(data.messages || []);
+                // Only re-render messages if they have changed
+                if (!lastMessages || JSON.stringify(messages) !== JSON.stringify(lastMessages)) {
+                    renderMessages(messages);
+                }
 
-                    if (data.adminTyping) {
-                        typingIndicatorContainer.innerHTML = `
-                            <div class="message-row receiver">
-                                <div class="message-content">
-                                    <div class="chat-bubble receiver typing-indicator">
-                                        <span></span><span></span><span></span>
-                                    </div>
+                // Update typing indicator
+                if (data.adminTyping) {
+                    typingIndicatorContainer.innerHTML = `
+                        <div class="message-row receiver">
+                            <div class="message-content">
+                                <div class="chat-bubble receiver typing-indicator">
+                                    <span></span><span></span><span></span>
                                 </div>
                             </div>
-                        `;
-                    } else {
-                        typingIndicatorContainer.innerHTML = "";
-                    }
-
-                    const unreadAdminMessages = (data.messages || []).filter(msg => msg.author !== user.displayName && msg.status !== 'read');
-                    if (unreadAdminMessages.length > 0) {
-                        const updatedMessages = (data.messages || []).map(msg => {
-                            if (msg.author !== user.displayName && msg.status !== 'read') {
-                                return { ...msg,
-                                    status: 'read'
-                                };
-                            }
-                            return msg;
-                        });
-                        updateDoc(currentConversationRef, {
-                            messages: updatedMessages
-                        });
-                    }
+                        </div>
+                    `;
+                } else {
+                    typingIndicatorContainer.innerHTML = "";
                 }
-                scrollToBottom();
-            });
-        }
 
-        function toggleChatMenu() {
-            chatMenuDropdown.classList.toggle('hidden');
-        }
-
-        async function clearChat() {
-            if (!currentConversationRef) return;
-            if (confirm("Are you sure you want to clear this chat? This action cannot be undone.")) {
-                try {
-                    await updateDoc(currentConversationRef, {
-                        messages: []
+                // Mark unread admin messages as read
+                const unreadAdminMessages = messages.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
+                if (unreadAdminMessages.length > 0) {
+                    const updatedMessages = messages.map(msg => {
+                        if (msg.author !== user.displayName && msg.status !== 'read') {
+                            return { ...msg, status: 'read' };
+                        }
+                        return msg;
                     });
-                    console.log("Chat cleared successfully.");
-                } catch (error) {
-                    console.error("Error clearing chat: ", error);
-                    alert("Failed to clear chat. Please try again.");
+                    updateDoc(currentConversationRef, {
+                        messages: updatedMessages
+                    });
                 }
-            }
-            toggleChatMenu();
-        }
 
-        async function deleteChat() {
-            if (!currentConversationRef) return;
-            if (confirm("Are you sure you want to delete this chat? This will permanently remove the conversation and cannot be undone.")) {
-                try {
-                    await deleteDoc(currentConversationRef);
-                    console.log("Chat deleted successfully.");
-                    messagesContainer.innerHTML = '';
-                    messagesPlaceholder.style.display = 'flex';
-                    currentConversationRef = null;
-                } catch (error) {
-                    console.error("Error deleting chat: ", error);
-                    alert("Failed to delete chat. Please try again.");
-                }
-            }
-            toggleChatMenu();
-        }
-
-        chatMenuButton.addEventListener('click', toggleChatMenu);
-        clearChatOption.addEventListener('click', (e) => {
-            e.preventDefault();
-            clearChat();
-        });
-        deleteChatOption.addEventListener('click', (e) => {
-            e.preventDefault();
-            deleteChat();
-        });
-        signOutOption.addEventListener('click', (e) => {
-            e.preventDefault();
-            logout();
-        });
-
-        window.logout = async () => {
-            try {
-                await signOut(auth);
-                window.location.href = "index.html";
-            } catch (error) {
-                console.error("Sign out error:", error);
-            }
-        };
-
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                setupUserChat(user);
+                scrollToBottom();
             } else {
-                window.location.href = "index.html";
+                // Handle case where conversation doesn't exist
+                if (messagesPlaceholder) {
+                    messagesPlaceholder.style.display = 'flex';
+                }
+                typingIndicatorContainer.innerHTML = "";
+                messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el => el.remove());
+                lastMessages = null;
             }
         });
+    }
 
-        messageInput.addEventListener("input", () => {
-            messageInput.style.height = "42px";
-            messageInput.style.height = messageInput.scrollHeight + "px";
-        });
+    function toggleChatMenu() {
+        chatMenuDropdown.classList.toggle('hidden');
+    }
 
-        messageInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                messageForm.requestSubmit();
+    async function clearChat() {
+        if (!currentConversationRef) return;
+        if (confirm("Are you sure you want to clear this chat? This action cannot be undone.")) {
+            try {
+                await updateDoc(currentConversationRef, {
+                    messages: []
+                });
+                console.log("Chat cleared successfully.");
+            } catch (error) {
+                console.error("Error clearing chat: ", error);
+                alert("Failed to clear chat. Please try again.");
             }
-        });
-    </script>
+        }
+        toggleChatMenu();
+    }
+
+    async function deleteChat() {
+        if (!currentConversationRef) return;
+        if (confirm("Are you sure you want to delete this chat? This will permanently remove the conversation and cannot be undone.")) {
+            try {
+                await deleteDoc(currentConversationRef);
+                console.log("Chat deleted successfully.");
+                messagesContainer.innerHTML = '';
+                messagesPlaceholder.style.display = 'flex';
+                currentConversationRef = null;
+                lastMessages = null;
+            } catch (error) {
+                console.error("Error deleting chat: ", error);
+                alert("Failed to delete chat. Please try again.");
+            }
+        }
+        toggleChatMenu();
+    }
+
+    chatMenuButton.addEventListener('click', toggleChatMenu);
+    clearChatOption.addEventListener('click', (e) => {
+        e.preventDefault();
+        clearChat();
+    });
+    deleteChatOption.addEventListener('click', (e) => {
+        e.preventDefault();
+        deleteChat();
+    });
+    signOutOption.addEventListener('click', (e) => {
+        e.preventDefault();
+        logout();
+    });
+
+    window.logout = async () => {
+        try {
+            await signOut(auth);
+            window.location.href = "index.html";
+        } catch (error) {
+            console.error("Sign out error:", error);
+        }
+    };
+
+    onAuthStateChanged(auth, user => {
+        if (user) {
+            setupUserChat(user);
+        } else {
+            window.location.href = "index.html";
+        }
+    });
+
+    messageInput.addEventListener("input", () => {
+        messageInput.style.height = "42px";
+        messageInput.style.height = messageInput.scrollHeight + "px";
+    });
+
+    messageInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            messageForm.requestSubmit();
+        }
+    });
+</script>
 </body>
 </html>
