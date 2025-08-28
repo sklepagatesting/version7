@@ -843,23 +843,22 @@
             const conversationId = `conv_${user.uid}`;
             currentConversationRef = doc(db, "conversations", conversationId);
             
-            onSnapshot(currentConversationRef, async (docSnap) => {
+            onSnapshot(currentConversationRef, (docSnap) => {
                 const messagesData = docSnap.exists() ? docSnap.data().messages || [] : [];
-
+                
                 if (messagesPlaceholder) {
                     messagesPlaceholder.style.display = messagesData.length > 0 ? 'none' : 'flex';
                 }
 
-                // Initial load: Render only the last 10 messages
+                // Initial render: Render all messages
                 if (!hasRenderedInitialMessages) {
-                    messagesContainer.innerHTML = ''; // Clear existing placeholder
-                    const initialMessages = messagesData.slice(-10); // Get the last 10 messages
-                    renderNewMessages(initialMessages);
-                    prevMessageCount = initialMessages.length;
+                    messagesContainer.innerHTML = '';
+                    renderNewMessages(messagesData);
+                    prevMessageCount = messagesData.length;
                     hasRenderedInitialMessages = true;
                     scrollToBottom();
                 } else {
-                    // Subsequent updates: Only render new messages to fix flicker
+                    // Subsequent updates: Only render new messages
                     if (messagesData.length > prevMessageCount) {
                         const newMessages = messagesData.slice(prevMessageCount);
                         renderNewMessages(newMessages);
@@ -868,7 +867,6 @@
                     }
                 }
 
-                // Handle typing indicator
                 const data = docSnap.data();
                 if (data && data.adminTyping) {
                     typingIndicatorContainer.innerHTML = `
@@ -885,7 +883,6 @@
                     typingIndicatorContainer.innerHTML = "";
                 }
 
-                // Mark unread admin messages as read
                 const unreadAdminMessages = messagesData.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
                 if (unreadAdminMessages.length > 0) {
                     const updatedMessages = messagesData.map(msg => {
