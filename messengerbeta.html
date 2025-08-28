@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 
 <head>
     <meta charset="UTF-8" />
@@ -628,7 +628,8 @@
 
         let currentUser = null;
         let currentConversationRef = null;
-        let hasRenderedInitialMessages = false; // New flag for initial load
+        let hasRenderedInitialMessages = false; // New flag to track initial render
+        let prevMessageCount = 0; // Tracks the number of messages already rendered
 
         const messagesContainer = document.getElementById("messagesContainer");
         const messageForm = document.getElementById("messageForm");
@@ -759,8 +760,8 @@
                 const timeEl = document.createElement("div");
                 timeEl.className = "message-time flex items-center gap-1";
                 timeEl.textContent = formatTimestamp(msg.time);
-                
-                // Add read/sent icons only for the last message
+
+                // Add read/sent icons only for the sender's last message
                 if (isSender && msg.status === 'read') {
                     timeEl.innerHTML += readIcon;
                 } else if (isSender) {
@@ -799,7 +800,7 @@
                 const newMessage = {
                     author: currentUser.displayName,
                     text: text,
-                    time: new Date(), // Use new Date() for the timestamp
+                    time: serverTimestamp(),
                     status: 'sent'
                 };
 
@@ -841,11 +842,9 @@
             currentUser = user;
             const conversationId = `conv_${user.uid}`;
             currentConversationRef = doc(db, "conversations", conversationId);
-            let prevMessageCount = 0; // Tracks the number of messages already rendered
-
+            
             onSnapshot(currentConversationRef, async (docSnap) => {
                 const messagesData = docSnap.exists() ? docSnap.data().messages || [] : [];
-                const currentMessageCount = messagesContainer.querySelectorAll('.message-row').length;
 
                 if (messagesPlaceholder) {
                     messagesPlaceholder.style.display = messagesData.length > 0 ? 'none' : 'flex';
