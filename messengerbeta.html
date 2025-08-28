@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -65,6 +66,7 @@
         }
 
         @keyframes float {
+
             0%,
             100% {
                 transform: translateY(0px) rotate(0deg);
@@ -401,7 +403,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4-20px rgba(102, 126, 234, 0.4);
             position: relative;
             z-index: 1;
         }
@@ -603,6 +605,11 @@
             updateDoc,
             arrayUnion,
             serverTimestamp,
+            query,
+            limit,
+            orderBy,
+            startAfter,
+            getCountFromServer
         } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import {
             getAuth,
@@ -626,7 +633,9 @@
 
         let currentUser = null;
         let currentConversationRef = null;
-        let lastRenderedTimestamp = 0; // New variable to track the last rendered message
+        let lastVisible = null; // Stores the last document snapshot for pagination
+        let loadingOlderMessages = false;
+        let unsubscribe = null; // To store the unsubscribe function for the real-time listener
 
         const messagesContainer = document.getElementById("messagesContainer");
         const messageForm = document.getElementById("messageForm");
@@ -634,7 +643,6 @@
         const typingIndicatorContainer = document.getElementById("typingIndicatorContainer");
         const messagesPlaceholder = document.querySelector('.message-placeholder');
 
-        // New function to send email only if a new one hasn't been sent in the last 5 minutes
         const sendEmailIfNeeded = async (conversationId, message, user) => {
             const convRef = doc(db, "conversations", conversationId);
             const convSnap = await getDoc(convRef);
@@ -644,11 +652,9 @@
             let shouldSend = false;
 
             if (!convData || !convData.lastEmailSentAt) {
-                // first message or first time sending an email
                 shouldSend = true;
             } else {
                 const lastEmail = convData.lastEmailSentAt.toDate();
-                // Check if 5 minutes have passed
                 const diffMinutes = (now - lastEmail) / (1000 * 60);
                 if (diffMinutes >= 5) {
                     shouldSend = true;
@@ -656,7 +662,6 @@
             }
 
             if (shouldSend) {
-                // Find all admin emails dynamically from the 'admin' collection
                 const adminDocs = await getDocs(collection(db, "admin"));
                 const adminEmails = [];
                 adminDocs.forEach(doc => {
@@ -666,7 +671,6 @@
                     }
                 });
 
-                // Join the emails into a single comma-separated string
                 const toEmailList = adminEmails.join(",");
 
                 if (toEmailList.length > 0) {
@@ -687,23 +691,14 @@
                 } else {
                     console.log("⚠️ No admin emails found. Skipping email notification.");
                 }
-
             } else {
                 console.log("⏳ Skipped, email already sent within last 5 minutes");
             }
         };
 
-        function escapeHtml(text) {
-            if (typeof text !== 'string') return "";
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
-        }
-
         function formatTimestamp(date) {
             if (!date) return '';
             const d = date.toDate ? date.toDate() : new Date(date);
-
-            // Always format in Asia/Manila (PHT)
             const optionsTime = {
                 hour: 'numeric',
                 minute: '2-digit',
@@ -751,27 +746,10 @@
         const readIcon =
             `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
-        // FIX: Efficiently add only new messages instead of re-rendering everything
-        function renderMessages(allMessages) {
+        function renderMessages(messages, prepend = false) {
             const fragment = document.createDocumentFragment();
-            let newMessagesAdded = false;
 
-            // Find the index of the first new message
-            let startIndex = 0;
-            if (lastRenderedTimestamp > 0) {
-                const lastMessageIndex = allMessages.findIndex(msg => msg.time.toMillis() === lastRenderedTimestamp);
-                if (lastMessageIndex !== -1) {
-                    startIndex = lastMessageIndex + 1;
-                }
-            }
-
-            // If there's a new message, find its index and start from there
-            if (startIndex === 0 && allMessages.length > 0) {
-                lastRenderedTimestamp = allMessages[allMessages.length - 1].time.toMillis();
-            }
-
-            for (let i = startIndex; i < allMessages.length; i++) {
-                const msg = allMessages[i];
+            messages.forEach((msg, i) => {
                 const isSender = msg.author === currentUser.displayName;
                 const row = document.createElement("div");
                 row.className = "message-row " + (isSender ? "sender" : "receiver");
@@ -785,10 +763,10 @@
 
                 content.appendChild(bubble);
 
-                const isLastMessage = (i === allMessages.length - 1);
+                const isLastMessage = (i === messages.length - 1);
                 let lastMessageTime = null;
                 if (i > 0) {
-                    lastMessageTime = allMessages[i - 1].time;
+                    lastMessageTime = messages[i - 1].time;
                 }
                 const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate()
                     .getTime() > 300000);
@@ -809,12 +787,13 @@
                 }
                 row.appendChild(content);
                 fragment.appendChild(row);
-                newMessagesAdded = true;
-            }
+            });
 
-            if (newMessagesAdded) {
+            if (prepend) {
+                const firstMessage = messagesContainer.querySelector('.message-row');
+                messagesContainer.insertBefore(fragment, firstMessage);
+            } else {
                 messagesContainer.insertBefore(fragment, typingIndicatorContainer);
-                lastRenderedTimestamp = allMessages[allMessages.length - 1].time.toMillis();
             }
         }
 
@@ -839,23 +818,25 @@
             if (!text || !currentConversationRef) return;
 
             try {
-                const docSnap = await getDoc(currentConversationRef);
                 const newMessage = {
                     author: currentUser.displayName,
                     text: text,
-                    time: new Date(),
+                    time: serverTimestamp(),
                     status: 'sent'
                 };
 
                 const conversationId = `conv_${currentUser.uid}`;
 
+                const convRef = doc(db, "conversations", conversationId);
+                const docSnap = await getDoc(convRef);
+
                 if (docSnap.exists()) {
-                    await updateDoc(currentConversationRef, {
+                    await updateDoc(convRef, {
                         messages: arrayUnion(newMessage),
                         lastUpdated: serverTimestamp()
                     });
                 } else {
-                    await setDoc(currentConversationRef, {
+                    await setDoc(convRef, {
                         user: {
                             uid: currentUser.uid,
                             name: currentUser.displayName,
@@ -871,7 +852,6 @@
                     });
                 }
 
-                // Call the new function to handle email notification logic
                 sendEmailIfNeeded(conversationId, text, currentUser);
 
                 messageInput.value = "";
@@ -882,33 +862,90 @@
             }
         });
 
-        function setupUserChat(user) {
-            currentUser = user;
+        async function loadInitialMessages(user) {
             const conversationId = `conv_${user.uid}`;
-            currentConversationRef = doc(db, "conversations", conversationId);
+            const convRef = doc(db, "conversations", conversationId);
+            currentConversationRef = convRef;
+            messagesContainer.innerHTML = ''; // Clear for fresh load
 
-            onSnapshot(currentConversationRef, async (docSnap) => {
-                if (messagesPlaceholder) {
-                    if (docSnap.exists() && (docSnap.data().messages?.length > 0)) {
-                        messagesPlaceholder.style.display = 'none';
-                    } else {
-                        messagesPlaceholder.style.display = 'flex';
-                    }
-                }
+            // Show placeholder if no messages exist
+            const convSnap = await getDoc(convRef);
+            if (!convSnap.exists() || (convSnap.data().messages?.length === 0)) {
+                messagesPlaceholder.style.display = 'flex';
+                typingIndicatorContainer.innerHTML = '';
+                return;
+            } else {
+                messagesPlaceholder.style.display = 'none';
+            }
 
+            const messageCollectionRef = collection(convRef, 'messages');
+            const q = query(messageCollectionRef, orderBy('time', 'desc'), limit(10));
+
+            const querySnapshot = await getDocs(q);
+            const messages = [];
+
+            querySnapshot.forEach(doc => {
+                messages.unshift({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            // Store the last visible document for future queries
+            lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+            renderMessages(messages, false);
+            scrollToBottom();
+
+            // Setup real-time listener for new messages
+            setupRealtimeListener(user);
+        }
+
+        async function loadOlderMessages() {
+            if (loadingOlderMessages || !lastVisible) return;
+
+            loadingOlderMessages = true;
+
+            const conversationId = `conv_${currentUser.uid}`;
+            const convRef = doc(db, "conversations", conversationId);
+            const messageCollectionRef = collection(convRef, 'messages');
+
+            const q = query(messageCollectionRef, orderBy('time', 'desc'), startAfter(lastVisible), limit(10));
+            const querySnapshot = await getDocs(q);
+
+            const messages = [];
+            querySnapshot.forEach(doc => {
+                messages.unshift({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            if (querySnapshot.docs.length > 0) {
+                lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+                const oldHeight = messagesContainer.scrollHeight;
+                renderMessages(messages, true);
+                const newHeight = messagesContainer.scrollHeight;
+                messagesContainer.scrollTop = newHeight - oldHeight;
+            } else {
+                lastVisible = null; // No more messages to load
+            }
+            loadingOlderMessages = false;
+        }
+
+        function setupRealtimeListener(user) {
+            const conversationId = `conv_${user.uid}`;
+            const convRef = doc(db, "conversations", conversationId);
+            
+            if (unsubscribe) {
+                unsubscribe();
+            }
+
+            unsubscribe = onSnapshot(convRef, async (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
 
-                    // Check if the messages array has changed
-                    const messages = data.messages || [];
-                    const prevMessagesCount = messagesContainer.querySelectorAll('.message-row').length;
-                    
-                    if (messages.length > prevMessagesCount) {
-                        // FIX: Only render new messages
-                        renderMessages(messages);
-                    }
-                    
-                    // Proper typing indicator rendering
+                    // Handle admin typing indicator
                     if (data.adminTyping) {
                         typingIndicatorContainer.innerHTML = `
                             <div class="message-row receiver">
@@ -919,14 +956,26 @@
                                 </div>
                             </div>
                         `;
+                        scrollToBottom();
                     } else {
                         typingIndicatorContainer.innerHTML = "";
                     }
 
+                    // Handle new messages added to the conversation
+                    const allMessages = data.messages || [];
+                    const lastMessage = allMessages[allMessages.length - 1];
+                    const lastMessageElement = messagesContainer.querySelector('.message-row:last-of-type .message-content .chat-bubble');
+
+                    // Only add new messages if they don't already exist in the DOM
+                    if (lastMessage && lastMessageElement && lastMessageElement.textContent !== lastMessage.text) {
+                        renderMessages([lastMessage]);
+                        scrollToBottom();
+                    }
+                    
                     // Mark unread admin messages as read
-                    const unreadAdminMessages = (data.messages || []).filter(msg => msg.author !== user.displayName && msg.status !== 'read');
+                    const unreadAdminMessages = allMessages.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
                     if (unreadAdminMessages.length > 0) {
-                        const updatedMessages = (data.messages || []).map(msg => {
+                        const updatedMessages = allMessages.map(msg => {
                             if (msg.author !== user.displayName && msg.status !== 'read') {
                                 return { ...msg,
                                     status: 'read'
@@ -934,16 +983,18 @@
                             }
                             return msg;
                         });
-                        updateDoc(currentConversationRef, {
+                        updateDoc(convRef, {
                             messages: updatedMessages
                         });
                     }
                 }
-                scrollToBottom();
             });
         }
 
         window.logout = async () => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
             try {
                 await signOut(auth);
                 window.location.href = "index.html";
@@ -954,7 +1005,14 @@
 
         onAuthStateChanged(auth, user => {
             if (user) {
-                setupUserChat(user);
+                currentUser = user;
+                loadInitialMessages(user);
+
+                messagesContainer.addEventListener('scroll', () => {
+                    if (messagesContainer.scrollTop === 0) {
+                        loadOlderMessages();
+                    }
+                });
             } else {
                 window.location.href = "index.html";
             }
