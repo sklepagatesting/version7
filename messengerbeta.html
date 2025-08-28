@@ -45,9 +45,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 40% 80%, rgba(120, 200, 255, 0.3) 0%, transparent 50%);
+            background: radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%), radial-gradient(circle at 40% 80%, rgba(120, 200, 255, 0.3) 0%, transparent 50%);
             animation: float 20s ease-in-out infinite;
             z-index: -1;
         }
@@ -59,14 +57,12 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle at 60% 30%, rgba(255, 150, 120, 0.2) 0%, transparent 40%),
-                radial-gradient(circle at 90% 70%, rgba(120, 255, 150, 0.2) 0%, transparent 40%);
+            background: radial-gradient(circle at 60% 30%, rgba(255, 150, 120, 0.2) 0%, transparent 40%), radial-gradient(circle at 90% 70%, rgba(120, 255, 150, 0.2) 0%, transparent 40%);
             animation: float 25s ease-in-out infinite reverse;
             z-index: -1;
         }
 
         @keyframes float {
-
             0%,
             100% {
                 transform: translateY(0px) rotate(0deg);
@@ -628,8 +624,7 @@
 
         let currentUser = null;
         let currentConversationRef = null;
-        let hasRenderedInitialMessages = false; // New flag to track initial render
-        let prevMessageCount = 0; // Tracks the number of messages already rendered
+        let lastReceivedMessageCount = 0; // New variable to track the number of messages
 
         const messagesContainer = document.getElementById("messagesContainer");
         const messageForm = document.getElementById("messageForm");
@@ -637,6 +632,7 @@
         const typingIndicatorContainer = document.getElementById("typingIndicatorContainer");
         const messagesPlaceholder = document.querySelector('.message-placeholder');
 
+        // New function to send email only if a new one hasn't been sent in the last 5 minutes
         const sendEmailIfNeeded = async (conversationId, message, user) => {
             const convRef = doc(db, "conversations", conversationId);
             const convSnap = await getDoc(convRef);
@@ -646,9 +642,11 @@
             let shouldSend = false;
 
             if (!convData || !convData.lastEmailSentAt) {
+                // first message or first time sending an email
                 shouldSend = true;
             } else {
                 const lastEmail = convData.lastEmailSentAt.toDate();
+                // Check if 5 minutes have passed
                 const diffMinutes = (now - lastEmail) / (1000 * 60);
                 if (diffMinutes >= 5) {
                     shouldSend = true;
@@ -656,6 +654,8 @@
             }
 
             if (shouldSend) {
+                // --- START OF NEW CODE ---
+                // Find all admin emails dynamically from the 'admin' collection
                 const adminDocs = await getDocs(collection(db, "admin"));
                 const adminEmails = [];
                 adminDocs.forEach(doc => {
@@ -665,7 +665,9 @@
                     }
                 });
 
+                // Join the emails into a single comma-separated string
                 const toEmailList = adminEmails.join(",");
+                // --- END OF NEW CODE ---
 
                 if (toEmailList.length > 0) {
                     await emailjs.send("service_h72d2xw", "template_9g05rdg", {
@@ -673,7 +675,9 @@
                         name: user.displayName || "Guest",
                         time: now.toLocaleString(),
                         message: message,
+                        // --- UPDATED to use the dynamic email list ---
                         to_email: toEmailList,
+                        // --- END OF UPDATE ---
                         email: user.email || "no-reply@test",
                     });
 
@@ -685,14 +689,23 @@
                 } else {
                     console.log("⚠️ No admin emails found. Skipping email notification.");
                 }
+
             } else {
                 console.log("⏳ Skipped, email already sent within last 5 minutes");
             }
         };
 
+        function escapeHtml(text) {
+            if (typeof text !== 'string') return "";
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
         function formatTimestamp(date) {
             if (!date) return '';
             const d = date.toDate ? date.toDate() : new Date(date);
+
+            // Always format in Asia/Manila (PHT)
             const optionsTime = {
                 hour: 'numeric',
                 minute: '2-digit',
@@ -740,39 +753,101 @@
         const readIcon =
             `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
-        // New function to render only newly received messages
-        function renderNewMessages(newMessages) {
-            const fragment = document.createDocumentFragment();
-            for (const msg of newMessages) {
-                const isSender = msg.author === currentUser.displayName;
-                const row = document.createElement("div");
-                row.className = "message-row " + (isSender ? "sender" : "receiver");
+        // Function to create and return a single message element
+        function createMessageElement(msg, allMessages, index) {
+            const isSender = msg.author === currentUser.displayName;
+            const row = document.createElement("div");
+            row.className = "message-row " + (isSender ? "sender" : "receiver");
 
-                const content = document.createElement("div");
-                content.className = "message-content";
+            const content = document.createElement("div");
+            content.className = "message-content";
 
-                const bubble = document.createElement("div");
-                bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
-                bubble.textContent = msg.text;
+            const bubble = document.createElement("div");
+            bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
+            bubble.textContent = msg.text;
 
-                content.appendChild(bubble);
+            content.appendChild(bubble);
 
+            const isLastMessage = (index === allMessages.length - 1);
+            let lastMessageTime = null;
+            if (index > 0) {
+                lastMessageTime = allMessages[index - 1].time;
+            }
+            const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate()
+                .getTime() > 300000);
+
+            if (showTime || (isSender && isLastMessage)) {
                 const timeEl = document.createElement("div");
                 timeEl.className = "message-time flex items-center gap-1";
                 timeEl.textContent = formatTimestamp(msg.time);
 
-                // Add read/sent icons only for the sender's last message
-                if (isSender && msg.status === 'read') {
-                    timeEl.innerHTML += readIcon;
-                } else if (isSender) {
-                    timeEl.innerHTML += sentIcon;
+                if (isSender && isLastMessage) {
+                    if (msg.status === 'read') {
+                        timeEl.innerHTML += readIcon;
+                    } else {
+                        timeEl.innerHTML += sentIcon;
+                    }
                 }
-
                 content.appendChild(timeEl);
-                row.appendChild(content);
-                fragment.appendChild(row);
             }
-            messagesContainer.insertBefore(fragment, typingIndicatorContainer);
+            row.appendChild(content);
+            return row;
+        }
+
+        let isInitialLoad = true; // New flag for initial load
+
+        // Updated function to render messages without flickering
+        function renderMessages(allMessages) {
+            const hasMessages = allMessages && allMessages.length > 0;
+            if (messagesPlaceholder) {
+                messagesPlaceholder.style.display = hasMessages ? 'none' : 'flex';
+            }
+
+            // Check if this is the first time we're receiving messages
+            if (isInitialLoad) {
+                messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)')
+                    .forEach(el => el.remove());
+
+                // Load only the last 10 messages, or all if there are fewer
+                const initialMessages = allMessages.slice(-10);
+                const fragment = document.createDocumentFragment();
+                initialMessages.forEach((msg, index) => {
+                    fragment.appendChild(createMessageElement(msg, allMessages,
+                        index));
+                });
+                messagesContainer.insertBefore(fragment, typingIndicatorContainer);
+                isInitialLoad = false;
+                lastReceivedMessageCount = allMessages.length;
+                scrollToBottom();
+
+            } else if (allMessages.length > lastReceivedMessageCount) {
+                // Only render new messages since the last update
+                const newMessages = allMessages.slice(lastReceivedMessageCount);
+                const fragment = document.createDocumentFragment();
+                const lastIndex = lastReceivedMessageCount;
+                newMessages.forEach((msg, index) => {
+                    // Pass the full array and an adjusted index
+                    fragment.appendChild(createMessageElement(msg, allMessages, lastIndex + index));
+                });
+                messagesContainer.insertBefore(fragment, typingIndicatorContainer);
+                lastReceivedMessageCount = allMessages.length;
+                scrollToBottom();
+
+            } else if (allMessages.length === lastReceivedMessageCount) {
+                // Handle status updates for the last message
+                if (allMessages.length > 0) {
+                    const lastMessage = allMessages[allMessages.length - 1];
+                    if (lastMessage.author === currentUser.displayName) {
+                        const lastMessageElement = messagesContainer.querySelector(
+                            '.message-row.sender:last-of-type .message-time');
+                        if (lastMessageElement) {
+                            if (lastMessage.status === 'read' && !lastMessageElement.querySelector('svg.text-blue-500')) {
+                                lastMessageElement.innerHTML = formatTimestamp(lastMessage.time) + readIcon;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         let typingTimeout = null;
@@ -800,7 +875,7 @@
                 const newMessage = {
                     author: currentUser.displayName,
                     text: text,
-                    time: serverTimestamp(),
+                    time: new Date(),
                     status: 'sent'
                 };
 
@@ -828,6 +903,7 @@
                     });
                 }
 
+                // Call the new function to handle email notification logic
                 sendEmailIfNeeded(conversationId, text, currentUser);
 
                 messageInput.value = "";
@@ -842,60 +918,46 @@
             currentUser = user;
             const conversationId = `conv_${user.uid}`;
             currentConversationRef = doc(db, "conversations", conversationId);
-            
-            onSnapshot(currentConversationRef, (docSnap) => {
-                const messagesData = docSnap.exists() ? docSnap.data().messages || [] : [];
-                
-                if (messagesPlaceholder) {
-                    messagesPlaceholder.style.display = messagesData.length > 0 ? 'none' : 'flex';
-                }
+            isInitialLoad = true; // Reset the flag for a new user/session
 
-                // Initial render: Render all messages
-                if (!hasRenderedInitialMessages) {
-                    messagesContainer.innerHTML = '';
-                    renderNewMessages(messagesData);
-                    prevMessageCount = messagesData.length;
-                    hasRenderedInitialMessages = true;
-                    scrollToBottom();
-                } else {
-                    // Subsequent updates: Only render new messages
-                    if (messagesData.length > prevMessageCount) {
-                        const newMessages = messagesData.slice(prevMessageCount);
-                        renderNewMessages(newMessages);
-                        prevMessageCount = messagesData.length;
-                        scrollToBottom();
-                    }
-                }
+            onSnapshot(currentConversationRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    renderMessages(data.messages || []);
 
-                const data = docSnap.data();
-                if (data && data.adminTyping) {
-                    typingIndicatorContainer.innerHTML = `
-                        <div class="message-row receiver">
-                            <div class="message-content">
-                                <div class="chat-bubble receiver typing-indicator">
-                                    <span></span><span></span><span></span>
+                    // Proper typing indicator rendering
+                    if (data.adminTyping) {
+                        typingIndicatorContainer.innerHTML = `
+                            <div class="message-row receiver">
+                                <div class="message-content">
+                                    <div class="chat-bubble receiver typing-indicator">
+                                        <span></span><span></span><span></span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    `;
-                    scrollToBottom();
-                } else {
-                    typingIndicatorContainer.innerHTML = "";
-                }
+                        `;
+                    } else {
+                        typingIndicatorContainer.innerHTML = "";
+                    }
 
-                const unreadAdminMessages = messagesData.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
-                if (unreadAdminMessages.length > 0) {
-                    const updatedMessages = messagesData.map(msg => {
-                        if (msg.author !== user.displayName && msg.status !== 'read') {
-                            return { ...msg,
-                                status: 'read'
-                            };
-                        }
-                        return msg;
-                    });
-                    updateDoc(currentConversationRef, {
-                        messages: updatedMessages
-                    });
+                    // Mark unread admin messages as read
+                    const unreadAdminMessages = (data.messages || []).filter(msg => msg.author !== user.displayName && msg
+                        .status !== 'read');
+                    if (unreadAdminMessages.length > 0) {
+                        const updatedMessages = (data.messages || []).map(msg => {
+                            if (msg.author !== user.displayName && msg.status !== 'read') {
+                                return { ...msg,
+                                    status: 'read'
+                                };
+                            }
+                            return msg;
+                        });
+                        updateDoc(currentConversationRef, {
+                            messages: updatedMessages
+                        });
+                    }
+                } else {
+                    renderMessages([]); // Handle case where conversation doesn't exist yet
                 }
             });
         }
