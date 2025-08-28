@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Messages</title>
     <link rel="stylesheet" href="font/font.css">
-       <style>
+    <style>
         :root {
             --sender-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             --receiver-bg: rgba(255, 255, 255, 0.95);
@@ -44,8 +44,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: 
-                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+            background: radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
                 radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
                 radial-gradient(circle at 40% 80%, rgba(120, 200, 255, 0.3) 0%, transparent 50%);
             animation: float 20s ease-in-out infinite;
@@ -59,17 +58,25 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: 
-                radial-gradient(circle at 60% 30%, rgba(255, 150, 120, 0.2) 0%, transparent 40%),
+            background: radial-gradient(circle at 60% 30%, rgba(255, 150, 120, 0.2) 0%, transparent 40%),
                 radial-gradient(circle at 90% 70%, rgba(120, 255, 150, 0.2) 0%, transparent 40%);
             animation: float 25s ease-in-out infinite reverse;
             z-index: -1;
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            33% { transform: translateY(-20px) rotate(1deg); }
-            66% { transform: translateY(10px) rotate(-1deg); }
+            0%,
+            100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+
+            33% {
+                transform: translateY(-20px) rotate(1deg);
+            }
+
+            66% {
+                transform: translateY(10px) rotate(-1deg);
+            }
         }
 
         .chat-app {
@@ -183,6 +190,7 @@
                 opacity: 0;
                 transform: translateY(10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -253,9 +261,17 @@
         }
 
         @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
         }
 
         .message-time {
@@ -360,6 +376,7 @@
         .chat-input-wrapper textarea::-webkit-scrollbar-track {
             background: transparent;
         }
+
         .chat-input-wrapper textarea.context::-webkit-scrollbar {
             display: none;
         }
@@ -491,6 +508,7 @@
                 transform: translateY(0);
                 opacity: 0.7;
             }
+
             to {
                 transform: translateY(-6px);
                 opacity: 1;
@@ -585,7 +603,6 @@
             updateDoc,
             arrayUnion,
             serverTimestamp,
-            FieldValue
         } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import {
             getAuth,
@@ -609,6 +626,7 @@
 
         let currentUser = null;
         let currentConversationRef = null;
+        let lastRenderedTimestamp = 0; // New variable to track the last rendered message
 
         const messagesContainer = document.getElementById("messagesContainer");
         const messageForm = document.getElementById("messageForm");
@@ -638,7 +656,6 @@
             }
 
             if (shouldSend) {
-                // --- START OF NEW CODE ---
                 // Find all admin emails dynamically from the 'admin' collection
                 const adminDocs = await getDocs(collection(db, "admin"));
                 const adminEmails = [];
@@ -651,7 +668,6 @@
 
                 // Join the emails into a single comma-separated string
                 const toEmailList = adminEmails.join(",");
-                // --- END OF NEW CODE ---
 
                 if (toEmailList.length > 0) {
                     await emailjs.send("service_h72d2xw", "template_9g05rdg", {
@@ -659,9 +675,7 @@
                         name: user.displayName || "Guest",
                         time: now.toLocaleString(),
                         message: message,
-                        // --- UPDATED to use the dynamic email list ---
                         to_email: toEmailList,
-                        // --- END OF UPDATE ---
                         email: user.email || "no-reply@test",
                     });
 
@@ -737,13 +751,26 @@
         const readIcon =
             `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
+        // FIX: Efficiently add only new messages instead of re-rendering everything
         function renderMessages(allMessages) {
-            // Clear all messages before re-rendering
-            messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el =>
-                el.remove());
-
             const fragment = document.createDocumentFragment();
-            for (let i = 0; i < allMessages.length; i++) {
+            let newMessagesAdded = false;
+
+            // Find the index of the first new message
+            let startIndex = 0;
+            if (lastRenderedTimestamp > 0) {
+                const lastMessageIndex = allMessages.findIndex(msg => msg.time.toMillis() === lastRenderedTimestamp);
+                if (lastMessageIndex !== -1) {
+                    startIndex = lastMessageIndex + 1;
+                }
+            }
+
+            // If there's a new message, find its index and start from there
+            if (startIndex === 0 && allMessages.length > 0) {
+                lastRenderedTimestamp = allMessages[allMessages.length - 1].time.toMillis();
+            }
+
+            for (let i = startIndex; i < allMessages.length; i++) {
                 const msg = allMessages[i];
                 const isSender = msg.author === currentUser.displayName;
                 const row = document.createElement("div");
@@ -782,8 +809,13 @@
                 }
                 row.appendChild(content);
                 fragment.appendChild(row);
+                newMessagesAdded = true;
             }
-            messagesContainer.insertBefore(fragment, typingIndicatorContainer);
+
+            if (newMessagesAdded) {
+                messagesContainer.insertBefore(fragment, typingIndicatorContainer);
+                lastRenderedTimestamp = allMessages[allMessages.length - 1].time.toMillis();
+            }
         }
 
         let typingTimeout = null;
@@ -866,8 +898,16 @@
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    renderMessages(data.messages || []);
 
+                    // Check if the messages array has changed
+                    const messages = data.messages || [];
+                    const prevMessagesCount = messagesContainer.querySelectorAll('.message-row').length;
+                    
+                    if (messages.length > prevMessagesCount) {
+                        // FIX: Only render new messages
+                        renderMessages(messages);
+                    }
+                    
                     // Proper typing indicator rendering
                     if (data.adminTyping) {
                         typingIndicatorContainer.innerHTML = `
