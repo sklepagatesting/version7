@@ -10,6 +10,7 @@
             --sender-bg: #0084ff;
             --receiver-bg: #e5e5ea;
             --body-bg: #f5f5f5;
+            --search-bg: #f1f3f5;
         }
 
         html {
@@ -41,10 +42,49 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .chat-header.scrolled {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .chat-header .font-semibold {
             font-weight: 600;
+        }
+
+        .chat-header .search-container {
+            flex: 1;
+            max-width: 300px;
+            margin: 0 1rem;
+            position: relative;
+        }
+
+        .chat-header .search-input {
+            width: 100%;
+            padding: 8px 12px 8px 36px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            outline: none;
+            background: var(--search-bg);
+            transition: width 0.3s ease, background 0.3s ease;
+        }
+
+        .chat-header .search-input:focus {
+            background: #fff;
+            width: 110%;
+        }
+
+        .chat-header .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            width: 16px;
+            height: 16px;
         }
 
         .chat-menu-container {
@@ -57,6 +97,11 @@
             border: none;
             cursor: pointer;
             padding: 0.5rem;
+            transition: transform 0.2s ease;
+        }
+
+        .chat-menu-toggle-button:hover {
+            transform: scale(1.1);
         }
 
         .chat-menu-toggle-button svg {
@@ -76,6 +121,14 @@
             border-radius: 8px;
             overflow: hidden;
             margin-top: 8px;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .chat-menu-dropdown.open {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .chat-menu-dropdown a {
@@ -84,6 +137,7 @@
             text-decoration: none;
             display: block;
             font-size: 1rem;
+            transition: background 0.2s ease;
         }
 
         .chat-menu-dropdown a:hover {
@@ -113,6 +167,16 @@
         .message-row {
             display: flex;
             margin-bottom: 0.25rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideIn 0.3s ease forwards;
+        }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message-row.sender {
@@ -135,6 +199,11 @@
             word-wrap: break-word;
             white-space: pre-wrap;
             box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease;
+        }
+
+        .chat-bubble:hover {
+            transform: scale(1.02);
         }
 
         .chat-bubble.sender {
@@ -175,6 +244,14 @@
             color: #6b7280;
             margin-top: 4px;
             padding: 0 6px;
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards 0.3s;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
         }
 
         .message-time .text-blue-500 {
@@ -260,6 +337,16 @@
             justify-content: center;
             text-align: center;
             color: #6b7280;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 0.8;
+            }
+            50% {
+                opacity: 1;
+            }
         }
 
         .message-placeholder .mx-auto {
@@ -348,6 +435,12 @@
     <div class="chat-app" id="chatApp">
         <div class="chat-header">
             <span class="font-semibold">Support Chat</span>
+            <div class="search-container">
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1116.65 16.65z" />
+                </svg>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search messages..." />
+            </div>
             <div class="chat-menu-container">
                 <button id="chatMenuButton" class="chat-menu-toggle-button" aria-label="Chat options">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -429,6 +522,7 @@
 
         let currentUser = null;
         let currentConversationRef = null;
+        let allMessages = [];
 
         const messagesContainer = document.getElementById("messagesContainer");
         const messageForm = document.getElementById("messageForm");
@@ -440,6 +534,8 @@
         const clearChatOption = document.getElementById("clearChatOption");
         const deleteChatOption = document.getElementById("deleteChatOption");
         const signOutOption = document.getElementById("signOutOption");
+        const searchInput = document.getElementById("searchInput");
+        const chatHeader = document.querySelector('.chat-header');
 
         const sendEmailIfNeeded = async (conversationId, message, user) => {
             const convRef = doc(db, "conversations", conversationId);
@@ -552,13 +648,13 @@
         const readIcon =
             `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
-        function renderMessages(allMessages) {
+        function renderMessages(messages) {
             messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el =>
                 el.remove());
 
             const fragment = document.createDocumentFragment();
-            for (let i = 0; i < allMessages.length; i++) {
-                const msg = allMessages[i];
+            for (let i = 0; i < messages.length; i++) {
+                const msg = messages[i];
                 const isSender = msg.author === currentUser.displayName;
                 const row = document.createElement("div");
                 row.className = "message-row " + (isSender ? "sender" : "receiver");
@@ -572,10 +668,10 @@
 
                 content.appendChild(bubble);
 
-                const isLastMessage = (i === allMessages.length - 1);
+                const isLastMessage = (i === messages.length - 1);
                 let lastMessageTime = null;
                 if (i > 0) {
-                    lastMessageTime = allMessages[i - 1].time;
+                    lastMessageTime = messages[i - 1].time;
                 }
                 const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate()
                     .getTime() > 300000);
@@ -598,6 +694,13 @@
                 fragment.appendChild(row);
             }
             messagesContainer.insertBefore(fragment, typingIndicatorContainer);
+        }
+
+        function filterMessages(searchTerm) {
+            const filteredMessages = allMessages.filter(msg =>
+                msg.text.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            renderMessages(filteredMessages);
         }
 
         let typingTimeout = null;
@@ -679,7 +782,8 @@
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    renderMessages(data.messages || []);
+                    allMessages = data.messages || [];
+                    renderMessages(allMessages);
 
                     if (data.adminTyping) {
                         typingIndicatorContainer.innerHTML = `
@@ -716,6 +820,7 @@
 
         function toggleChatMenu() {
             chatMenuDropdown.classList.toggle('hidden');
+            chatMenuDropdown.classList.toggle('open');
         }
 
         async function clearChat() {
@@ -765,6 +870,18 @@
             logout();
         });
 
+        searchInput.addEventListener('input', (e) => {
+            filterMessages(e.target.value);
+        });
+
+        messagesContainer.addEventListener('scroll', () => {
+            if (messagesContainer.scrollTop > 0) {
+                chatHeader.classList.add('scrolled');
+            } else {
+                chatHeader.classList.remove('scrolled');
+            }
+        });
+
         window.logout = async () => {
             try {
                 await signOut(auth);
@@ -795,5 +912,4 @@
         });
     </script>
 </body>
-
 </html>
