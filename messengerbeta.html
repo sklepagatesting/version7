@@ -403,7 +403,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.3s ease;
-            box-shadow: 0 4-20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
             position: relative;
             z-index: 1;
         }
@@ -605,11 +605,6 @@
             updateDoc,
             arrayUnion,
             serverTimestamp,
-            query,
-            limit,
-            orderBy,
-            startAfter,
-            getCountFromServer
         } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import {
             getAuth,
@@ -633,9 +628,7 @@
 
         let currentUser = null;
         let currentConversationRef = null;
-        let lastVisible = null; // Stores the last document snapshot for pagination
-        let loadingOlderMessages = false;
-        let unsubscribe = null; // To store the unsubscribe function for the real-time listener
+        let hasRenderedInitialMessages = false; // New flag for initial load
 
         const messagesContainer = document.getElementById("messagesContainer");
         const messageForm = document.getElementById("messageForm");
@@ -746,10 +739,10 @@
         const readIcon =
             `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
 
-        function renderMessages(messages, prepend = false) {
+        // New function to render only newly received messages
+        function renderNewMessages(newMessages) {
             const fragment = document.createDocumentFragment();
-
-            messages.forEach((msg, i) => {
+            for (const msg of newMessages) {
                 const isSender = msg.author === currentUser.displayName;
                 const row = document.createElement("div");
                 row.className = "message-row " + (isSender ? "sender" : "receiver");
@@ -763,38 +756,22 @@
 
                 content.appendChild(bubble);
 
-                const isLastMessage = (i === messages.length - 1);
-                let lastMessageTime = null;
-                if (i > 0) {
-                    lastMessageTime = messages[i - 1].time;
+                const timeEl = document.createElement("div");
+                timeEl.className = "message-time flex items-center gap-1";
+                timeEl.textContent = formatTimestamp(msg.time);
+                
+                // Add read/sent icons only for the last message
+                if (msg.status === 'read') {
+                    timeEl.innerHTML += readIcon;
+                } else {
+                    timeEl.innerHTML += sentIcon;
                 }
-                const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate()
-                    .getTime() > 300000);
 
-                if (showTime || (isSender && isLastMessage)) {
-                    const timeEl = document.createElement("div");
-                    timeEl.className = "message-time flex items-center gap-1";
-                    timeEl.textContent = formatTimestamp(msg.time);
-
-                    if (isSender && isLastMessage) {
-                        if (msg.status === 'read') {
-                            timeEl.innerHTML += readIcon;
-                        } else {
-                            timeEl.innerHTML += sentIcon;
-                        }
-                    }
-                    content.appendChild(timeEl);
-                }
+                content.appendChild(timeEl);
                 row.appendChild(content);
                 fragment.appendChild(row);
-            });
-
-            if (prepend) {
-                const firstMessage = messagesContainer.querySelector('.message-row');
-                messagesContainer.insertBefore(fragment, firstMessage);
-            } else {
-                messagesContainer.insertBefore(fragment, typingIndicatorContainer);
             }
+            messagesContainer.insertBefore(fragment, typingIndicatorContainer);
         }
 
         let typingTimeout = null;
@@ -818,6 +795,7 @@
             if (!text || !currentConversationRef) return;
 
             try {
+                const docSnap = await getDoc(currentConversationRef);
                 const newMessage = {
                     author: currentUser.displayName,
                     text: text,
@@ -827,16 +805,13 @@
 
                 const conversationId = `conv_${currentUser.uid}`;
 
-                const convRef = doc(db, "conversations", conversationId);
-                const docSnap = await getDoc(convRef);
-
                 if (docSnap.exists()) {
-                    await updateDoc(convRef, {
+                    await updateDoc(currentConversationRef, {
                         messages: arrayUnion(newMessage),
                         lastUpdated: serverTimestamp()
                     });
                 } else {
-                    await setDoc(convRef, {
+                    await setDoc(currentConversationRef, {
                         user: {
                             uid: currentUser.uid,
                             name: currentUser.displayName,
@@ -862,139 +837,74 @@
             }
         });
 
-        async function loadInitialMessages(user) {
+        function setupUserChat(user) {
+            currentUser = user;
             const conversationId = `conv_${user.uid}`;
-            const convRef = doc(db, "conversations", conversationId);
-            currentConversationRef = convRef;
-            messagesContainer.innerHTML = ''; // Clear for fresh load
+            currentConversationRef = doc(db, "conversations", conversationId);
+            let prevMessageCount = 0; // Tracks the number of messages already rendered
 
-            // Show placeholder if no messages exist
-            const convSnap = await getDoc(convRef);
-            if (!convSnap.exists() || (convSnap.data().messages?.length === 0)) {
-                messagesPlaceholder.style.display = 'flex';
-                typingIndicatorContainer.innerHTML = '';
-                return;
-            } else {
-                messagesPlaceholder.style.display = 'none';
-            }
+            onSnapshot(currentConversationRef, async (docSnap) => {
+                const messagesData = docSnap.exists() ? docSnap.data().messages || [] : [];
+                const currentMessageCount = messagesContainer.querySelectorAll('.message-row').length;
 
-            const messageCollectionRef = collection(convRef, 'messages');
-            const q = query(messageCollectionRef, orderBy('time', 'desc'), limit(10));
+                if (messagesPlaceholder) {
+                    messagesPlaceholder.style.display = messagesData.length > 0 ? 'none' : 'flex';
+                }
 
-            const querySnapshot = await getDocs(q);
-            const messages = [];
+                // Initial load: Render only the last 10 messages
+                if (!hasRenderedInitialMessages) {
+                    messagesContainer.innerHTML = ''; // Clear existing placeholder
+                    const initialMessages = messagesData.slice(-10); // Get the last 10 messages
+                    renderNewMessages(initialMessages);
+                    prevMessageCount = initialMessages.length;
+                    hasRenderedInitialMessages = true;
+                    scrollToBottom();
+                } else {
+                    // Subsequent updates: Only render new messages to fix flicker
+                    if (messagesData.length > prevMessageCount) {
+                        const newMessages = messagesData.slice(prevMessageCount);
+                        renderNewMessages(newMessages);
+                        prevMessageCount = messagesData.length;
+                        scrollToBottom();
+                    }
+                }
 
-            querySnapshot.forEach(doc => {
-                messages.unshift({
-                    id: doc.id,
-                    ...doc.data()
-                });
-            });
-
-            // Store the last visible document for future queries
-            lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
-
-            renderMessages(messages, false);
-            scrollToBottom();
-
-            // Setup real-time listener for new messages
-            setupRealtimeListener(user);
-        }
-
-        async function loadOlderMessages() {
-            if (loadingOlderMessages || !lastVisible) return;
-
-            loadingOlderMessages = true;
-
-            const conversationId = `conv_${currentUser.uid}`;
-            const convRef = doc(db, "conversations", conversationId);
-            const messageCollectionRef = collection(convRef, 'messages');
-
-            const q = query(messageCollectionRef, orderBy('time', 'desc'), startAfter(lastVisible), limit(10));
-            const querySnapshot = await getDocs(q);
-
-            const messages = [];
-            querySnapshot.forEach(doc => {
-                messages.unshift({
-                    id: doc.id,
-                    ...doc.data()
-                });
-            });
-
-            if (querySnapshot.docs.length > 0) {
-                lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
-                const oldHeight = messagesContainer.scrollHeight;
-                renderMessages(messages, true);
-                const newHeight = messagesContainer.scrollHeight;
-                messagesContainer.scrollTop = newHeight - oldHeight;
-            } else {
-                lastVisible = null; // No more messages to load
-            }
-            loadingOlderMessages = false;
-        }
-
-        function setupRealtimeListener(user) {
-            const conversationId = `conv_${user.uid}`;
-            const convRef = doc(db, "conversations", conversationId);
-            
-            if (unsubscribe) {
-                unsubscribe();
-            }
-
-            unsubscribe = onSnapshot(convRef, async (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-
-                    // Handle admin typing indicator
-                    if (data.adminTyping) {
-                        typingIndicatorContainer.innerHTML = `
-                            <div class="message-row receiver">
-                                <div class="message-content">
-                                    <div class="chat-bubble receiver typing-indicator">
-                                        <span></span><span></span><span></span>
-                                    </div>
+                // Handle typing indicator
+                const data = docSnap.data();
+                if (data && data.adminTyping) {
+                    typingIndicatorContainer.innerHTML = `
+                        <div class="message-row receiver">
+                            <div class="message-content">
+                                <div class="chat-bubble receiver typing-indicator">
+                                    <span></span><span></span><span></span>
                                 </div>
                             </div>
-                        `;
-                        scrollToBottom();
-                    } else {
-                        typingIndicatorContainer.innerHTML = "";
-                    }
+                        </div>
+                    `;
+                    scrollToBottom();
+                } else {
+                    typingIndicatorContainer.innerHTML = "";
+                }
 
-                    // Handle new messages added to the conversation
-                    const allMessages = data.messages || [];
-                    const lastMessage = allMessages[allMessages.length - 1];
-                    const lastMessageElement = messagesContainer.querySelector('.message-row:last-of-type .message-content .chat-bubble');
-
-                    // Only add new messages if they don't already exist in the DOM
-                    if (lastMessage && lastMessageElement && lastMessageElement.textContent !== lastMessage.text) {
-                        renderMessages([lastMessage]);
-                        scrollToBottom();
-                    }
-                    
-                    // Mark unread admin messages as read
-                    const unreadAdminMessages = allMessages.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
-                    if (unreadAdminMessages.length > 0) {
-                        const updatedMessages = allMessages.map(msg => {
-                            if (msg.author !== user.displayName && msg.status !== 'read') {
-                                return { ...msg,
-                                    status: 'read'
-                                };
-                            }
-                            return msg;
-                        });
-                        updateDoc(convRef, {
-                            messages: updatedMessages
-                        });
-                    }
+                // Mark unread admin messages as read
+                const unreadAdminMessages = messagesData.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
+                if (unreadAdminMessages.length > 0) {
+                    const updatedMessages = messagesData.map(msg => {
+                        if (msg.author !== user.displayName && msg.status !== 'read') {
+                            return { ...msg,
+                                status: 'read'
+                            };
+                        }
+                        return msg;
+                    });
+                    updateDoc(currentConversationRef, {
+                        messages: updatedMessages
+                    });
                 }
             });
         }
 
         window.logout = async () => {
-            if (unsubscribe) {
-                unsubscribe();
-            }
             try {
                 await signOut(auth);
                 window.location.href = "index.html";
@@ -1005,14 +915,7 @@
 
         onAuthStateChanged(auth, user => {
             if (user) {
-                currentUser = user;
-                loadInitialMessages(user);
-
-                messagesContainer.addEventListener('scroll', () => {
-                    if (messagesContainer.scrollTop === 0) {
-                        loadOlderMessages();
-                    }
-                });
+                setupUserChat(user);
             } else {
                 window.location.href = "index.html";
             }
