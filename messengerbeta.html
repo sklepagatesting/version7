@@ -309,7 +309,6 @@
         .message-row.receiver .message-time {
             align-self: flex-start;
             color: rgba(255, 255, 255, 0.7);
-            /* New: white for received messages */
         }
 
         .chat-input-wrapper {
@@ -627,8 +626,8 @@
 
         let currentUser = null;
         let currentConversationRef = null;
-        let allMessagesCache = []; // Cache all messages to enable "load more"
-        let renderedMessageCount = 0; // The number of messages currently on screen
+        let allMessagesCache = [];
+        let renderedMessageCount = 0;
         const MESSAGES_TO_LOAD = 10;
         let isTypingIndicatorVisible = false;
 
@@ -639,7 +638,6 @@
         const messagesPlaceholder = document.querySelector('.message-placeholder');
         const loader = document.getElementById('loader');
 
-        // New function to send email only if a new one hasn't been sent in the last 5 minutes
         const sendEmailIfNeeded = async (conversationId, message, user) => {
             const convRef = doc(db, "conversations", conversationId);
             const convSnap = await getDoc(convRef);
@@ -649,11 +647,9 @@
             let shouldSend = false;
 
             if (!convData || !convData.lastEmailSentAt) {
-                // first message or first time sending an email
                 shouldSend = true;
             } else {
                 const lastEmail = convData.lastEmailSentAt.toDate();
-                // Check if 5 minutes have passed
                 const diffMinutes = (now - lastEmail) / (1000 * 60);
                 if (diffMinutes >= 5) {
                     shouldSend = true;
@@ -661,7 +657,6 @@
             }
 
             if (shouldSend) {
-                // Find all admin emails dynamically from the 'admin' collection
                 const adminDocs = await getDocs(collection(db, "admin"));
                 const adminEmails = [];
                 adminDocs.forEach(doc => {
@@ -671,7 +666,6 @@
                     }
                 });
 
-                // Join the emails into a single comma-separated string
                 const toEmailList = adminEmails.join(",");
 
                 if (toEmailList.length > 0) {
@@ -734,6 +728,7 @@
             }
         }
 
+        // Only scrolls to the bottom. No auto-scroll on initial load.
         function scrollToBottom() {
             requestAnimationFrame(() => {
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -741,9 +736,7 @@
         }
 
         function scrollToSpecificHeight(height) {
-            requestAnimationFrame(() => {
-                messagesContainer.scrollTop = height;
-            });
+            messagesContainer.scrollTop = height;
         }
 
         const sentIcon =
@@ -785,10 +778,10 @@
             return row;
         }
 
+        // Renders the first set of messages and handles initial scroll
         function renderInitialMessages(messages) {
             messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)')
                 .forEach(el => el.remove());
-
             const initialMessages = messages.slice(-MESSAGES_TO_LOAD);
             const fragment = document.createDocumentFragment();
             initialMessages.forEach((msg, index) => {
@@ -797,13 +790,17 @@
             });
             messagesContainer.insertBefore(fragment, typingIndicatorContainer);
             renderedMessageCount = initialMessages.length;
-            if (!isTypingIndicatorVisible) {
-                scrollToBottom();
+            
+            // Only scroll to the bottom if there are messages to show
+            if (messages.length > 0) {
+                setTimeout(scrollToBottom, 100);
             }
         }
 
+        // Renders new messages and scrolls to bottom if needed
         function renderNewMessages(messages) {
             const newMessages = messages.slice(renderedMessageCount);
+            const isAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 1;
             const fragment = document.createDocumentFragment();
             const startIndex = renderedMessageCount;
             newMessages.forEach((msg, index) => {
@@ -811,48 +808,59 @@
             });
             messagesContainer.insertBefore(fragment, typingIndicatorContainer);
             renderedMessageCount += newMessages.length;
-            if (!isTypingIndicatorVisible) {
+
+            if (newMessages.length > 0 && isAtBottom) {
                 scrollToBottom();
             }
         }
 
+        // Prepends older messages to the top
         function prependOlderMessages() {
-            const startIndex = allMessagesCache.length - renderedMessageCount - MESSAGES_TO_LOAD;
-            const endIndex = allMessagesCache.length - renderedMessageCount;
-            if (startIndex < 0) {
+            const messagesToPrepend = Math.min(MESSAGES_TO_LOAD, allMessagesCache.length - renderedMessageCount);
+            if (messagesToPrepend === 0) {
                 loader.style.display = 'none';
                 return;
             }
-            const olderMessages = allMessagesCache.slice(startIndex, endIndex);
-            if (olderMessages.length > 0) {
-                const fragment = document.createDocumentFragment();
-                olderMessages.forEach((msg, index) => {
-                    const messageEl = createMessageElement(msg, allMessagesCache, startIndex + index);
-                    fragment.appendChild(messageEl);
-                });
-                const firstChild = messagesContainer.querySelector('.message-row');
-                if (firstChild) {
-                    messagesContainer.insertBefore(fragment, firstChild);
-                } else {
-                    messagesContainer.insertBefore(fragment, typingIndicatorContainer);
-                }
-                renderedMessageCount += olderMessages.length;
-                loader.style.display = 'none';
+
+            const startIndex = allMessagesCache.length - renderedMessageCount - messagesToPrepend;
+            const olderMessages = allMessagesCache.slice(startIndex, startIndex + messagesToPrepend);
+            const fragment = document.createDocumentFragment();
+
+            olderMessages.forEach((msg, index) => {
+                const messageEl = createMessageElement(msg, allMessagesCache, startIndex + index);
+                fragment.appendChild(messageEl);
+            });
+
+            const firstChild = messagesContainer.querySelector('.message-row');
+            if (firstChild) {
+                messagesContainer.insertBefore(fragment, firstChild);
+            } else {
+                messagesContainer.insertBefore(fragment, typingIndicatorContainer);
             }
+
+            const currentScrollHeight = messagesContainer.scrollHeight;
+            renderedMessageCount += messagesToPrepend;
+            const newScrollHeight = messagesContainer.scrollHeight;
+            scrollToSpecificHeight(newScrollHeight - currentScrollHeight);
+
+            loader.style.display = 'none';
         }
 
+        // Main handler for all real-time updates
         function handleMessageUpdate(docSnap) {
             const data = docSnap.data();
-            const allMessages = data.messages || [];
+            const allMessages = data?.messages || [];
+            const previousMessageCount = allMessagesCache.length;
             allMessagesCache = allMessages;
 
             if (messagesPlaceholder) {
                 messagesPlaceholder.style.display = allMessages.length > 0 ? 'none' : 'flex';
             }
 
-            if (allMessages.length > renderedMessageCount) {
+            // Check if this is the first update after initial load, or if new messages have arrived
+            if (allMessages.length > previousMessageCount) {
                 renderNewMessages(allMessages);
-            } else if (allMessages.length === renderedMessageCount) {
+            } else if (allMessages.length === previousMessageCount) {
                 // Update the status of the last message if needed
                 if (allMessages.length > 0) {
                     const lastMessage = allMessages[allMessages.length - 1];
@@ -867,21 +875,25 @@
             }
 
             // Typing indicator logic
-            if (data.adminTyping) {
-                typingIndicatorContainer.innerHTML = `
-                    <div class="message-row receiver">
-                        <div class="message-content">
-                            <div class="chat-bubble receiver typing-indicator">
-                                <span></span><span></span><span></span>
+            if (data?.adminTyping) {
+                if (!isTypingIndicatorVisible) {
+                    typingIndicatorContainer.innerHTML = `
+                        <div class="message-row receiver">
+                            <div class="message-content">
+                                <div class="chat-bubble receiver typing-indicator">
+                                    <span></span><span></span><span></span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-                isTypingIndicatorVisible = true;
-                scrollToBottom();
+                    `;
+                    isTypingIndicatorVisible = true;
+                    scrollToBottom();
+                }
             } else {
-                typingIndicatorContainer.innerHTML = "";
-                isTypingIndicatorVisible = false;
+                if (isTypingIndicatorVisible) {
+                    typingIndicatorContainer.innerHTML = "";
+                    isTypingIndicatorVisible = false;
+                }
             }
 
             // Mark unread admin messages as read
@@ -905,12 +917,7 @@
         messagesContainer.addEventListener('scroll', () => {
             if (messagesContainer.scrollTop === 0 && renderedMessageCount < allMessagesCache.length) {
                 loader.style.display = 'block';
-                // Store the current scroll height before loading more messages
-                const currentScrollHeight = messagesContainer.scrollHeight;
                 prependOlderMessages();
-                // After prepending, adjust scroll position to keep the view stable
-                const newScrollHeight = messagesContainer.scrollHeight;
-                scrollToSpecificHeight(newScrollHeight - currentScrollHeight);
             }
         });
 
@@ -977,16 +984,17 @@
             const conversationId = `conv_${user.uid}`;
             currentConversationRef = doc(db, "conversations", conversationId);
 
-            // Fetch and render initial messages once
+            // Fetch initial messages first
             getDoc(currentConversationRef).then(docSnap => {
                 const messages = docSnap.data()?.messages || [];
                 allMessagesCache = messages;
                 if (messages.length > 0) {
+                    messagesPlaceholder.style.display = 'none';
                     renderInitialMessages(messages);
                 } else {
                     messagesPlaceholder.style.display = 'flex';
                 }
-                // Start listening for real-time updates after initial load
+                // Now, set up the real-time listener for ongoing updates
                 onSnapshot(currentConversationRef, handleMessageUpdate);
             }).catch(error => {
                 console.error("Error fetching initial messages:", error);
