@@ -7,11 +7,11 @@
     <link rel="stylesheet" href="font/font.css">
     <style>
         :root {
-            --sender-bg: #1e90ff; /* Modern blue for sender */
-            --receiver-bg: #e5e7eb; /* Softer gray for receiver */
-            --body-bg: #f8fafc; /* Lighter, modern background */
-            --header-bg: #ffffff; /* Clean white header */
-            --border-color: #e2e8f0; /* Subtle border color */
+            --sender-bg: #1e90ff;
+            --receiver-bg: #e5e7eb;
+            --body-bg: #f8fafc;
+            --header-bg: #ffffff;
+            --border-color: #e2e8f0;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
         }
 
@@ -191,7 +191,12 @@
             color: #fff;
             opacity: 0;
             transform: translateY(10px);
-            animation: slideIn 0.3s ease forwards, gradientShift 6s ease infinite;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .chat-bubble.typing-indicator.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         @keyframes slideIn {
@@ -352,20 +357,6 @@
             color: #6b7280;
         }
 
-        .typing-indicator {
-            display: flex;
-            align-items: center;
-            background-color: var(--receiver-bg);
-            color: #1f2a44;
-            padding: 8px 14px;
-            border-radius: 18px;
-            width: fit-content;
-            margin-bottom: 0.25rem;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: slideIn 0.3s ease forwards;
-        }
-
         .typing-indicator span {
             display: inline-block;
             width: 6px;
@@ -436,426 +427,439 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-   <script type="module">
-    import {
-        initializeApp
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import {
-        getFirestore,
-        collection,
-        doc,
-        onSnapshot,
-        getDoc,
-        getDocs,
-        setDoc,
-        updateDoc,
-        arrayUnion,
-        serverTimestamp,
-        deleteDoc
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-    import {
-        getAuth,
-        signOut,
-        onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    <script>
+        (function() {
+            emailjs.init("O3lW73xpbv35YItw4"); // Replace with your EmailJS public key
+        })();
+    </script>
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-        authDomain: "sklepaga-8790e.firebaseapp.com",
-        projectId: "sklepaga-8790e",
-        storageBucket: "sklepaga-8790e.appspot.com",
-        messagingSenderId: "815409129057",
-        appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-        measurementId: "G-9GH707G2WZ"
-    };
+    <script type="module">
+        import {
+            initializeApp
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import {
+            getFirestore,
+            collection,
+            doc,
+            onSnapshot,
+            getDoc,
+            getDocs,
+            setDoc,
+            updateDoc,
+            arrayUnion,
+            serverTimestamp,
+            deleteDoc
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import {
+            getAuth,
+            signOut,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+            authDomain: "sklepaga-8790e.firebaseapp.com",
+            projectId: "sklepaga-8790e",
+            storageBucket: "sklepaga-8790e.appspot.com",
+            messagingSenderId: "815409129057",
+            appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+            measurementId: "G-9GH707G2WZ"
+        };
 
-    let currentUser = null;
-    let currentConversationRef = null;
-    let lastMessages = null; // Track last rendered messages to avoid unnecessary re-renders
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
 
-    const messagesContainer = document.getElementById("messagesContainer");
-    const messageForm = document.getElementById("messageForm");
-    const messageInput = document.getElementById("messageInput");
-    const typingIndicatorContainer = document.getElementById("typingIndicatorContainer");
-    const messagesPlaceholder = document.querySelector('.message-placeholder');
-    const chatMenuButton = document.getElementById("chatMenuButton");
-    const chatMenuDropdown = document.getElementById("chatMenuDropdown");
-    const clearChatOption = document.getElementById("clearChatOption");
-    const deleteChatOption = document.getElementById("deleteChatOption");
-    const signOutOption = document.getElementById("signOutOption");
+        let currentUser = null;
+        let currentConversationRef = null;
+        let lastMessages = null;
 
-    const sendEmailIfNeeded = async (conversationId, message, user) => {
-        const convRef = doc(db, "conversations", conversationId);
-        const convSnap = await getDoc(convRef);
-        const convData = convSnap.data();
+        const messagesContainer = document.getElementById("messagesContainer");
+        const messageForm = document.getElementById("messageForm");
+        const messageInput = document.getElementById("messageInput");
+        const typingIndicatorContainer = document.getElementById("typingIndicatorContainer");
+        const messagesPlaceholder = document.querySelector('.message-placeholder');
+        const chatMenuButton = document.getElementById("chatMenuButton");
+        const chatMenuDropdown = document.getElementById("chatMenuDropdown");
+        const clearChatOption = document.getElementById("clearChatOption");
+        const deleteChatOption = document.getElementById("deleteChatOption");
+        const signOutOption = document.getElementById("signOutOption");
 
-        const now = new Date();
-        let shouldSend = false;
+        const sendEmailIfNeeded = async (conversationId, message, user) => {
+            const convRef = doc(db, "conversations", conversationId);
+            const convSnap = await getDoc(convRef);
+            const convData = convSnap.data();
 
-        if (!convData || !convData.lastEmailSentAt) {
-            shouldSend = true;
-        } else {
-            const lastEmail = convData.lastEmailSentAt.toDate();
-            const diffMinutes = (now - lastEmail) / (1000 * 60);
-            if (diffMinutes >= 5) {
+            const now = new Date();
+            let shouldSend = false;
+
+            if (!convData || !convData.lastEmailSentAt) {
                 shouldSend = true;
-            }
-        }
-
-        if (shouldSend) {
-            const adminDocs = await getDocs(collection(db, "admin"));
-            const adminEmails = [];
-            adminDocs.forEach(doc => {
-                const data = doc.data();
-                if (data.email) {
-                    adminEmails.push(data.email);
-                }
-            });
-
-            const toEmailList = adminEmails.join(",");
-
-            if (toEmailList.length > 0) {
-                await emailjs.send("service_h72d2xw", "template_9g05rdg", {
-                    title: "New Message in Messenger",
-                    name: user.displayName || "Guest",
-                    time: now.toLocaleString(),
-                    message: message,
-                    to_email: toEmailList,
-                    email: user.email || "no-reply@test",
-                });
-
-                await updateDoc(convRef, {
-                    lastEmailSentAt: serverTimestamp(),
-                });
-
-                console.log("✅ Email sent to admins:", toEmailList);
             } else {
-                console.log("⚠️ No admin emails found. Skipping email notification.");
-            }
-        } else {
-            console.log("⏳ Skipped, email already sent within last 5 minutes");
-        }
-    };
-
-    function escapeHtml(text) {
-        if (typeof text !== 'string') return "";
-        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
-    }
-
-    function formatTimestamp(date) {
-        if (!date) return '';
-        const d = date.toDate ? date.toDate() : new Date(date);
-
-        const optionsTime = {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-            timeZone: 'Asia/Manila'
-        };
-        const optionsDate = {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            timeZone: 'Asia/Manila'
-        };
-
-        const today = new Date();
-        const todayPH = new Date(today.toLocaleString('en-US', {
-            timeZone: 'Asia/Manila'
-        }));
-        const dPH = new Date(d.toLocaleString('en-US', {
-            timeZone: 'Asia/Manila'
-        }));
-
-        const isToday = dPH.toDateString() === todayPH.toDateString();
-        const yesterdayPH = new Date(todayPH);
-        yesterdayPH.setDate(todayPH.getDate() - 1);
-        const isYesterday = dPH.toDateString() === yesterdayPH.toDateString();
-
-        if (isToday) {
-            return dPH.toLocaleTimeString('en-US', optionsTime);
-        } else if (isYesterday) {
-            return 'Yesterday, ' + dPH.toLocaleTimeString('en-US', optionsTime);
-        } else {
-            return dPH.toLocaleDateString('en-US', optionsDate) + ', ' + dPH.toLocaleTimeString('en-US',
-                optionsTime);
-        }
-    }
-
-    function scrollToBottom() {
-        requestAnimationFrame(() => {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        });
-    }
-
-    const sentIcon =
-        `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
-    const readIcon =
-        `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
-
-    function renderMessages(allMessages) {
-        messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el =>
-            el.remove());
-
-        const fragment = document.createDocumentFragment();
-        for (let i = 0; i < allMessages.length; i++) {
-            const msg = allMessages[i];
-            const isSender = msg.author === currentUser.displayName;
-            const row = document.createElement("div");
-            row.className = "message-row " + (isSender ? "sender" : "receiver");
-
-            const content = document.createElement("div");
-            content.className = "message-content";
-
-            const bubble = document.createElement("div");
-            bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
-            bubble.textContent = msg.text;
-
-            content.appendChild(bubble);
-
-            const isLastMessage = (i === allMessages.length - 1);
-            let lastMessageTime = null;
-            if (i > 0) {
-                lastMessageTime = allMessages[i - 1].time;
-            }
-            const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate()
-                .getTime() > 300000);
-
-            if (showTime || (isSender && isLastMessage)) {
-                const timeEl = document.createElement("div");
-                timeEl.className = "message-time flex items-center gap-1";
-                timeEl.textContent = formatTimestamp(msg.time);
-
-                if (isSender && isLastMessage) {
-                    if (msg.status === 'read') {
-                        timeEl.innerHTML += readIcon;
-                    } else {
-                        timeEl.innerHTML += sentIcon;
-                    }
+                const lastEmail = convData.lastEmailSentAt.toDate();
+                const diffMinutes = (now - lastEmail) / (1000 * 60);
+                if (diffMinutes >= 5) {
+                    shouldSend = true;
                 }
-                content.appendChild(timeEl);
             }
-            row.appendChild(content);
-            fragment.appendChild(row);
-        }
-        messagesContainer.insertBefore(fragment, typingIndicatorContainer);
-        lastMessages = allMessages; // Update last rendered messages
-    }
 
-    let typingTimeout = null;
-    messageInput.addEventListener('input', () => {
-        if (currentConversationRef) {
-            updateDoc(currentConversationRef, {
-                userTyping: true
-            });
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => {
-                updateDoc(currentConversationRef, {
-                    userTyping: false
+            if (shouldSend) {
+                const adminDocs = await getDocs(collection(db, "admin"));
+                const adminEmails = [];
+                adminDocs.forEach(doc => {
+                    const data = doc.data();
+                    if (data.email) {
+                        adminEmails.push(data.email);
+                    }
                 });
-            }, 1500);
+
+                const toEmailList = adminEmails.join(",");
+
+                if (toEmailList.length > 0) {
+                    await emailjs.send("service_h72d2xw", "template_9g05rdg", {
+                        title: "New Message in Messenger",
+                        name: user.displayName || "Guest",
+                        time: now.toLocaleString(),
+                        message: message,
+                        to_email: toEmailList,
+                        email: user.email || "no-reply@test",
+                    });
+
+                    await updateDoc(convRef, {
+                        lastEmailSentAt: serverTimestamp(),
+                    });
+
+                    console.log("✅ Email sent to admins:", toEmailList);
+                } else {
+                    console.log("⚠️ No admin emails found. Skipping email notification.");
+                }
+            } else {
+                console.log("⏳ Skipped, email already sent within last 5 minutes");
+            }
+        };
+
+        function escapeHtml(text) {
+            if (typeof text !== 'string') return "";
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
         }
-    });
 
-    messageForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const text = messageInput.value.trim();
-        if (!text || !currentConversationRef) return;
+        function formatTimestamp(date) {
+            if (!date) return '';
+            const d = date.toDate ? date.toDate() : new Date(date);
 
-        try {
-            const docSnap = await getDoc(currentConversationRef);
-            const newMessage = {
-                author: currentUser.displayName,
-                text: text,
-                time: new Date(),
-                status: 'sent'
+            const optionsTime = {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Manila'
+            };
+            const optionsDate = {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                timeZone: 'Asia/Manila'
             };
 
-            const conversationId = `conv_${currentUser.uid}`;
+            const today = new Date();
+            const todayPH = new Date(today.toLocaleString('en-US', {
+                timeZone: 'Asia/Manila'
+            }));
+            const dPH = new Date(d.toLocaleString('en-US', {
+                timeZone: 'Asia/Manila'
+            }));
 
-            if (docSnap.exists()) {
-                await updateDoc(currentConversationRef, {
-                    messages: arrayUnion(newMessage),
-                    lastUpdated: serverTimestamp()
-                });
+            const isToday = dPH.toDateString() === todayPH.toDateString();
+            const yesterdayPH = new Date(todayPH);
+            yesterdayPH.setDate(todayPH.getDate() - 1);
+            const isYesterday = dPH.toDateString() === yesterdayPH.toDateString();
+
+            if (isToday) {
+                return dPH.toLocaleTimeString('en-US', optionsTime);
+            } else if (isYesterday) {
+                return 'Yesterday, ' + dPH.toLocaleTimeString('en-US', optionsTime);
             } else {
-                await setDoc(currentConversationRef, {
-                    user: {
-                        uid: currentUser.uid,
-                        name: currentUser.displayName,
-                        email: currentUser.email
-                    },
-                    admin: {
-                        name: "Support Admin"
-                    },
-                    messages: [newMessage],
-                    lastUpdated: serverTimestamp(),
-                    userTyping: false,
-                    adminTyping: false,
-                });
+                return dPH.toLocaleDateString('en-US', optionsDate) + ', ' + dPH.toLocaleTimeString('en-US',
+                    optionsTime);
             }
-
-            sendEmailIfNeeded(conversationId, text, currentUser);
-
-            messageInput.value = "";
-            messageInput.style.height = "42px";
-            scrollToBottom();
-        } catch (err) {
-            alert("Failed to send message: " + err.message);
         }
-    });
 
-    function setupUserChat(user) {
-        currentUser = user;
-        const conversationId = `conv_${user.uid}`;
-        currentConversationRef = doc(db, "conversations", conversationId);
-
-        onSnapshot(currentConversationRef, async (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                const messages = data.messages || [];
-
-                // Update placeholder visibility
-                if (messagesPlaceholder) {
-                    if (messages.length > 0) {
-                        messagesPlaceholder.style.display = 'none';
-                    } else {
-                        messagesPlaceholder.style.display = 'flex';
-                    }
+        function scrollToBottom() {
+            requestAnimationFrame(() => {
+                const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 100;
+                if (isNearBottom) {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 }
+            });
+        }
 
-                // Only re-render messages if they have changed
-                if (!lastMessages || JSON.stringify(messages) !== JSON.stringify(lastMessages)) {
-                    renderMessages(messages);
+        const sentIcon =
+            `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
+        const readIcon =
+            `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
+
+        function renderMessages(allMessages) {
+            messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el =>
+                el.remove());
+
+            const fragment = document.createDocumentFragment();
+            for (let i = 0; i < allMessages.length; i++) {
+                const msg = allMessages[i];
+                const isSender = msg.author === currentUser.displayName;
+                const row = document.createElement("div");
+                row.className = "message-row " + (isSender ? "sender" : "receiver");
+
+                const content = document.createElement("div");
+                content.className = "message-content";
+
+                const bubble = document.createElement("div");
+                bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
+                bubble.textContent = msg.text;
+
+                content.appendChild(bubble);
+
+                const isLastMessage = (i === allMessages.length - 1);
+                let lastMessageTime = null;
+                if (i > 0) {
+                    lastMessageTime = allMessages[i - 1].time;
                 }
+                const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate()
+                    .getTime() > 300000);
 
-                // Update typing indicator
-                if (data.adminTyping) {
-                    typingIndicatorContainer.innerHTML = `
-                        <div class="message-row receiver">
-                            <div class="message-content">
-                                <div class="chat-bubble receiver typing-indicator">
-                                    <span></span><span></span><span></span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    typingIndicatorContainer.innerHTML = "";
-                }
+                if (showTime || (isSender && isLastMessage)) {
+                    const timeEl = document.createElement("div");
+                    timeEl.className = "message-time flex items-center gap-1";
+                    timeEl.textContent = formatTimestamp(msg.time);
 
-                // Mark unread admin messages as read
-                const unreadAdminMessages = messages.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
-                if (unreadAdminMessages.length > 0) {
-                    const updatedMessages = messages.map(msg => {
-                        if (msg.author !== user.displayName && msg.status !== 'read') {
-                            return { ...msg, status: 'read' };
+                    if (isSender && isLastMessage) {
+                        if (msg.status === 'read') {
+                            timeEl.innerHTML += readIcon;
+                        } else {
+                            timeEl.innerHTML += sentIcon;
                         }
-                        return msg;
-                    });
-                    updateDoc(currentConversationRef, {
-                        messages: updatedMessages
-                    });
+                    }
+                    content.appendChild(timeEl);
                 }
+                row.appendChild(content);
+                fragment.appendChild(row);
+            }
+            messagesContainer.insertBefore(fragment, typingIndicatorContainer);
+            lastMessages = allMessages;
+        }
 
-                scrollToBottom();
-            } else {
-                // Handle case where conversation doesn't exist
-                if (messagesPlaceholder) {
-                    messagesPlaceholder.style.display = 'flex';
-                }
-                typingIndicatorContainer.innerHTML = "";
-                messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el => el.remove());
-                lastMessages = null;
+        let typingTimeout = null;
+        messageInput.addEventListener('input', () => {
+            if (currentConversationRef) {
+                updateDoc(currentConversationRef, {
+                    userTyping: true
+                });
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    updateDoc(currentConversationRef, {
+                        userTyping: false
+                    });
+                }, 1500);
             }
         });
-    }
 
-    function toggleChatMenu() {
-        chatMenuDropdown.classList.toggle('hidden');
-    }
-
-    async function clearChat() {
-        if (!currentConversationRef) return;
-        if (confirm("Are you sure you want to clear this chat? This action cannot be undone.")) {
-            try {
-                await updateDoc(currentConversationRef, {
-                    messages: []
-                });
-                console.log("Chat cleared successfully.");
-            } catch (error) {
-                console.error("Error clearing chat: ", error);
-                alert("Failed to clear chat. Please try again.");
-            }
-        }
-        toggleChatMenu();
-    }
-
-    async function deleteChat() {
-        if (!currentConversationRef) return;
-        if (confirm("Are you sure you want to delete this chat? This will permanently remove the conversation and cannot be undone.")) {
-            try {
-                await deleteDoc(currentConversationRef);
-                console.log("Chat deleted successfully.");
-                messagesContainer.innerHTML = '';
-                messagesPlaceholder.style.display = 'flex';
-                currentConversationRef = null;
-                lastMessages = null;
-            } catch (error) {
-                console.error("Error deleting chat: ", error);
-                alert("Failed to delete chat. Please try again.");
-            }
-        }
-        toggleChatMenu();
-    }
-
-    chatMenuButton.addEventListener('click', toggleChatMenu);
-    clearChatOption.addEventListener('click', (e) => {
-        e.preventDefault();
-        clearChat();
-    });
-    deleteChatOption.addEventListener('click', (e) => {
-        e.preventDefault();
-        deleteChat();
-    });
-    signOutOption.addEventListener('click', (e) => {
-        e.preventDefault();
-        logout();
-    });
-
-    window.logout = async () => {
-        try {
-            await signOut(auth);
-            window.location.href = "index.html";
-        } catch (error) {
-            console.error("Sign out error:", error);
-        }
-    };
-
-    onAuthStateChanged(auth, user => {
-        if (user) {
-            setupUserChat(user);
-        } else {
-            window.location.href = "index.html";
-        }
-    });
-
-    messageInput.addEventListener("input", () => {
-        messageInput.style.height = "42px";
-        messageInput.style.height = messageInput.scrollHeight + "px";
-    });
-
-    messageInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
+        messageForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            messageForm.requestSubmit();
+            const text = messageInput.value.trim();
+            if (!text || !currentConversationRef) return;
+
+            try {
+                const docSnap = await getDoc(currentConversationRef);
+                const newMessage = {
+                    author: currentUser.displayName,
+                    text: text,
+                    time: new Date(),
+                    status: 'sent'
+                };
+
+                const conversationId = `conv_${currentUser.uid}`;
+
+                if (docSnap.exists()) {
+                    await updateDoc(currentConversationRef, {
+                        messages: arrayUnion(newMessage),
+                        lastUpdated: serverTimestamp()
+                    });
+                } else {
+                    await setDoc(currentConversationRef, {
+                        user: {
+                            uid: currentUser.uid,
+                            name: currentUser.displayName,
+                            email: currentUser.email
+                        },
+                        admin: {
+                            name: "Support Admin"
+                        },
+                        messages: [newMessage],
+                        lastUpdated: serverTimestamp(),
+                        userTyping: false,
+                        adminTyping: false,
+                    });
+                }
+
+                sendEmailIfNeeded(conversationId, text, currentUser);
+
+                messageInput.value = "";
+                messageInput.style.height = "42px";
+                scrollToBottom();
+            } catch (err) {
+                alert("Failed to send message: " + err.message);
+            }
+        });
+
+        function setupUserChat(user) {
+            currentUser = user;
+            const conversationId = `conv_${user.uid}`;
+            currentConversationRef = doc(db, "conversations", conversationId);
+
+            // Initialize typing indicator element
+            typingIndicatorContainer.innerHTML = `
+                <div class="message-row receiver">
+                    <div class="message-content">
+                        <div class="chat-bubble receiver typing-indicator">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const typingIndicator = typingIndicatorContainer.querySelector('.typing-indicator');
+
+            let debounceTimeout = null;
+            onSnapshot(currentConversationRef, async (docSnap) => {
+                clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(async () => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        const messages = data.messages || [];
+
+                        // Update placeholder visibility
+                        if (messagesPlaceholder) {
+                            if (messages.length > 0) {
+                                messagesPlaceholder.style.display = 'none';
+                            } else {
+                                messagesPlaceholder.style.display = 'flex';
+                            }
+                        }
+
+                        // Only re-render messages if they have changed
+                        if (!lastMessages || JSON.stringify(messages) !== JSON.stringify(lastMessages)) {
+                            renderMessages(messages);
+                        }
+
+                        // Update typing indicator visibility
+                        typingIndicator.classList.toggle('visible', data.adminTyping);
+
+                        // Mark unread admin messages as read
+                        const unreadAdminMessages = messages.filter(msg => msg.author !== user.displayName && msg.status !== 'read');
+                        if (unreadAdminMessages.length > 0) {
+                            const updatedMessages = messages.map(msg => {
+                                if (msg.author !== user.displayName && msg.status !== 'read') {
+                                    return { ...msg, status: 'read' };
+                                }
+                                return msg;
+                            });
+                            updateDoc(currentConversationRef, {
+                                messages: updatedMessages
+                            });
+                        }
+
+                        scrollToBottom();
+                    } else {
+                        // Handle case where conversation doesn't exist
+                        if (messagesPlaceholder) {
+                            messagesPlaceholder.style.display = 'flex';
+                        }
+                        typingIndicator.classList.remove('visible');
+                        messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el => el.remove());
+                        lastMessages = null;
+                    }
+                }, 100);
+            });
         }
-    });
-</script>
+
+        function toggleChatMenu() {
+            chatMenuDropdown.classList.toggle('hidden');
+        }
+
+        async function clearChat() {
+            if (!currentConversationRef) return;
+            if (confirm("Are you sure you want to clear this chat? This action cannot be undone.")) {
+                try {
+                    await updateDoc(currentConversationRef, {
+                        messages: []
+                    });
+                    console.log("Chat cleared successfully.");
+                } catch (error) {
+                    console.error("Error clearing chat: ", error);
+                    alert("Failed to clear chat. Please try again.");
+                }
+            }
+            toggleChatMenu();
+        }
+
+        async function deleteChat() {
+            if (!currentConversationRef) return;
+            if (confirm("Are you sure you want to delete this chat? This will permanently remove the conversation and cannot be undone.")) {
+                try {
+                    await deleteDoc(currentConversationRef);
+                    console.log("Chat deleted successfully.");
+                    messagesContainer.innerHTML = '';
+                    messagesPlaceholder.style.display = 'flex';
+                    currentConversationRef = null;
+                    lastMessages = null;
+                } catch (error) {
+                    console.error("Error deleting chat: ", error);
+                    alert("Failed to delete chat. Please try again.");
+                }
+            }
+            toggleChatMenu();
+        }
+
+        chatMenuButton.addEventListener('click', toggleChatMenu);
+        clearChatOption.addEventListener('click', (e) => {
+            e.preventDefault();
+            clearChat();
+        });
+        deleteChatOption.addEventListener('click', (e) => {
+            e.preventDefault();
+            deleteChat();
+        });
+        signOutOption.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
+        });
+
+        window.logout = async () => {
+            try {
+                await signOut(auth);
+                window.location.href = "index.html";
+            } catch (error) {
+                console.error("Sign out error:", error);
+            }
+        };
+
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                setupUserChat(user);
+            } else {
+                window.location.href = "index.html";
+            }
+        });
+
+        messageInput.addEventListener("input", () => {
+            messageInput.style.height = "42px";
+            messageInput.style.height = messageInput.scrollHeight + "px";
+        });
+
+        messageInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                messageForm.requestSubmit();
+            }
+        });
+    </script>
 </body>
 </html>
