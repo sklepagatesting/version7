@@ -761,9 +761,9 @@
                 timeEl.textContent = formatTimestamp(msg.time);
                 
                 // Add read/sent icons only for the last message
-                if (msg.status === 'read') {
+                if (isSender && msg.status === 'read') {
                     timeEl.innerHTML += readIcon;
-                } else {
+                } else if (isSender) {
                     timeEl.innerHTML += sentIcon;
                 }
 
@@ -799,7 +799,7 @@
                 const newMessage = {
                     author: currentUser.displayName,
                     text: text,
-                    time: serverTimestamp(),
+                    time: new Date(), // Use new Date() for the timestamp
                     status: 'sent'
                 };
 
