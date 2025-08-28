@@ -1,104 +1,418 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Register User | SK Lepaga</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getFirestore, collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.4s ease-out',
+                        'float': 'float 6s ease-in-out infinite',
+                        'shimmer': 'shimmer 2s linear infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate'
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(30px) scale(0.95)' },
+                            '100%': { opacity: '1', transform: 'translateY(0) scale(1)' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                        shimmer: {
+                            '0%': { backgroundPosition: '-200% 0' },
+                            '100%': { backgroundPosition: '200% 0' }
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)' },
+                            '100%': { boxShadow: '0 0 40px rgba(59, 130, 246, 0.6)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import {
+            getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
+            setPersistence, browserLocalPersistence, signOut
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
-      authDomain: "sklepaga-8790e.firebaseapp.com",
-      projectId: "sklepaga-8790e",
-      storageBucket: "sklepaga-8790e.firebasestorage.app",
-      messagingSenderId: "815409129057",
-      appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
-      measurementId: "G-9GH707G2WZ"
-    };
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
+            authDomain: "sklepaga-8790e.firebaseapp.com",
+            projectId: "sklepaga-8790e",
+            storageBucket: "sklepaga-8790e.appspot.com",
+            messagingSenderId: "815409129057",
+            appId: "1:815409129057:web:9f6342be47e28c1f69ec20",
+            measurementId: "G-9GH707G2WZ"
+        };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+        await setPersistence(auth, browserLocalPersistence);
 
-    // form handling
-    window.addEventListener("DOMContentLoaded", () => {
-      const form = document.getElementById("register-form");
-      const statusMsg = document.getElementById("status-msg");
-      const submitBtn = document.getElementById("submit-btn");
+        let isRemoveMode = false;
 
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        statusMsg.textContent = "";
-        submitBtn.disabled = true;
+        const loginSection = document.getElementById("login-section");
+        const profilesSection = document.getElementById("profiles-section");
+        const profilesGrid = document.getElementById("profiles");
+        const signOutBtn = document.getElementById("sign-out-btn");
+        const mainHeader = document.getElementById("main-header");
+        const removeAccountBtn = document.getElementById("remove-account-btn");
+        const verifyModal = document.getElementById("verify-modal");
+        const verifyModalBtn = document.getElementById("verify-modal-btn");
+        const verifyModalCancelBtn = document.getElementById("verify-modal-cancel-btn");
+        const useAnotherAccountBtn = document.getElementById("use-another-account-btn");
 
-        const name = form.name.value.trim();
-        const email = form.email.value.trim();
+const verifiedBadgeSVG = `
+<svg xmlns="http://www.w3.org/2000/svg" 
+     viewBox="0 0 90 90" 
+     class="w-[20px] h-[20px] shrink-0 translate-y-[1px] drop-shadow-sm">
+  <polygon points="45,6.18 57.06,0 64.41,11.38 77.94,12.06 78.62,25.59 90,32.94 83.82,45 90,57.06 78.62,64.41 77.94,77.94 64.41,78.62 57.06,90 45,83.82 32.94,90 25.59,78.62 12.06,77.94 11.38,64.41 0,57.06 6.18,45 0,32.94 11.38,25.59 12.06,12.06 25.59,11.38 32.94,0" 
+           fill="#0096f1"/>
+  <polygon points="40.16,58.47 26.24,45.08 29.7,41.48 40.15,51.52 61.22,31.08 64.7,34.67" 
+           fill="#ffffff"/>
+</svg>`;
 
-        if (!name || !email) {
-          statusMsg.textContent = "Please fill in all fields.";
-          submitBtn.disabled = false;
-          return;
+        const genColor = (seed) => {
+            const palette = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#ef4444", "#3b82f6"];
+            let sum = 0;
+            for (let i = 0; i < seed.length; i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
+            return palette[sum];
+        };
+
+        const createLiteUser = (user, type = 'user') => ({
+            uid: user.uid,
+            name: user.displayName || user.name || "",
+            email: user.email || "",
+            avatar: user.photoURL || user.avatar || "",
+            type: type
+        });
+
+        const addLoginPageUser = (liteUser) => {
+            let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+            users = [liteUser, ...users.filter(u => u.uid !== liteUser.uid)];
+            if (users.length > 6) users = users.slice(0, 6);
+            localStorage.setItem("loginPageUsers", JSON.stringify(users));
+        };
+
+        const removeProfile = (uid) => {
+            let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+            users = users.filter(u => u.uid !== uid);
+            localStorage.setItem("loginPageUsers", JSON.stringify(users));
+            if (auth.currentUser && auth.currentUser.uid === uid) {
+                signOut(auth).catch(e => console.warn("Sign out error:", e));
+            } else {
+                renderProfiles();
+            }
+            if (users.length === 0) {
+                isRemoveMode = false;
+                updateHeaderText(0);
+                profilesSection.classList.add("hidden");
+                loginSection.classList.remove("hidden");
+            }
+        };
+
+        const updateHeaderText = (userCount) => {
+            if (isRemoveMode && userCount > 0) {
+                mainHeader.textContent = "Choose an account to remove.";
+                return;
+            }
+            if (userCount === 0) {
+                mainHeader.textContent = "Create an account";
+            } else if (userCount === 1) {
+                mainHeader.textContent = "Continue with your account";
+            } else {
+                mainHeader.textContent = "Choose an account";
+            }
+        };
+
+        const renderProfiles = () => {
+            const savedUsers = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+            updateHeaderText(savedUsers.length);
+            if (savedUsers.length === 0) {
+                profilesSection.classList.add("hidden");
+                loginSection.classList.remove("hidden");
+                return;
+            }
+
+            loginSection.classList.add("hidden");
+            profilesSection.classList.remove("hidden");
+            profilesGrid.innerHTML = "";
+
+            const activeUid = auth.currentUser ? auth.currentUser.uid : null;
+
+            savedUsers.forEach((user, index) => {
+                const isActive = user.uid === activeUid;
+                const card = createProfileCard(user, isActive);
+                card.style.animationDelay = `${index * 0.1}s`;
+                profilesGrid.appendChild(card);
+            });
+        };
+
+        const createProfileCard = (user, isActive) => {
+            const card = document.createElement("div");
+            const removeModeClasses = isRemoveMode 
+                ? "ring-2 ring-red-400/60 cursor-default bg-red-50/30" 
+                : "cursor-pointer hover:shadow-xl hover:shadow-blue-500/10 hover:scale-[1.02] active:scale-[0.98]";
+            
+            card.className = `animate-slide-up flex items-center gap-4 w-full border-0 rounded-2xl p-5 bg-white/80 backdrop-blur-sm text-left relative transition-all duration-300 ${removeModeClasses} ${isActive ? 'ring-2 ring-blue-500/30 bg-gradient-to-r from-blue-50/50 to-purple-50/50' : ''}`;
+
+            const colorGradient = genColor(user.email || user.uid);
+            const gradientStyle = `background: linear-gradient(135deg, ${colorGradient}, ${colorGradient}dd)`;
+
+            card.innerHTML = `
+                <div class="relative">
+                    <div class="w-14 h-14 rounded-2xl border-0 overflow-hidden flex items-center justify-center shrink-0 shadow-lg" style="${gradientStyle}">
+                        ${user.avatar ? `<img src="${user.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold text-lg">${(user.name?.[0]||"?").toUpperCase()}</span>`}
+                    </div>
+                    ${isActive ? '<div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-3 border-white flex items-center justify-center"><span class="w-2 h-2 bg-white rounded-full"></span></div>' : ''}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="font-bold truncate flex items-center gap-2 text-gray-900" title="${user.name||""}">
+                        <span class="truncate max-w-[140px] text-lg">${user.name||"Unnamed"}</span>
+                        ${isActive ? verifiedBadgeSVG : ''}
+                    </div>
+                    <div class="text-sm text-gray-600 truncate font-medium" title="${user.email||""}">${user.email||""}</div>
+                </div>
+                <div class="ml-auto flex items-center gap-2 shrink-0">
+                    <span class="text-xs font-bold px-3 py-1.5 rounded-full shadow-sm ${user.type==='admin'?'bg-gradient-to-r from-purple-500 to-pink-500 text-white':'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'}">
+                        ${user.type==='admin'?'Admin':'User'}
+                    </span>
+                </div>
+                <button class="delete-profile absolute top-2 right-2 w-8 h-8 flex items-center justify-center text-red-500 bg-white rounded-full shadow-lg hover:shadow-xl z-10 font-bold text-xl transition-all duration-200 hover:scale-110 ${isRemoveMode ? 'flex' : 'hidden'}">&times;</button>
+            `;
+
+            card.onclick = async () => {
+                if (isRemoveMode) return;
+                if (isActive) {
+                    await routeUser(auth.currentUser);
+                } else {
+                    verifyModal.classList.remove('hidden');
+                }
+            };
+
+            const deleteBtn = card.querySelector('.delete-profile');
+            deleteBtn.onclick = (event) => {
+                event.stopPropagation();
+                removeProfile(user.uid);
+            };
+
+            return card;
+        };
+
+        async function login() {
+            try {
+                const res = await signInWithPopup(auth, provider);
+                await routeUser(res.user);
+            } catch (e) {
+                if (e.code !== 'auth/popup-closed-by-user') {
+                    alert("Login failed: " + (e?.message || e));
+                }
+            }
         }
 
-        try {
-          // create a new docRef so we can include its id in the document
-          const newDocRef = doc(collection(db, "user"));
-          const idToUse = newDocRef.id;
-          const now = new Date().toISOString();
+        async function routeUser(user) {
+            if (!user) return;
+            try {
+                const adminRef = doc(db, "admin", user.uid);
+                const adminSnap = await getDoc(adminRef);
+                if (adminSnap.exists()) {
+                    addLoginPageUser(createLiteUser(user, 'admin'));
+                    window.location.href = "adminpanel.html";
+                    return;
+                }
+            } catch (e) {
+                alert("Could not verify your role. Please try again.");
+                return;
+            }
 
-          await setDoc(newDocRef, {
-            id: idToUse,
-            name: name,
-            "e-mail": email,
-            date: now
-          });
-
-          // save user id locally so contact.html knows which user to load
-          localStorage.setItem("userId", idToUse);
-
-          // success
-          alert("User registered successfully!");
-          window.location.href = "contact.html";
-        } catch (err) {
-          console.error("Error saving user:", err);
-          statusMsg.textContent = "Failed to save user. See console.";
-          submitBtn.disabled = false;
+            addLoginPageUser(createLiteUser(user, 'user'));
+            const accRef = doc(db, "accounts", user.uid);
+            const accSnap = await getDoc(accRef);
+            if (!accSnap.exists()) {
+                await setDoc(accRef, {
+                    uid: user.uid,
+                    name: user.displayName || "",
+                    email: user.email || "",
+                    avatar: user.photoURL || "",
+                    createdAt: new Date().toISOString()
+                });
+            }
+            window.location.href = "messenger.html";
         }
-      });
-    });
-  </script>
+
+        async function doSignOut() {
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+                users = users.filter(u => u.uid !== currentUser.uid);
+                localStorage.setItem("loginPageUsers", JSON.stringify(users));
+            }
+            try {
+                await signOut(auth);
+                renderProfiles();
+            } catch {}
+        }
+
+        function toggleRemoveMode() {
+            isRemoveMode = !isRemoveMode;
+            if (isRemoveMode) {
+                removeAccountBtn.textContent = 'Done';
+                removeAccountBtn.classList.add('bg-red-500','text-white', 'shadow-lg', 'shadow-red-500/25');
+                removeAccountBtn.classList.remove('hover:bg-gray-50');
+            } else {
+                removeAccountBtn.textContent = 'Remove an account';
+                removeAccountBtn.classList.remove('bg-red-500','text-white', 'shadow-lg', 'shadow-red-500/25');
+                removeAccountBtn.classList.add('hover:bg-gray-50');
+            }
+            renderProfiles();
+        }
+
+        window.login = login;
+
+        useAnotherAccountBtn.addEventListener("click", () => {
+          verifyModal.classList.remove('hidden');
+        });
+
+        signOutBtn.addEventListener("click", doSignOut);
+        removeAccountBtn.addEventListener("click", toggleRemoveMode);
+        verifyModalBtn.addEventListener("click", () => {
+            verifyModal.classList.add('hidden');
+            login();
+        });
+        verifyModalCancelBtn.addEventListener("click", () => {
+            verifyModal.classList.add('hidden');
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const adminRef = doc(db, "admin", user.uid);
+                const adminSnap = await getDoc(adminRef);
+                const userType = adminSnap.exists() ? 'admin' : 'user';
+                addLoginPageUser(createLiteUser(user, userType));
+            }
+            renderProfiles();
+        });
+    </script>
+    <style>
+        html { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+        }
+        .glass-effect {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .floating-orbs::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            animation: float 8s ease-in-out infinite;
+            pointer-events: none;
+        }
+    </style>
 </head>
-<body class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 font-sans">
-  <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
-    <h1 id="form-heading" class="text-2xl font-semibold mb-6 text-gray-800">Register User</h1>
-    <form id="register-form" class="space-y-5">
-      <div>
-        <label for="name" class="block text-gray-700 font-medium mb-1">Name</label>
-        <input type="text" id="name" name="name" required
-          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder="Your full name" />
-      </div>
-      <div>
-        <label for="email" class="block text-gray-700 font-medium mb-1">E-mail</label>
-        <input type="email" id="email" name="email" required
-          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder="you@example.com" />
-      </div>
-      <p id="status-msg" class="text-red-600 text-sm min-h-[1.25rem]"></p>
-      <div class="flex items-center justify-between space-x-4">
-        <button id="submit-btn" type="submit"
-          class="flex-grow bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 focus:ring-2 text-white font-semibold py-2 rounded-md transition duration-150">
-          Submit
-        </button>
-        <button type="button"
-          class="bg-gray-300 hover:bg-gray-400 focus:ring-gray-400 focus:ring-2 font-semibold py-2 px-5 rounded-md transition duration-150"
-          onclick="window.location.href='contact.html'">
-          Cancel
-        </button>
-      </div>
-    </form>
-  </div>
+<body class="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+    <!-- Animated background elements -->
+    <div class="floating-orbs absolute inset-0 pointer-events-none"></div>
+    
+    <div class="glass-effect w-full max-w-md rounded-3xl shadow-2xl p-8 relative z-10 animate-fade-in">
+        <!-- Logo/Header area with gradient -->
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl animate-glow">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+            </div>
+            <h1 id="main-header" class="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">Sign in</h1>
+            <p class="text-gray-600 text-sm mt-2">Welcome back to your secure space</p>
+        </div>
+
+        <div id="login-section" class="space-y-4">
+            <button onclick="login()" class="w-full group flex items-center justify-center gap-3 bg-white border-0 px-6 py-4 rounded-2xl text-base font-semibold hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-xl">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6 group-hover:scale-110 transition-transform" alt="">
+                <span class="bg-gradient-to-r from-gray-700 to-gray-900 bg-clip-text text-transparent">Continue with Google</span>
+            </button>
+            <div class="text-center">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-white/30"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-4 text-gray-600 bg-transparent">Secure • Private • Fast</span>
+                    </div>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 text-center leading-relaxed">
+                By continuing, you agree to our <span class="text-blue-600 hover:underline cursor-pointer">Terms</span> & <span class="text-blue-600 hover:underline cursor-pointer">Privacy Policy</span>.
+            </p>
+        </div>
+
+        <div id="profiles-section" class="space-y-6 hidden">
+            <div id="profiles" class="flex flex-col gap-4"></div>
+            <div class="flex flex-col items-center justify-center space-y-3 w-full">
+                <button id="use-another-account-btn" class="w-full bg-white/50 backdrop-blur border-0 px-6 py-4 rounded-2xl text-base font-semibold hover:bg-white/70 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+                    <span class="flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Use another account
+                    </span>
+                </button>
+                <button id="remove-account-btn" class="w-full bg-white/30 backdrop-blur text-gray-700 text-base px-6 py-4 rounded-2xl font-semibold hover:bg-gray-50 transition-all duration-300">
+                    Remove an account
+                </button>
+                <button id="sign-out-btn" class="text-red-500 text-sm hover:text-red-600 font-medium mt-2 hover:scale-105 transition-all duration-200">Sign out all accounts</button>
+            </div>
+            <p class="text-xs text-gray-500 text-center mt-4 leading-relaxed">
+                Select a profile to continue with that account securely.
+            </p>
+        </div>
+    </div>
+
+    <div id="verify-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm hidden animate-fade-in">
+        <div class="glass-effect w-full max-w-sm rounded-3xl shadow-2xl p-8 text-center animate-slide-up">
+            <div class="w-12 h-12 mx-auto mb-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Verify your identity</h2>
+            <p class="text-gray-600 mb-6 leading-relaxed">Choose your account from the selection of accounts on your device to proceed securely.</p>
+            <div class="flex flex-col gap-3">
+                <button id="verify-modal-btn" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-2xl hover:from-blue-600 hover:to-blue-700 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
+                    Continue Verification
+                </button>
+                <button id="verify-modal-cancel-btn" class="w-full text-gray-600 font-semibold py-4 rounded-2xl border border-gray-300 hover:bg-gray-50 transition-all duration-300">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
