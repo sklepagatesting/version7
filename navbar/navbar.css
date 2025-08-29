@@ -20,12 +20,6 @@
   transform: translateY(10px);
 }
 
-
-
-
-
-
-
 /* === ACCORDION HEADER COLORS ONLY (h2 and SVG) === */
 
 /* Light Mode - Closed Header (default) */
@@ -45,27 +39,6 @@
 .sidebar-menu-header.open svg {
   stroke: #1b00cc;
   transform: rotate(180deg);
-}
-
-/* Dark Mode Overrides */
-@media (prefers-color-scheme: dark) {
-  /* Closed Header */
-  .sidebar-menu-header:not(.open) h2 {
-    color: #ffffff !important; /* White */
-  }
-
-  .sidebar-menu-header:not(.open) svg {
-    stroke: #ffffff !important;
-  }
-
-  /* Open Header */
-  .sidebar-menu-header.open h2 {
-    color: #f7ff01 !important; /* Yellow */
-  }
-
-  .sidebar-menu-header.open svg {
-    stroke: #f7ff01 !important;
-  }
 }
 
 .submenu-link {
@@ -92,9 +65,6 @@
   width: 100%;
 }
 
-
-
-
 /* Transparent base */
 #navbar {
   background-color: transparent;
@@ -104,17 +74,4 @@
 /* Add background on scroll or sidebar open */
 .navbar-bg {
   background-color: rgb(255, 255, 255) !important; /* White background for light mode */
-}
-
-/* Dark mode based on system preference */
-@media (prefers-color-scheme: dark) {
-  .navbar-bg {
-    background-color: #242424 !important; /* Dark background for dark mode */
-  }
-}
-
-/* Dark mode override (e.g., for a manual toggle switch) */
-/* This will override the @media query if the .dark class is present */
-.dark .navbar-bg {
-  background-color: #242424 !important;
 }
