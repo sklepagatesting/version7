@@ -3,403 +3,18 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Messages</title>
-    <link rel="stylesheet" href="font/font.css">
-    <style>
-        :root {
-            --bg-gradient-start: #1e1e2f;
-            --bg-gradient-end: #27293d;
-            --sender-bg: linear-gradient(135deg, #7928ca 0%, #ff0080 100%);
-            --receiver-bg: rgba(255, 255, 255, 0.1);
-            --body-bg: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --text-primary: #ffffff;
-            --text-secondary: #a0aec0;
-            --accent-primary: #ff0080;
-            --shadow-soft: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-            --search-bg: rgba(255, 255, 255, 0.05);
-        }
-
-        html {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: var(--text-primary);
-        }
-
-        body {
-            margin: 0;
-            background: var(--body-bg);
-            background-attachment: fixed;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-
-        .chat-app {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            flex-direction: column;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-        }
-
-        .chat-header {
-            padding: 1.25rem 1.5rem;
-            background: rgba(30, 30, 47, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--glass-border);
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: var(--shadow-soft);
-            position: relative;
-            z-index: 10;
-            transition: background 0.3s ease;
-        }
-        
-        .chat-header .font-semibold {
-            font-weight: 700;
-            font-size: 1.5rem;
-            background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-
-        .chat-menu-container {
-            position: relative;
-            display: inline-block;
-        }
-
-        .chat-menu-toggle-button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 50%;
-            transition: background 0.2s ease, transform 0.2s ease;
-        }
-        
-        .chat-menu-toggle-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: rotate(90deg);
-        }
-
-        .chat-menu-toggle-button svg {
-            color: var(--text-secondary);
-            width: 24px;
-            height: 24px;
-        }
-
-        .chat-menu-dropdown {
-            position: absolute;
-            top: calc(100% + 10px);
-            right: 0;
-            background-color: rgba(39, 41, 61, 0.9);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            min-width: 160px;
-            box-shadow: var(--shadow-soft);
-            z-index: 1;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            overflow: hidden;
-            opacity: 0;
-            transform: translateY(-10px) scale(0.95);
-            transform-origin: top right;
-            transition: opacity 0.2s ease, transform 0.2s ease;
-            pointer-events: none;
-        }
-
-        .chat-menu-dropdown.open {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            pointer-events: auto;
-        }
-
-        .chat-menu-dropdown a {
-            color: var(--text-primary);
-            padding: 12px 18px;
-            text-decoration: none;
-            display: block;
-            font-size: 0.95rem;
-            font-weight: 500;
-            transition: background 0.2s ease, color 0.2s ease;
-        }
-
-        .chat-menu-dropdown a:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-
-        .chat-menu-dropdown a#deleteChatOption {
-            color: #ff4d4d;
-        }
-        
-        .chat-menu-dropdown a#deleteChatOption:hover {
-            background-color: rgba(255, 77, 77, 0.1);
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .messages {
-            flex: 1;
-            min-height: 0;
-            padding: 1.5rem;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            -webkit-overflow-scrolling: touch;
-            word-break: break-word;
-        }
-        
-        .messages::-webkit-scrollbar { width: 6px; }
-        .messages::-webkit-scrollbar-track { background: transparent; }
-        .messages::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
-        .messages::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
-
-        .message-row {
-            display: flex;
-            margin-bottom: 0.75rem;
-            opacity: 0;
-            transform: translateY(20px);
-            animation: slideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-        }
-
-        @keyframes slideIn {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .message-row.sender { justify-content: flex-end; }
-        .message-row.receiver { justify-content: flex-start; }
-        .message-content { display: flex; flex-direction: column; max-width: 75%; }
-
-        .chat-bubble {
-            padding: 12px 18px;
-            border-radius: 20px;
-            word-wrap: break-word;
-            white-space: pre-wrap;
-            box-shadow: var(--shadow-soft);
-            transition: transform 0.2s ease;
-        }
-        
-        .chat-bubble:hover { transform: translateY(-2px); }
-
-        .chat-bubble.sender {
-            background: var(--sender-bg);
-            color: white;
-            align-self: flex-end;
-            border-radius: 20px 20px 5px 20px;
-        }
-
-        .chat-bubble.receiver {
-            background: var(--receiver-bg);
-            border: 1px solid var(--glass-border);
-            color: var(--text-primary);
-            align-self: flex-start;
-            border-radius: 20px 20px 20px 5px;
-        }
-
-        .chat-bubble.typing-indicator {
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 6px;
-            min-height: 48px;
-            padding: 12px 18px;
-            box-sizing: border-box;
-            background: var(--receiver-bg);
-        }
-
-        .message-time {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-top: 8px;
-            padding: 0 8px;
-        }
-
-        .message-time .text-blue-500 { color: #58a6ff; }
-        .message-time .text-gray-400 { color: #8b949e; }
-        .message-row.sender .message-time { align-self: flex-end; display: flex; align-items: center; }
-        .message-row.receiver .message-time { align-self: flex-start; }
-
-        .chat-input-wrapper {
-            border-top: 1px solid var(--glass-border);
-            background: rgba(30, 30, 47, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            padding: 1rem 1.5rem;
-            display: flex;
-            align-items: flex-end;
-            gap: 1rem;
-        }
-
-        .chat-input-wrapper textarea {
-            box-sizing: border-box;
-            flex: 1;
-            padding: 10px 14px;
-            border: 1px solid transparent;
-            border-radius: 20px;
-            background: var(--search-bg);
-            color: var(--text-primary);
-            outline: none;
-            resize: none;
-            min-height: 42px;
-            max-height: 30vh;
-            overflow-y: auto;
-            font-size: 1rem;
-            line-height: 1.4rem;
-            height: 42px;
-            transition: background 0.3s ease, border-color 0.3s ease;
-        }
-        
-        .chat-input-wrapper textarea::placeholder { color: var(--text-secondary); }
-        .chat-input-wrapper textarea:focus { background: rgba(255, 255, 255, 0.1); border-color: var(--glass-border); }
-        .chat-input-wrapper textarea.context::-webkit-scrollbar { display: none; }
-
-        .chat-input-wrapper button {
-            height: 42px;
-            width: 42px;
-            min-height: 42px;
-            padding: 0;
-            border: none;
-            background: var(--sender-bg);
-            color: white;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 1.25rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        
-        .chat-input-wrapper button:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 20px rgba(255, 0, 128, 0.4);
-        }
-
-        .message-placeholder {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: var(--text-secondary);
-            opacity: 0.7;
-        }
-
-        .message-placeholder svg {
-            width: 4rem;
-            height: 4rem;
-            margin-bottom: 1rem;
-        }
-        .message-placeholder h3 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        .message-placeholder p {
-            font-size: 1rem;
-        }
-
-        .typing-indicator span {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background-color: var(--text-secondary);
-            border-radius: 50%;
-            margin: 0 3px;
-            animation: bounce 1.2s infinite ease-in-out;
-        }
-
-        .typing-indicator span:nth-child(2) { animation-delay: -1.0s; }
-        .typing-indicator span:nth-child(3) { animation-delay: -0.8s; }
-
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1.0); }
-        }
-    </style>
-</head>
-
-<body>
-    <div class="chat-app" id="chatApp">
-        <div class="chat-header">
-            <span class="font-semibold">Support Chat</span>
-            <div class="chat-menu-container">
-                <button id="chatMenuButton" class="chat-menu-toggle-button" aria-label="Chat options">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        class="feather feather-more-vertical">
-                        <circle cx="12" cy="12" r="1"></circle>
-                        <circle cx="12" cy="5" r="1"></circle>
-                        <circle cx="12" cy="19" r="1"></circle>
-                    </svg>
-                </button>
-                <div id="chatMenuDropdown" class="chat-menu-dropdown hidden">
-                    <a href="#" id="clearChatOption">Clear chat</a>
-                    <a href="#" id="deleteChatOption">Delete chat</a>
-                    <a href="#" id="signOutOption">Sign Out</a>
-                </div>
-            </div>
-        </div>
-        <div class="messages" id="messagesContainer">
-            <div class="message-placeholder">
-                <svg xmlns="http://www.w3.org/2000/svg" class="text-gray-400" fill="none"
-                    viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                <h3 class="mt-2 text-sm font-medium">Start a conversation</h3>
-                <p class="mt-1 text-sm text-gray-500">Send a message to our support team.</p>
-            </div>
-            <div id="typingIndicatorContainer"></div>
-        </div>
-        <form id="messageForm" class="chat-input-wrapper">
-            <textarea id="messageInput" placeholder="Type a message..." autocomplete="off" class="context"></textarea>
-            <button type="submit" aria-label="Send Message">&#10148;</button>
-        </form>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-    <script>
-        (function() {
-            emailjs.init("O3lW73xpbv35YItw4"); // Replace with your EmailJS public key
-        })();
-    </script>
-
+    <title>SK Lepaga - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import {
-            initializeApp
-        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import {
-            getFirestore,
-            collection,
-            doc,
-            onSnapshot,
-            getDoc,
-            getDocs,
-            setDoc,
-            updateDoc,
-            arrayUnion,
-            serverTimestamp,
-            deleteDoc
-        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-        import {
-            getAuth,
-            signOut,
-            onAuthStateChanged
+            getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
+            setPersistence, browserLocalPersistence, signOut
         } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
@@ -412,375 +27,415 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
         const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+        await setPersistence(auth, browserLocalPersistence);
 
-        let currentUser = null;
-        let currentConversationRef = null;
+        let isRemoveMode = false;
 
-        const messagesContainer = document.getElementById("messagesContainer");
-        const messageForm = document.getElementById("messageForm");
-        const messageInput = document.getElementById("messageInput");
-        const typingIndicatorContainer = document.getElementById("typingIndicatorContainer");
-        const messagesPlaceholder = document.querySelector('.message-placeholder');
-        const chatMenuButton = document.getElementById("chatMenuButton");
-        const chatMenuDropdown = document.getElementById("chatMenuDropdown");
-        const clearChatOption = document.getElementById("clearChatOption");
-        const deleteChatOption = document.getElementById("deleteChatOption");
-        const signOutOption = document.getElementById("signOutOption");
+        const loginSection = document.getElementById("login-section");
+        const profilesSection = document.getElementById("profiles-section");
+        const profilesGrid = document.getElementById("profiles");
+        const signOutBtn = document.getElementById("sign-out-btn");
+        const mainHeader = document.getElementById("main-header");
+        const removeAccountBtn = document.getElementById("remove-account-btn");
+        const verifyModal = document.getElementById("verify-modal");
+        const verifyModalBtn = document.getElementById("verify-modal-btn");
+        const verifyModalCancelBtn = document.getElementById("verify-modal-cancel-btn");
+        const useAnotherAccountBtn = document.getElementById("use-another-account-btn");
 
-        const sendEmailIfNeeded = async (conversationId, message, user) => {
-            const convRef = doc(db, "conversations", conversationId);
-            const convSnap = await getDoc(convRef);
-            const convData = convSnap.data();
+        const verifiedBadgeSVG = `<svg xmlns="http://www.w3.org/2000/svg"      viewBox="0 0 90 90"      class="w-[20px] h-[20px] shrink-0 translate-y-[1px]">  <polygon points="45,6.18 57.06,0 64.41,11.38 77.94,12.06 78.62,25.59 90,32.94 83.82,45 90,57.06 78.62,64.41 77.94,77.94 64.41,78.62 57.06,90 45,83.82 32.94,90 25.59,78.62 12.06,77.94 11.38,64.41 0,57.06 6.18,45 0,32.94 11.38,25.59 12.06,12.06 25.59,11.38 32.94,0"            fill="#0096f1"/>  <polygon points="40.16,58.47 26.24,45.08 29.7,41.48 40.15,51.52 61.22,31.08 64.7,34.67"            fill="#ffffff"/></svg>`;
 
-            const now = new Date();
-            let shouldSend = false;
+        const genColor = (seed) => {
+            const palette = ["#2563eb", "#16a34a", "#db2777", "#f59e0b", "#7c3aed", "#059669", "#ef4444", "#0ea5e9"];
+            let sum = 0;
+            for (let i = 0; i < seed.length; i++) sum = (sum + seed.charCodeAt(i)) % palette.length;
+            return palette[sum];
+        };
 
-            if (!convData || !convData.lastEmailSentAt) {
-                shouldSend = true;
+        const createLiteUser = (user, type = 'user') => ({
+            uid: user.uid,
+            name: user.displayName || user.name || "",
+            email: user.email || "",
+            avatar: user.photoURL || user.avatar || "",
+            type: type
+        });
+
+        const addLoginPageUser = (liteUser) => {
+            let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+            users = [liteUser, ...users.filter(u => u.uid !== liteUser.uid)];
+            if (users.length > 6) users = users.slice(0, 6);
+            localStorage.setItem("loginPageUsers", JSON.stringify(users));
+        };
+
+        const removeProfile = (uid) => {
+            let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+            users = users.filter(u => u.uid !== uid);
+            localStorage.setItem("loginPageUsers", JSON.stringify(users));
+            if (auth.currentUser && auth.currentUser.uid === uid) {
+                signOut(auth).catch(e => console.warn("Sign out error:", e));
             } else {
-                const lastEmail = convData.lastEmailSentAt.toDate();
-                const diffMinutes = (now - lastEmail) / (1000 * 60);
-                if (diffMinutes >= 5) {
-                    shouldSend = true;
-                }
+                renderProfiles();
             }
-
-            if (shouldSend) {
-                const adminDocs = await getDocs(collection(db, "admin"));
-                const adminEmails = [];
-                adminDocs.forEach(doc => {
-                    const data = doc.data();
-                    if (data.email) {
-                        adminEmails.push(data.email);
-                    }
-                });
-
-                const toEmailList = adminEmails.join(",");
-
-                if (toEmailList.length > 0) {
-                    await emailjs.send("service_h72d2xw", "template_9g05rdg", {
-                        title: "New Message in Messenger",
-                        name: user.displayName || "Guest",
-                        time: now.toLocaleString(),
-                        message: message,
-                        to_email: toEmailList,
-                        email: user.email || "no-reply@test",
-                    });
-
-                    await updateDoc(convRef, {
-                        lastEmailSentAt: serverTimestamp(),
-                    });
-
-                    console.log("✅ Email sent to admins:", toEmailList);
-                } else {
-                    console.log("⚠️ No admin emails found. Skipping email notification.");
-                }
-
-            } else {
-                console.log("⏳ Skipped, email already sent within last 5 minutes");
+            if (users.length === 0) {
+                isRemoveMode = false;
+                updateHeaderText(0);
+                profilesSection.classList.add("hidden");
+                loginSection.classList.remove("hidden");
             }
         };
 
-        function escapeHtml(text) {
-            if (typeof text !== 'string') return "";
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
-        }
-
-        function formatTimestamp(date) {
-            if (!date) return '';
-            const d = date.toDate ? date.toDate() : new Date(date);
-
-            const optionsTime = {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: 'Asia/Manila'
-            };
-            const optionsDate = {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                timeZone: 'Asia/Manila'
-            };
-
-            const today = new Date();
-            const todayPH = new Date(today.toLocaleString('en-US', {
-                timeZone: 'Asia/Manila'
-            }));
-            const dPH = new Date(d.toLocaleString('en-US', {
-                timeZone: 'Asia/Manila'
-            }));
-
-            const isToday = dPH.toDateString() === todayPH.toDateString();
-            const yesterdayPH = new Date(todayPH);
-            yesterdayPH.setDate(todayPH.getDate() - 1);
-            const isYesterday = dPH.toDateString() === yesterdayPH.toDateString();
-
-            if (isToday) {
-                return dPH.toLocaleTimeString('en-US', optionsTime);
-            } else if (isYesterday) {
-                return 'Yesterday, ' + dPH.toLocaleTimeString('en-US', optionsTime);
+        const updateHeaderText = (userCount) => {
+            if (isRemoveMode && userCount > 0) {
+                mainHeader.textContent = "Choose an account to remove.";
+                return;
+            }
+            if (userCount === 0) {
+                mainHeader.textContent = "Welcome Back";
+            } else if (userCount === 1) {
+                mainHeader.textContent = "Continue with your account";
             } else {
-                return dPH.toLocaleDateString('en-US', optionsDate) + ', ' + dPH.toLocaleTimeString('en-US',
-                    optionsTime);
+                mainHeader.textContent = "Choose an account";
             }
-        }
+        };
 
-        function scrollToBottom() {
-            requestAnimationFrame(() => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        const renderProfiles = () => {
+            const savedUsers = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+            updateHeaderText(savedUsers.length);
+            if (savedUsers.length === 0) {
+                profilesSection.classList.add("hidden");
+                loginSection.classList.remove("hidden");
+                return;
+            }
+
+            loginSection.classList.add("hidden");
+            profilesSection.classList.remove("hidden");
+            profilesGrid.innerHTML = "";
+
+            const activeUid = auth.currentUser ? auth.currentUser.uid : null;
+
+            savedUsers.forEach(user => {
+                const isActive = user.uid === activeUid;
+                profilesGrid.appendChild(createProfileCard(user, isActive));
             });
-        }
+        };
 
-        const sentIcon =
-            `<svg class="w-4 h-4 text-gray-400 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
-        const readIcon =
-            `<svg class="w-4 h-4 text-blue-500 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.293-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l4.293-4.293a1 1 0 011.414 1.414z"/></svg>`;
+        const createProfileCard = (user, isActive) => {
+            const card = document.createElement("div");
+            const removeModeClasses = isRemoveMode ? "ring-2 ring-purple-400 cursor-default" : "cursor-pointer hover:scale-[1.02] hover:shadow-lg";
+            card.className = `flex items-center gap-4 w-full border rounded-2xl p-4 bg-white/80 backdrop-blur-sm text-left relative transition-all duration-300 ${removeModeClasses}`;
 
-        function renderMessages(allMessages) {
-            messagesContainer.querySelectorAll('.message-row:not(#typingIndicatorContainer .message-row)').forEach(el =>
-                el.remove());
+            card.innerHTML = `
+                <div class="w-14 h-14 rounded-full border-2 overflow-hidden flex items-center justify-center shrink-0 relative shadow-md" style="background:${genColor(user.email||user.uid)}; border-color: ${genColor(user.email||user.uid)}20">
+                    ${user.avatar ? `<img src="${user.avatar}" class="w-full h-full object-cover" alt=""/>` : `<span class="text-white font-bold text-lg">${(user.name?.[0]||"?").toUpperCase()}</span>`}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="font-semibold truncate flex items-center gap-2 text-base" title="${user.name||""}">
+                        <span class="truncate max-w-[140px] text-gray-800">${user.name||"Unnamed"}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 truncate mt-0.5" title="${user.email||""}">${user.email||""}</div>
+                </div>
+                <div class="ml-auto flex items-center gap-2 shrink-0">
+                    <span class="text-xs font-semibold px-3 py-1.5 rounded-full ${user.type==='admin'?'bg-purple-100 text-purple-700 border border-purple-200':'bg-blue-100 text-blue-700 border border-blue-200'}">
+                        ${user.type==='admin'?'Admin':'User'}
+                    </span>
+                    ${isActive ? verifiedBadgeSVG : ''}
+                </div>
+                <button class="delete-profile absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center text-red-500 bg-white rounded-full shadow-lg border-2 border-red-200 z-10 font-bold text-lg hover:bg-red-50 transition-all ${isRemoveMode ? 'flex' : 'hidden'}">&times;</button>
+            `;
 
-            const fragment = document.createDocumentFragment();
-            for (let i = 0; i < allMessages.length; i++) {
-                const msg = allMessages[i];
-                const isSender = msg.author === currentUser.displayName;
-                const row = document.createElement("div");
-                row.className = "message-row " + (isSender ? "sender" : "receiver");
-
-                const content = document.createElement("div");
-                content.className = "message-content";
-
-                const bubble = document.createElement("div");
-                bubble.className = "chat-bubble " + (isSender ? "sender" : "receiver");
-                bubble.textContent = msg.text;
-
-                content.appendChild(bubble);
-
-                const isLastMessage = (i === allMessages.length - 1);
-                let lastMessageTime = null;
-                if (i > 0) {
-                    lastMessageTime = allMessages[i - 1].time;
-                }
-                const showTime = !lastMessageTime || (msg.time.toDate().getTime() - lastMessageTime.toDate()
-                    .getTime() > 300000);
-
-                if (showTime || (isSender && isLastMessage)) {
-                    const timeEl = document.createElement("div");
-                    timeEl.className = "message-time flex items-center gap-1";
-                    timeEl.textContent = formatTimestamp(msg.time);
-
-                    if (isSender && isLastMessage) {
-                        if (msg.status === 'read') {
-                            timeEl.innerHTML += readIcon;
-                        } else {
-                            timeEl.innerHTML += sentIcon;
-                        }
-                    }
-                    content.appendChild(timeEl);
-                }
-                row.appendChild(content);
-                fragment.appendChild(row);
-            }
-            messagesContainer.insertBefore(fragment, typingIndicatorContainer);
-        }
-
-        let typingTimeout = null;
-        messageInput.addEventListener('input', () => {
-            if (currentConversationRef) {
-                updateDoc(currentConversationRef, {
-                    userTyping: true
-                });
-                clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(() => {
-                    updateDoc(currentConversationRef, {
-                        userTyping: false
-                    });
-                }, 1500);
-            }
-        });
-
-        messageForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const text = messageInput.value.trim();
-            if (!text || !currentConversationRef) return;
-
-            try {
-                const docSnap = await getDoc(currentConversationRef);
-                const newMessage = {
-                    author: currentUser.displayName,
-                    text: text,
-                    time: new Date(),
-                    status: 'sent'
-                };
-
-                const conversationId = `conv_${currentUser.uid}`;
-
-                if (docSnap.exists()) {
-                    await updateDoc(currentConversationRef, {
-                        messages: arrayUnion(newMessage),
-                        lastUpdated: serverTimestamp()
-                    });
+            card.onclick = async () => {
+                if (isRemoveMode) return;
+                if (isActive) {
+                    await routeUser(auth.currentUser);
                 } else {
-                    await setDoc(currentConversationRef, {
-                        user: {
-                            uid: currentUser.uid,
-                            name: currentUser.displayName,
-                            email: currentUser.email
-                        },
-                        admin: {
-                            name: "Support Admin"
-                        },
-                        messages: [newMessage],
-                        lastUpdated: serverTimestamp(),
-                        userTyping: false,
-                        adminTyping: false,
-                    });
+                    verifyModal.classList.remove('hidden');
                 }
+            };
 
-                sendEmailIfNeeded(conversationId, text, currentUser);
+            const deleteBtn = card.querySelector('.delete-profile');
+            deleteBtn.onclick = (event) => {
+                event.stopPropagation();
+                removeProfile(user.uid);
+            };
 
-                messageInput.value = "";
-                messageInput.style.height = "42px";
-                scrollToBottom();
-            } catch (err) {
-                alert("Failed to send message: " + err.message);
-            }
-        });
+            return card;
+        };
 
-        function setupUserChat(user) {
-            currentUser = user;
-            const conversationId = `conv_${user.uid}`;
-            currentConversationRef = doc(db, "conversations", conversationId);
-
-            onSnapshot(currentConversationRef, async (docSnap) => {
-                if (messagesPlaceholder) {
-                    if (docSnap.exists() && (docSnap.data().messages?.length > 0)) {
-                        messagesPlaceholder.style.display = 'none';
-                    } else {
-                        messagesPlaceholder.style.display = 'flex';
-                    }
-                }
-
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    renderMessages(data.messages || []);
-
-                    if (data.adminTyping) {
-                        typingIndicatorContainer.innerHTML = `
-                            <div class="message-row receiver">
-                                <div class="message-content">
-                                    <div class="chat-bubble receiver typing-indicator">
-                                        <span></span><span></span><span></span>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        typingIndicatorContainer.innerHTML = "";
-                    }
-
-                    const unreadAdminMessages = (data.messages || []).filter(msg => msg.author !== user.displayName && msg.status !== 'read');
-                    if (unreadAdminMessages.length > 0) {
-                        const updatedMessages = (data.messages || []).map(msg => {
-                            if (msg.author !== user.displayName && msg.status !== 'read') {
-                                return { ...msg,
-                                    status: 'read'
-                                };
-                            }
-                            return msg;
-                        });
-                        updateDoc(currentConversationRef, {
-                            messages: updatedMessages
-                        });
-                    }
-                }
-                scrollToBottom();
-            });
-        }
-
-        function toggleChatMenu() {
-            chatMenuDropdown.classList.toggle('hidden');
-            chatMenuDropdown.classList.toggle('open');
-        }
-
-        async function clearChat() {
-            if (!currentConversationRef) return;
-            if (confirm("Are you sure you want to clear this chat? This action cannot be undone.")) {
-                try {
-                    await updateDoc(currentConversationRef, {
-                        messages: []
-                    });
-                    console.log("Chat cleared successfully.");
-                } catch (error) {
-                    console.error("Error clearing chat: ", error);
-                    alert("Failed to clear chat. Please try again.");
+        async function login() {
+            try {
+                const res = await signInWithPopup(auth, provider);
+                await routeUser(res.user);
+            } catch (e) {
+                if (e.code !== 'auth/popup-closed-by-user') {
+                    alert("Login failed: " + (e?.message || e));
                 }
             }
-            toggleChatMenu();
         }
 
-        async function deleteChat() {
-            if (!currentConversationRef) return;
-            if (confirm("Are you sure you want to delete this chat? This will permanently remove the conversation and cannot be undone.")) {
-                try {
-                    await deleteDoc(currentConversationRef);
-                    console.log("Chat deleted successfully.");
-                    messagesContainer.innerHTML = '';
-                    messagesPlaceholder.style.display = 'flex';
-                    currentConversationRef = null;
-                } catch (error) {
-                    console.error("Error deleting chat: ", error);
-                    alert("Failed to delete chat. Please try again.");
+        async function routeUser(user) {
+            if (!user) return;
+            try {
+                const adminRef = doc(db, "admin", user.uid);
+                const adminSnap = await getDoc(adminRef);
+                if (adminSnap.exists()) {
+                    addLoginPageUser(createLiteUser(user, 'admin'));
+                    window.location.href = "adminpanel.html";
+                    return;
                 }
+            } catch (e) {
+                alert("Could not verify your role. Please try again.");
+                return;
             }
-            toggleChatMenu();
+
+            addLoginPageUser(createLiteUser(user, 'user'));
+            const accRef = doc(db, "accounts", user.uid);
+            const accSnap = await getDoc(accRef);
+            if (!accSnap.exists()) {
+                await setDoc(accRef, {
+                    uid: user.uid,
+                    name: user.displayName || "",
+                    email: user.email || "",
+                    avatar: user.photoURL || "",
+                    createdAt: new Date().toISOString()
+                });
+            }
+            window.location.href = "messenger.html";
         }
 
-        chatMenuButton.addEventListener('click', toggleChatMenu);
-        clearChatOption.addEventListener('click', (e) => {
-            e.preventDefault();
-            clearChat();
-        });
-        deleteChatOption.addEventListener('click', (e) => {
-            e.preventDefault();
-            deleteChat();
-        });
-        signOutOption.addEventListener('click', (e) => {
-            e.preventDefault();
-            logout();
-        });
-
-        window.logout = async () => {
+        async function doSignOut() {
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                let users = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
+                users = users.filter(u => u.uid !== currentUser.uid);
+                localStorage.setItem("loginPageUsers", JSON.stringify(users));
+            }
             try {
                 await signOut(auth);
-                window.location.href = "index.html";
-            } catch (error) {
-                console.error("Sign out error:", error);
-            }
-        };
+                renderProfiles();
+            } catch {}
+        }
 
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                setupUserChat(user);
+        function toggleRemoveMode() {
+            isRemoveMode = !isRemoveMode;
+            if (isRemoveMode) {
+                removeAccountBtn.textContent = 'Done';
+                removeAccountBtn.classList.add('bg-purple-600','text-white','shadow-lg');
+                removeAccountBtn.classList.remove('border-2','text-gray-700');
             } else {
-                window.location.href = "index.html";
+                removeAccountBtn.textContent = 'Remove an account';
+                removeAccountBtn.classList.remove('bg-purple-600','text-white','shadow-lg');
+                removeAccountBtn.classList.add('border-2','text-gray-700');
             }
+            renderProfiles();
+        }
+
+        window.login = login;
+        useAnotherAccountBtn.addEventListener("click", () => {
+          verifyModal.classList.remove('hidden');
         });
 
-        messageInput.addEventListener("input", () => {
-            messageInput.style.height = "42px";
-            messageInput.style.height = messageInput.scrollHeight + "px";
+        signOutBtn.addEventListener("click", doSignOut);
+        removeAccountBtn.addEventListener("click", toggleRemoveMode);
+        verifyModalBtn.addEventListener("click", () => {
+            verifyModal.classList.add('hidden');
+            login();
         });
 
-        messageInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                messageForm.requestSubmit();
+        verifyModalCancelBtn.addEventListener("click", () => {
+            verifyModal.classList.add('hidden');
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const adminRef = doc(db, "admin", user.uid);
+                const adminSnap = await getDoc(adminRef);
+                const userType = adminSnap.exists() ? 'admin' : 'user';
+                addLoginPageUser(createLiteUser(user, userType));
             }
+            renderProfiles();
+        });
+    </script>
+    <style>
+        html { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.18);
+            --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.1);
+            --shadow-glow: 0 0 40px rgba(102, 126, 234, 0.3);
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 226, 0.2) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            z-index: -2;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            33% { transform: translateY(-30px) rotate(1deg); }
+            66% { transform: translateY(-20px) rotate(-1deg); }
+        }
+
+        /* Login Card */
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: var(--shadow-soft);
+        }
+
+        /* Floating Animation */
+        .login-card {
+            animation: cardFloat 6s ease-in-out infinite;
+        }
+
+        @keyframes cardFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* Button Styles */
+        .google-btn {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .google-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            background: white;
+        }
+
+        .primary-btn {
+            background: var(--primary-gradient);
+            transition: all 0.3s ease;
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        /* Modal */
+        .modal-content {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+        }
+
+        /* Page Loader */
+        .page-loader {
+            background: var(--primary-gradient);
+            transition: opacity 0.5s ease;
+        }
+
+        .page-loader.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-loader fixed top-0 left-0 w-full h-full z-[9999] flex items-center justify-center">
+        <div class="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+    </div>
+
+    <div class="min-h-screen flex items-center justify-center p-4 pt-24">
+        <div class="login-card w-full max-w-md rounded-3xl p-8 shadow-2xl">
+            <div class="text-center mb-8">
+                <h1 id="main-header" class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    Welcome Back
+                </h1>
+                <p class="text-gray-600 mt-2">Sign in to access your account</p>
+            </div>
+
+            <div id="login-section" class="space-y-6">
+                <button onclick="login()" class="google-btn w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl text-base font-medium">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6" alt="">
+                    <span>Continue with Google</span>
+                </button>
+                <p class="text-xs text-gray-500 text-center leading-relaxed">
+                    By continuing, you agree to our <span class="text-purple-600 hover:underline cursor-pointer">Terms of Service</span> and <span class="text-purple-600 hover:underline cursor-pointer">Privacy Policy</span>.
+                </p>
+            </div>
+
+            <div id="profiles-section" class="hidden">
+                <div id="profiles" class="flex flex-col gap-4 mb-6"></div>
+                <div class="flex flex-col items-center justify-center space-y-3 w-full">
+                    <button id="use-another-account-btn" class="w-full border-2 border-gray-200 px-6 py-4 rounded-2xl text-base font-medium hover:bg-gray-50 hover:border-purple-300 transition-all duration-300">
+                        Use another account
+                    </button>
+                    <button id="remove-account-btn" class="w-full border-2 border-gray-200 text-gray-700 text-base px-6 py-4 rounded-2xl font-medium transition-all duration-300">
+                        Remove an account
+                    </button>
+                    <button id="sign-out-btn" class="text-red-500 text-sm hover:text-red-600 hover:underline mt-4 transition-colors">
+                        Sign out all accounts
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 text-center mt-6">
+                    Select a profile to continue with that account.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="verify-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm hidden">
+        <div class="modal-content w-full max-w-sm rounded-3xl shadow-2xl p-8 text-center border border-white/20">
+            <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-3">Verify Your Account</h2>
+            <p class="text-gray-600 mb-8 leading-relaxed">Choose your account from the selection of accounts on your device to proceed securely.</p>
+            <div class="flex flex-col gap-3">
+                <button id="verify-modal-btn" class="primary-btn w-full text-white font-semibold py-4 rounded-2xl text-base">
+                    Continue
+                </button>
+                <button id="verify-modal-cancel-btn" class="w-full text-purple-600 font-semibold py-4 rounded-2xl border-2 border-purple-200 hover:bg-purple-50 transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Page Loader
+        window.addEventListener('load', () => {
+            const loader = document.querySelector('.page-loader');
+            setTimeout(() => {
+                loader.classList.add('fade-out');
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 500);
+            }, 1000);
         });
     </script>
 </body>
