@@ -87,18 +87,19 @@
         };
 
         const updateHeaderText = (userCount) => {
-            if (isRemoveMode && userCount > 0) {
-                mainHeader.textContent = "Choose an account to remove.";
-                return;
-            }
-            if (userCount === 0) {
-                mainHeader.textContent = "Welcome Back";
-            } else if (userCount === 1) {
-                mainHeader.textContent = "Continue with your account";
-            } else {
-                mainHeader.textContent = "Choose an account";
-            }
-        };
+    if (isRemoveMode && userCount > 0) {
+        mainHeader.textContent = "Choose an account to remove.";
+        return;
+    }
+    if (userCount === 0) {
+        mainHeader.textContent = "Welcome Back";
+    } else if (userCount === 1) {
+        mainHeader.textContent = "Continue with your account";
+    } else {
+        mainHeader.textContent = "Choose an account";
+    }
+};
+
 
         const renderProfiles = () => {
             const savedUsers = JSON.parse(localStorage.getItem("loginPageUsers") || "[]");
