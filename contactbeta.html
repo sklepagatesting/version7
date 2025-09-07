@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -28,6 +29,56 @@
     body {
       transition: opacity 0.2s ease-in;
     }
+
+:root {
+  --start-color: #007aff; /* Bright Blue */
+  --mid-color: #a453e0;   /* Purple */
+  --end-color: #fe3c30;   /* Red/Orange */
+}
+
+/* Gradient text with subtle glow */
+.header-glowing-text {
+  background: linear-gradient(90deg, var(--start-color), var(--mid-color), var(--end-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+
+  text-shadow: 0 0 12px rgba(164, 83, 224, 0.5);
+  animation: header-glow 3s ease-in-out infinite alternate;
+}
+@keyframes header-glow {
+  0% { text-shadow: 0 0 6px rgba(164, 83, 224, 0.3); }
+  100% { text-shadow: 0 0 18px rgba(164, 83, 224, 0.8); }
+}
+
+/* Button core style */
+.elegant-glowing-button {
+  background: linear-gradient(135deg, var(--start-color), var(--end-color));
+  box-shadow: 0 6px 20px rgba(0, 122, 255, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Soft ambient halo */
+.elegant-glowing-button::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(circle, rgba(164,83,224,0.25) 0%, transparent 70%);
+  transform: scale(0.8);
+  opacity: 0;
+  transition: opacity .5s ease, transform .5s ease;
+}
+.elegant-glowing-button:hover::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* On hover: stronger glow + smoother motion */
+.elegant-glowing-button:hover {
+  box-shadow: 0 0 30px rgba(164, 83, 224, 0.6),
+              0 0 50px rgba(254, 60, 48, 0.4);
+}
   </style>
 </head>
 <body class="preload">
@@ -122,6 +173,25 @@
         </div>
       </aside>
 
+<section id="chat-cta" class="min-h-[50vh] flex items-center justify-center font-theme text-center bg-white dark:bg-[#242424] px-4 py-16 sm:py-24">
+  <div class="flex flex-col items-center">
+    <h3 class="hero-heading font-extrabold mb-16 mt-16 header-glowing-text">
+      INTRODUCING<br>REAL-TIME<br>CONVERSATIONS
+    </h3>
+    <a href="authentication.html" 
+      class="subtext-title elegant-glowing-button inline-flex items-center justify-center px-12 py-6  rounded-full shadow-lg text-white focus:ring-4 focus:ring-blue-300 active:scale-95 transition-all duration-300 ease-in-out group relative overflow-hidden">
+      <span class="relative z-10 flex items-center gap-3">
+        Chat with Us
+        <svg class="w-6 h-6 transform group-hover:translate-x-1 transition-transform duration-300" 
+          fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
+      </span>
+    </a>
+  </div>
+</section>
+
       <section id="contact" class="font-theme px-4 py-16 sm:py-24 bg-white dark:bg-[#242424]">
         <div class="max-w-screen-xl mx-auto">
           <div class="text-left mb-12">
@@ -130,6 +200,7 @@
               We'd love to hear from you! Whether you have questions, feedback, or a message for us, we're here to help.
             </p>
           </div>
+
           <div class="grid md:grid-cols-2 gap-12 items-center">
             <div class="bg-gray-50 dark:bg-[#303030] p-8 rounded-lg shadow-md max-w-md w-full">
               <form id="contact-form" class="space-y-6">
@@ -145,7 +216,7 @@
 
                 <div class="relative">
                   <textarea id="message" name="message" rows="4" required class="peer w-full bg-transparent border-b border-gray-400 dark:border-gray-500 py-3 outline-none focus:border-blue-600 dark:focus:border-blue-400 transition-colors duration-300 text-gray-900 dark:text-white placeholder-transparent resize-none context" placeholder=" "></textarea>
-                  <label for="message" class="absolute left-0 top-10 text-gray-500 dark:text-gray-400 transition-all duration-300 pointer-events-none peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-focus:-top-1 peer-focus:text-xs peer-focus:text-blue-600 dark:peer-focus:text-blue-400 peer-[:not(:placeholder-shown)]:-top-1 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-blue-600 dark:peer-[:not(:not(:placeholder-shown)]:text-blue-400 context">Your Message</label>
+                  <label for="message" class="absolute left-0 top-10 text-gray-500 dark:text-gray-400 transition-all duration-300 pointer-events-none peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-focus:-top-1 peer-focus:text-xs peer-focus:text-blue-600 dark:peer-focus:text-blue-400 peer-[:not(:placeholder-shown)]:-top-1 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:not(:placeholder-shown)]:text-blue-400 context">Your Message</label>
                 </div>
 
                 <div>
@@ -199,6 +270,22 @@
       </section>
     </div>
 
+    <div id="custom-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+      <div class="bg-white dark:bg-[#303030] rounded-lg p-6 shadow-2xl w-full max-w-sm mx-4 transform transition-transform duration-300 scale-95">
+        <div class="flex justify-between items-center mb-4">
+          <h4 id="modal-title" class="subtext-title font-bold text-[#333] dark:text-[#FFF]"></h4>
+          <button id="modal-close-btn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none transition-colors duration-200">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <p id="modal-message" class="context text-gray-600 dark:text-gray-400 mb-6"></p>
+        <button id="modal-ok-btn" class="w-full px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">OK</button>
+      </div>
+    </div>
+
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/flowbite/dist/flowbite.min.js"></script>
 
@@ -226,7 +313,6 @@
       import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
       import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-      // Your Firebase configuration
       const firebaseConfig = {
         apiKey: "AIzaSyDZUVChTTWtGm4R40wMWGrTYwyUk0FDahs",
         authDomain: "sklepaga-8790e.firebaseapp.com",
@@ -237,7 +323,6 @@
         measurementId: "G-9GH707G2WZ"
       };
 
-      // Initialize Firebase
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
@@ -247,10 +332,40 @@
       const emailInput = document.getElementById("email");
       const messageInput = document.getElementById("message");
 
-      // Check for user authentication and autofill fields
+      const modal = document.getElementById("custom-modal");
+      const modalTitle = document.getElementById("modal-title");
+      const modalMessage = document.getElementById("modal-message");
+      const modalCloseBtn = document.getElementById("modal-close-btn");
+      const modalOkBtn = document.getElementById("modal-ok-btn");
+
+      function showModal(title, message) {
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modal.classList.remove("hidden");
+        setTimeout(() => {
+          modal.querySelector("div").classList.add("scale-100");
+          modal.querySelector("div").classList.remove("scale-95");
+        }, 10);
+      }
+
+      function hideModal() {
+        modal.querySelector("div").classList.add("scale-95");
+        modal.querySelector("div").classList.remove("scale-100");
+        setTimeout(() => {
+          modal.classList.add("hidden");
+        }, 300);
+      }
+
+      modalCloseBtn.addEventListener("click", hideModal);
+      modalOkBtn.addEventListener("click", hideModal);
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) {
+          hideModal();
+        }
+      });
+
       onAuthStateChanged(auth, (user) => {
         if (user) {
-          // User is signed in, autofill the form
           nameInput.value = user.displayName || "";
           emailInput.value = user.email || "";
         }
@@ -263,9 +378,8 @@
         const email = emailInput.value;
         const message = messageInput.value;
 
-        // Simple validation
         if (!name || !email || !message) {
-          alert("Please fill out all fields.");
+          showModal("Error", "Please fill out all fields.");
           return;
         }
 
@@ -275,16 +389,14 @@
             email: email,
             message: message,
             timestamp: serverTimestamp(),
-            userId: auth.currentUser ? auth.currentUser.uid : null, // Store user ID if logged in
+            userId: auth.currentUser ? auth.currentUser.uid : null,
           });
 
-          alert("Thank you for your message! We have received your letter.");
-          // Clear form fields on successful submission
+          showModal("Success!", "Thank you for your message! We have received your letter.");
           nameInput.value = "";
           emailInput.value = "";
           messageInput.value = "";
           
-          // Re-autofill if user is logged in (after clearing)
           if (auth.currentUser) {
             nameInput.value = auth.currentUser.displayName || "";
             emailInput.value = auth.currentUser.email || "";
@@ -292,16 +404,15 @@
 
         } catch (error) {
           console.error("Error adding document: ", error);
-          alert("Something went wrong. Please try again later.");
+          showModal("Error", "Something went wrong. Please try again later.");
         }
       });
     </script>
     <script>
-      // On DOM load
       window.addEventListener("DOMContentLoaded", () => {
         gsap.utils.toArray(".clipp-section").forEach((section, index) => {
           gsap.to(section, {
-            clipPath: "inset(0% 0% 0% 0%)", // Reveal fully
+            clipPath: "inset(0% 0% 0% 0%)",
             duration: 0.7,
             ease: "power2.out",
           });
@@ -316,7 +427,7 @@
           {
             scale: 1,
             duration: 2,
-            ease: "power2.inOut" // slow at start, smooth acceleration, slow at end
+            ease: "power2.inOut"
           }
         );
       });
