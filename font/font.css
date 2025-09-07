@@ -43,40 +43,22 @@
 
 
 /* FONTS*/
+/* HERO HEADING */
 .hero-heading {
-  font-size: 40px; /* Mobile base */
-  line-height: 4; /* Adjusted: Experiment with 1.1 to 1.25 for 70px.
-                       A common "safe" starting point for display text is around 1.15. */
-  font-weight: 550;
-  letter-spacing: -1.9px;
   font-family: "Inter", "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
-  text-align: center;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  margin: 0;
-  padding: 0; /* Keep padding at 0 unless you need actual space around the element */
-  /* Optional: Enhance text rendering, though be aware of browser differences */
   text-rendering: optimizeLegibility;
-}
 
-@media (min-width: 768px) {
-  .hero-heading {
-    font-size: 90PX;
-    line-height: 1.1; /* Adjusted: Experiment with 1.08 to 1.15 for 140px. */
-    letter-spacing: -2.5px;
-    font-weight: 650;
-  }
-}
+  font-size: clamp(40px, 6vw, 120px); /* Mobile → Desktop fluid scaling */
+  line-height: 1.1;                   /* Balanced for display text */
+  font-weight: 600;                   /* Use supported weights: 500, 600, 700 */
+  letter-spacing: -0.03em;            /* Scales automatically with font size */
+  text-align: center;
 
-@media (min-width: 1024px) {
-  .hero-heading {
-    font-size: 120px;
-    line-height: 1.09; /* Adjusted: Experiment with 1.05 to 1.1 for 150px. */
-    letter-spacing: -1.5px;
-    font-weight: 700;
-  }
+  margin: 0;
+  padding: 0;
 }
-
 
 .subtext-title {
   font-size: 30px; /* Mobile base */
@@ -164,4 +146,5 @@
       font-weight: 400;
   }
 }
+
 
