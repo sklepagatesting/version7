@@ -1,4 +1,6 @@
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -175,9 +177,21 @@
 
 <section id="chat-cta" class="min-h-[50vh] flex items-center justify-center font-theme text-center bg-white dark:bg-[#242424] px-4 py-16 sm:py-24">
   <div class="flex flex-col items-center">
-    <h3 class="hero-heading font-extrabold mb-16 mt-16 header-glowing-text">
-      INTRODUCING<br>REAL-TIME<br>CONVERSATIONS
+    <div class="text-container">
+    <h3 class="text-line hero-heading font-extrabold mt-16 header-glowing-text">
+      INTRODUCING
     </h3>
+    </div>
+     <div class="text-container">
+    <h3 class="text-line hero-heading font-extrabold header-glowing-text">
+     REAL-TIME
+    </h3>
+    </div>
+     <div class="text-container">
+    <h3 class="text-line hero-heading font-extrabold mb-16 header-glowing-text">
+CONVERSATIONS
+    </h3>
+    </div>
     <a href="authentication.html" 
       class="subtext-title elegant-glowing-button inline-flex items-center justify-center px-12 py-6  rounded-full shadow-lg text-white focus:ring-4 focus:ring-blue-300 active:scale-95 transition-all duration-300 ease-in-out group relative overflow-hidden">
       <span class="relative z-10 flex items-center gap-3">
@@ -392,7 +406,7 @@
             userId: auth.currentUser ? auth.currentUser.uid : null,
           });
 
-          showModal("Success!", "Thank you for your message! We have received your letter.");
+          showModal("Success!", "Thank you for your message!");
           nameInput.value = "";
           emailInput.value = "";
           messageInput.value = "";
